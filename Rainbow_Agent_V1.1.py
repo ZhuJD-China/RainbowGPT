@@ -30,7 +30,6 @@ openai.api_key = OPENAI_API_KEY
 # 打印 API 密钥
 print(OPENAI_API_KEY)
 
-
 logfile = "Rainbow_Agent_V1.1_output.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
@@ -135,30 +134,25 @@ def pretty_print_docs(docs):
 
 def ask_local_vector_db(question):
     # old docsearch_db
-    # docs = docsearch_db.similarity_search(question, k=10)
-    # pretty_print_docs(docs)
-    # print("**************************************************")
+    docs = docsearch_db.similarity_search(question, k=10)
+    pretty_print_docs(docs)
+    print("**************************************************")
 
     # new docsearch_db 结合基础检索器+Embedding 压缩+BM25 关检词检索筛选
-    chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 50})
-    # chroma_retriever = docsearch_db.as_retriever(
-    #     search_type="mmr",
-    #     search_kwargs={'k': 30, 'fetch_k': 50}
+    # chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
+    # splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
+    # redundant_filter = EmbeddingsRedundantFilter(embeddings=embeddings)
+    # relevant_filter = EmbeddingsFilter(embeddings=embeddings, similarity_threshold=0.76)
+    # pipeline_compressor = DocumentCompressorPipeline(
+    #     transformers=[splitter, redundant_filter, relevant_filter]
     # )
-
-    splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
-    redundant_filter = EmbeddingsRedundantFilter(embeddings=embeddings)
-    relevant_filter = EmbeddingsFilter(embeddings=embeddings, similarity_threshold=0.76)
-    pipeline_compressor = DocumentCompressorPipeline(
-        transformers=[splitter, redundant_filter, relevant_filter]
-    )
-    compression_retriever = ContextualCompressionRetriever(base_compressor=pipeline_compressor,
-                                                           base_retriever=chroma_retriever)
-    compressed_docs = compression_retriever.get_relevant_documents(question)
-    bm25_Retriever = BM25Retriever.from_documents(compressed_docs)
-    bm25_Retriever.k = 30
-    docs = bm25_Retriever.get_relevant_documents(question)
-    pretty_print_docs(docs)
+    # compression_retriever = ContextualCompressionRetriever(base_compressor=pipeline_compressor,
+    #                                                        base_retriever=chroma_retriever)
+    # compressed_docs = compression_retriever.get_relevant_documents(question, tools=tools)
+    # bm25_Retriever = BM25Retriever.from_documents(compressed_docs)
+    # bm25_Retriever.k = 30
+    # docs = bm25_Retriever.get_relevant_documents(question)
+    # pretty_print_docs(docs)
 
     cleaned_matches = []
     total_toknes = 0
@@ -232,7 +226,8 @@ while True:
     user_input_text = "\n".join(user_input)
 
     print("===============Thinking===================")
-    try:
-        response = agent_open_functions.run(user_input_text)
-    except Exception as e:
-        print("An error occurred:", e)
+    # try:
+    #     response = agent_open_functions.run(user_input_text)
+    # except Exception as e:
+    #     print("An error occurred:", e)
+    response = agent_open_functions.run(user_input_text)
