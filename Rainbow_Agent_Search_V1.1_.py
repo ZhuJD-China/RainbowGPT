@@ -134,25 +134,25 @@ def pretty_print_docs(docs):
 
 def ask_local_vector_db(question):
     # old docsearch_db
-    docs = docsearch_db.similarity_search(question, k=10)
-    pretty_print_docs(docs)
-    print("**************************************************")
+    # docs = docsearch_db.similarity_search(question, k=10)
+    # pretty_print_docs(docs)
+    # print("**************************************************")
 
     # new docsearch_db 结合基础检索器+Embedding 压缩+BM25 关检词检索筛选
-    # chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
-    # splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
-    # redundant_filter = EmbeddingsRedundantFilter(embeddings=embeddings)
-    # relevant_filter = EmbeddingsFilter(embeddings=embeddings, similarity_threshold=0.76)
-    # pipeline_compressor = DocumentCompressorPipeline(
-    #     transformers=[splitter, redundant_filter, relevant_filter]
-    # )
-    # compression_retriever = ContextualCompressionRetriever(base_compressor=pipeline_compressor,
-    #                                                        base_retriever=chroma_retriever)
-    # compressed_docs = compression_retriever.get_relevant_documents(question, tools=tools)
-    # bm25_Retriever = BM25Retriever.from_documents(compressed_docs)
-    # bm25_Retriever.k = 30
-    # docs = bm25_Retriever.get_relevant_documents(question)
-    # pretty_print_docs(docs)
+    chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 50})
+    splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
+    redundant_filter = EmbeddingsRedundantFilter(embeddings=embeddings)
+    relevant_filter = EmbeddingsFilter(embeddings=embeddings, similarity_threshold=0.76)
+    pipeline_compressor = DocumentCompressorPipeline(
+        transformers=[splitter, redundant_filter, relevant_filter]
+    )
+    compression_retriever = ContextualCompressionRetriever(base_compressor=pipeline_compressor,
+                                                           base_retriever=chroma_retriever)
+    compressed_docs = compression_retriever.get_relevant_documents(question, tools=tools)
+    bm25_Retriever = BM25Retriever.from_documents(compressed_docs)
+    bm25_Retriever.k = 30
+    docs = bm25_Retriever.get_relevant_documents(question)
+    pretty_print_docs(docs)
 
     cleaned_matches = []
     total_toknes = 0
@@ -162,7 +162,7 @@ def ask_local_vector_db(question):
 
         cleaned_context = f"{cleaned_context}"
         tokens = tokenizers.encode(cleaned_context, add_special_tokens=False)
-        if total_toknes + len(tokens) <= (1536 * 8):
+        if total_toknes + len(tokens) <= (1536 * 10):
             cleaned_matches.append(cleaned_context)
             total_toknes += len(tokens)
         else:
