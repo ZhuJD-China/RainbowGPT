@@ -211,7 +211,9 @@ agent_open_functions = initialize_agent(
     max_iterations=10,
     early_stopping_method="generate",
     handle_parsing_errors=True,  # 初始化代理并处理解析错误
+    # handle_parsing_errors="Check your output and make sure it conforms!",
     callbacks=[handler],
+    # return_intermediate_steps=True,
 )
 
 while True:
@@ -230,4 +232,12 @@ while True:
     #     response = agent_open_functions.run(user_input_text)
     # except Exception as e:
     #     print("An error occurred:", e)
+
     response = agent_open_functions.run(user_input_text)
+
+    # 杭州亚运会中国队金牌获得个数是多少？比第二名多几个？
+    # response = agent_open_functions(
+    #     {
+    #         "input": user_input_text
+    #     }
+    # )
