@@ -4,7 +4,10 @@ import chromadb
 import openai
 import os
 from dotenv import load_dotenv
-from langchain import PromptTemplate, LLMChain, GoogleSerperAPIWrapper
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from langchain.utilities import GoogleSerperAPIWrapper
+
 from langchain.agents import initialize_agent, AgentType
 from langchain.document_transformers import EmbeddingsRedundantFilter
 from langchain.retrievers import ContextualCompressionRetriever, BM25Retriever
@@ -233,11 +236,14 @@ while True:
     # except Exception as e:
     #     print("An error occurred:", e)
 
-    response = agent_open_functions.run(user_input_text)
-
     # 杭州亚运会中国队金牌获得个数是多少？比第二名多几个？
     # response = agent_open_functions(
     #     {
     #         "input": user_input_text
     #     }
     # )
+
+    response = agent_open_functions.run(user_input_text)
+
+
+
