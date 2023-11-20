@@ -6,7 +6,9 @@ import chromadb
 import openai
 import os
 from dotenv import load_dotenv
-from langchain import PromptTemplate, LLMChain, GoogleSerperAPIWrapper, SerpAPIWrapper
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from langchain.utilities import GoogleSerperAPIWrapper
 from langchain.agents import initialize_agent, AgentType, LLMSingleActionAgent, AgentExecutor, AgentOutputParser
 from langchain.document_transformers import EmbeddingsRedundantFilter
 from langchain.retrievers import ContextualCompressionRetriever, BM25Retriever

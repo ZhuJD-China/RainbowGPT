@@ -12,6 +12,7 @@ from langchain.agents import initialize_agent, AgentType
 from langchain.document_transformers import EmbeddingsRedundantFilter
 from langchain.retrievers import ContextualCompressionRetriever, BM25Retriever
 from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
+from langchain.utilities.google_search import GoogleSearchAPIWrapper
 from loguru import logger
 from langchain.callbacks import FileCallbackHandler
 from langchain.chat_models import ChatOpenAI
@@ -33,6 +34,8 @@ openai.api_key = OPENAI_API_KEY
 # 打印 API 密钥
 print(OPENAI_API_KEY)
 
+
+
 logfile = "Rainbow_Agent_V1.1_output.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
@@ -43,7 +46,13 @@ llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
 embeddings = OpenAIEmbeddings()
 # embeddings = HuggingFaceEmbeddings()
 
-GoogleSerper_search = GoogleSerperAPIWrapper()
+# Google_Search = GoogleSerperAPIWrapper()
+# # 设置代理（替换为你的代理地址和端口）
+proxy_url = 'http://localhost:7890'
+os.environ['http_proxy'] = proxy_url
+os.environ['https_proxy'] = proxy_url
+Google_Search = GoogleSearchAPIWrapper()
+
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
@@ -182,9 +191,10 @@ def ask_local_vector_db(question):
 tools = [
     Tool(
         name="Google_Search",
-        func=GoogleSerper_search.run,
+        func=Google_Search.run,
         description="""
         当你用本地向量数据库问答后说无法找到答案的之后，你可以使用互联网搜索引擎工具进行信息查询,尝试直接找到问题答案。 
+        将搜索到的按照问题的相关性和时间进行排序，并且你必须严格参照搜索到的资料和你自己的认识结合进行回答！
         注意你需要提出非常有针对性准确的问题。
         """,
     ),
@@ -231,19 +241,15 @@ while True:
     user_input_text = "\n".join(user_input)
 
     print("===============Thinking===================")
-    # try:
-    #     response = agent_open_functions.run(user_input_text)
-    # except Exception as e:
-    #     print("An error occurred:", e)
+    try:
+        response = agent_open_functions.run(user_input_text)
+    except Exception as e:
+        print("An error occurred:", e)
 
-    # 杭州亚运会中国队金牌获得个数是多少？比第二名多几个？
-    # response = agent_open_functions(
-    #     {
-    #         "input": user_input_text
-    #     }
-    # )
-
-    response = agent_open_functions.run(user_input_text)
-
-
+"""
+Example:
+2023年11月17日发生的重大新闻，我需要你在搜索完资料后自己进行总结
+Google
+n
+"""
 
