@@ -4,6 +4,10 @@
 
 ![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/imgs/Retrieval_Search.png)
 
+ <div align="center">
+	<img src="https://github.com/ZhuJD-China/RainbowGPT/imgs/Retrieval_Search.png" alt="Editor" width="200">
+</div>
+
 ![Summarization](https://github.com/ZhuJD-China/RainbowGPT\imgs\Summarization.png)
 
 ![Chatbots](https://github.com/ZhuJD-China/RainbowGPT\imgs\Chatbots.png)
