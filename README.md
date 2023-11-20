@@ -2,7 +2,7 @@
 
 🚀 集成openai-api langchain LLM大模型 Agent 开发语言能力
 
-![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT\imgs\Retrieval_Search.png)
+![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/imgs/Retrieval_Search.png)
 
 ![Summarization](https://github.com/ZhuJD-China/RainbowGPT\imgs\Summarization.png)
 
