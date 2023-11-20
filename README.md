@@ -4,14 +4,10 @@
 
 ![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png)
 
- <div align="center">
-	<img src="https://github.com/ZhuJD-China/RainbowGPT/imgs/Retrieval_Search.png" alt="Editor" width="200">
-</div>
+![Summarization](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png)
 
-![Summarization](https://github.com/ZhuJD-China/RainbowGPT\imgs\Summarization.png)
+![Chatbots]([https://github.com/ZhuJD-China/RainbowGPT\imgs\Chatbots.png](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png))
 
-![Chatbots](https://github.com/ZhuJD-China/RainbowGPT\imgs\Chatbots.png)
+![SQLAgent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png)
 
-![SQLAgent](D:\AIGC\RainbowGPT_github\imgs\SQLAgent.png)
-
-![WebScraping](D:\AIGC\RainbowGPT_github\imgs\WebScraping.png)
+![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/WebScraping.png)
