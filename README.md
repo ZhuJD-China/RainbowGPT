@@ -6,7 +6,7 @@
 
 ![Summarization](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png)
 
-![Chatbots]([https://github.com/ZhuJD-China/RainbowGPT\imgs\Chatbots.png](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png))
+![Chatbots](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png)
 
 ![SQLAgent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png)
 
