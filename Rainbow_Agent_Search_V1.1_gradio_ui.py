@@ -23,6 +23,7 @@ from langchain.tools import GoogleSerperRun, Tool
 from langchain.vectorstores import Chroma
 from transformers import GPT2Tokenizer
 import logging
+import gradio as gr
 
 # 加载环境变量中的 OpenAI API 密钥
 load_dotenv()
@@ -31,8 +32,6 @@ openai.api_key = OPENAI_API_KEY
 
 # 打印 API 密钥
 print(OPENAI_API_KEY)
-
-
 
 logfile = "Rainbow_Agent_V1.1_output.log"
 logger.add(logfile, colorize=True, enqueue=True)
@@ -50,7 +49,6 @@ proxy_url = 'http://localhost:7890'
 os.environ['http_proxy'] = proxy_url
 os.environ['https_proxy'] = proxy_url
 Google_Search = GoogleSearchAPIWrapper()
-
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
@@ -73,7 +71,6 @@ if collection_name_flag:
 
     # Filtering_metadata = docsearch_db.get(where={"source": "some_other_source"})
     # print(Filtering_metadata)
-
 else:
     # 设置向量存储相关配置
     print("==========doc data vector search=======")
@@ -206,7 +203,7 @@ tools = [
         name="Local_Search",
         func=ask_local_vector_db,
         description="""
-        你可以首先通过本地向量数据知识库尝试寻找问答案。 
+        你可以首先通过本地向量数据知识库尝试寻找问答案。
         注意你需要提出非常有针对性准确的问题和回答。
         """
     )
@@ -233,27 +230,17 @@ agent_open_functions = initialize_agent(
     # return_intermediate_steps=True,
 )
 
-while True:
-    user_input = []
-    print("请输入您的问题（纯文本格式），换行输入 n 以结束：")
-    while True:
-        line = input()
-        if line != "n":
-            user_input.append(line)
-        else:
-            break
-    user_input_text = "\n".join(user_input)
 
-    print("===============Thinking===================")
-    try:
-        response = agent_open_functions.run(user_input_text)
-    except Exception as e:
-        print("An error occurred:", e)
+# 创建 Gradio 的 ChatInterface
+def gradio_chat_interface(message, history):
+    # 在这里调用你的聊天机器人逻辑，返回回答
+    # answer = "这里应该是你的聊天机器人的回答"
+    response = agent_open_functions.run(message)
+    return response
 
-"""
-Example:
-2023年11月20日发生的重大新闻，我需要你在搜索完资料后自己进行总结
-Google
-n
-"""
 
+# 使用 Gradio 的 ChatInterface 创建聊天界面
+chat_interface = gr.ChatInterface(gradio_chat_interface)
+
+# 启动 Gradio 聊天界面
+chat_interface.launch(share=True)
