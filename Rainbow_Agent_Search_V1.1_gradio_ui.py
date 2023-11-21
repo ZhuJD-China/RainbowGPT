@@ -29,10 +29,8 @@ import gradio as gr
 load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
-
 # 打印 API 密钥
 print(OPENAI_API_KEY)
-
 logfile = "Rainbow_Agent_V1.1_output.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
@@ -52,54 +50,12 @@ Google_Search = GoogleSearchAPIWrapper()
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
-print(client.list_collections())
-
-# Get user input for collection name
-collection_name = input("Enter the collection name: ")
-try:
-    chroma_collection = client.get_collection(collection_name)
-    print(chroma_collection.count())
-    collection_name_flag = True
-except ValueError as e:
-    print(e)  # 打印错误消息
-    collection_name_flag = False
-
-# Check if the collection exists
-if collection_name_flag:
-    # Collection exists, load it
-    docsearch_db = Chroma(client=client, embedding_function=embeddings, collection_name=collection_name)
-
-    # Filtering_metadata = docsearch_db.get(where={"source": "some_other_source"})
-    # print(Filtering_metadata)
-else:
-    # 设置向量存储相关配置
-    print("==========doc data vector search=======")
-    doc_data_path = input("请输入目标目录路径（按回车使用默认值 ./）：") or "./"
-
-    loader = DirectoryLoader(doc_data_path, show_progress=True, use_multithreading=True, silent_errors=True)
-    # loader = CSVLoader(doc_data_path, encoding='utf-8')
-
-    documents = loader.load()
-    print(documents)
-    print("documents len= ", documents.__len__())
-
-    input_chunk_size = input("请输入切分token长度（按回车使用默认值 1536）：") or "1536"
-    intput_chunk_overlap = input("请输入overlap token长度（按回车使用默认值 0）：") or "0"
-    embeddings.chunk_size = int(input_chunk_size)
-    embeddings.show_progress_bar = True
-    embeddings.request_timeout = 20
-
-    text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
-                                          chunk_overlap=int(intput_chunk_overlap))
-    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=int(input_chunk_size),
-    #                                                chunk_overlap=int(intput_chunk_overlap))
-
-    texts = text_splitter.split_documents(documents)
-    print(texts)
-    print("after split documents len= ", texts.__len__())
-    # Collection does not exist, create it
-    docsearch_db = Chroma.from_documents(documents=texts, embedding=embeddings, collection_name=collection_name,
-                                         persist_directory=persist_directory)
+# print(client.list_collections())
+collections = client.list_collections()
+list_collections_name = []
+for collection in collections:
+    collection_name = collection.name
+    list_collections_name.append(collection_name)
 
 # Local_Search Prompt模版
 local_search_template = """
@@ -139,7 +95,76 @@ def pretty_print_docs(docs):
     print("\n====================搜索匹配完成==============\n")
 
 
+# 在文件顶部定义docsearch_db
+docsearch_db = None
+
+
+def echo(message, history, collection_name, new_collection_name, DirectoryLoader_path, print_speed_step):
+    # response = f"你选中的知识库名字是: {collection_name}\n 你提出的问题是: {message}."
+    global docsearch_db
+
+    if not DirectoryLoader_path:
+        # Collection exists, load it
+        print("Collection exists, load it")
+        docsearch_db = Chroma(client=client, embedding_function=embeddings, collection_name=collection_name)
+    else:
+        # 设置向量存储相关配置
+        print("==========doc data vector search=======")
+        doc_data_path = DirectoryLoader_path
+
+        loader = DirectoryLoader(doc_data_path, show_progress=True, use_multithreading=True, silent_errors=True)
+        documents = loader.load()
+        print(documents)
+        print("documents len= ", documents.__len__())
+
+        input_chunk_size = 1536
+        intput_chunk_overlap = 0
+        embeddings.chunk_size = 1536
+        embeddings.show_progress_bar = True
+        embeddings.request_timeout = 20
+
+        text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
+                                              chunk_overlap=int(intput_chunk_overlap))
+
+        texts = text_splitter.split_documents(documents)
+        print(texts)
+        print("after split documents len= ", texts.__len__())
+        # Collection does not exist, create it
+        docsearch_db = Chroma.from_documents(documents=texts, embedding=embeddings, collection_name=new_collection_name,
+                                             persist_directory=persist_directory)
+
+    agent_kwargs = {
+        "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
+    }
+    memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
+
+    # 初始化agent代理
+    agent_open_functions = initialize_agent(
+        tools,
+        llm=llm,
+        agent=AgentType.OPENAI_FUNCTIONS,
+        verbose=False,
+        agent_kwargs=agent_kwargs,
+        memory=memory,
+        max_iterations=10,
+        early_stopping_method="generate",
+        handle_parsing_errors=True,  # 初始化代理并处理解析错误
+        # handle_parsing_errors="Check your output and make sure it conforms!",
+        callbacks=[handler],
+        # return_intermediate_steps=True,
+    )
+
+    response = agent_open_functions.run(message)
+
+    for i in range(0, len(response), int(print_speed_step)):
+        # time.sleep(0.01)  # 可以根据需要调整休眠时间
+        yield response[: i + int(print_speed_step)]
+    # return response
+
+
 def ask_local_vector_db(question):
+    global docsearch_db
+
     # old docsearch_db
     # docs = docsearch_db.similarity_search(question, k=10)
     # pretty_print_docs(docs)
@@ -161,7 +186,7 @@ def ask_local_vector_db(question):
         bm25_Retriever = BM25Retriever.from_documents(compressed_docs)
         bm25_Retriever.k = 30
         docs = bm25_Retriever.get_relevant_documents(question)
-        pretty_print_docs(docs)
+        # pretty_print_docs(docs)
     except ValueError as e:
         print(f"Error while creating BM25Retriever: {e}")
         docs = []
@@ -209,38 +234,19 @@ tools = [
     )
 ]
 
-agent_kwargs = {
-    "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-}
-memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
+with gr.Blocks() as demo:
+    # 将最上面的三个 UI 控件并排放置
+    with gr.Row():
+        collection_name = gr.Dropdown(list_collections_name, label="Collection Name")
+        new_collection_name = gr.Textbox("", label="New Collection Name")
+        DirectoryLoader_path = gr.Textbox("", label="Directory Path")
 
-# 初始化agent代理
-agent_open_functions = initialize_agent(
-    tools,
-    llm=llm,
-    agent=AgentType.OPENAI_FUNCTIONS,
-    verbose=True,
-    agent_kwargs=agent_kwargs,
-    memory=memory,
-    max_iterations=10,
-    early_stopping_method="generate",
-    handle_parsing_errors=True,  # 初始化代理并处理解析错误
-    # handle_parsing_errors="Check your output and make sure it conforms!",
-    callbacks=[handler],
-    # return_intermediate_steps=True,
-)
+    print_speed_step = gr.Slider(5, 20, render=False, label="Print Speed Step")
+    gr.ChatInterface(
+        echo, additional_inputs=[collection_name, new_collection_name, DirectoryLoader_path, print_speed_step],
+        title="RainbowGPT-Agent",
+        description="How to reach me: zhujiadongvip@163.com",
+        css=".gradio-container {background-color: red}"
+    )
 
-
-# 创建 Gradio 的 ChatInterface
-def gradio_chat_interface(message, history):
-    # 在这里调用你的聊天机器人逻辑，返回回答
-    # answer = "这里应该是你的聊天机器人的回答"
-    response = agent_open_functions.run(message)
-    return response
-
-
-# 使用 Gradio 的 ChatInterface 创建聊天界面
-chat_interface = gr.ChatInterface(gradio_chat_interface)
-
-# 启动 Gradio 聊天界面
-chat_interface.launch(share=True)
+demo.queue().launch(share=True)

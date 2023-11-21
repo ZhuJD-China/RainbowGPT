@@ -32,8 +32,6 @@ openai.api_key = OPENAI_API_KEY
 # 打印 API 密钥
 print(OPENAI_API_KEY)
 
-
-
 logfile = "Rainbow_Agent_V1.1_output.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
@@ -50,7 +48,6 @@ proxy_url = 'http://localhost:7890'
 os.environ['http_proxy'] = proxy_url
 os.environ['https_proxy'] = proxy_url
 Google_Search = GoogleSearchAPIWrapper()
-
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
@@ -256,4 +253,3 @@ Example:
 Google
 n
 """
-
