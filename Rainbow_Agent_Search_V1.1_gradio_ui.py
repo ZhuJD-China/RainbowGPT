@@ -99,26 +99,31 @@ def pretty_print_docs(docs):
 docsearch_db = None
 
 
-def echo(message, history, collection_name, new_collection_name, DirectoryLoader_path, print_speed_step):
+def echo(message, history, collection_name, load_existing_collection, new_collection_name, DirectoryLoader_path,
+         print_speed_step):
+    print(load_existing_collection)
+    print(type(load_existing_collection))
     # response = f"你选中的知识库名字是: {collection_name}\n 你提出的问题是: {message}."
     global docsearch_db
 
-    if not DirectoryLoader_path:
+    if not load_existing_collection:
         # Collection exists, load it
         print("Collection exists, load it")
         docsearch_db = Chroma(client=client, embedding_function=embeddings, collection_name=collection_name)
     else:
+        first_flag = True
         # 设置向量存储相关配置
         print("==========doc data vector search=======")
-        doc_data_path = DirectoryLoader_path
+        print(DirectoryLoader_path)
 
-        loader = DirectoryLoader(doc_data_path, show_progress=True, use_multithreading=True, silent_errors=True)
+        loader = DirectoryLoader(DirectoryLoader_path, show_progress=True, use_multithreading=True, silent_errors=True)
+
         documents = loader.load()
         print(documents)
         print("documents len= ", documents.__len__())
 
         input_chunk_size = 1536
-        intput_chunk_overlap = 0
+        intput_chunk_overlap = 20
         embeddings.chunk_size = 1536
         embeddings.show_progress_bar = True
         embeddings.request_timeout = 20
@@ -130,6 +135,7 @@ def echo(message, history, collection_name, new_collection_name, DirectoryLoader
         print(texts)
         print("after split documents len= ", texts.__len__())
         # Collection does not exist, create it
+        client.delete_collection(str(new_collection_name))
         docsearch_db = Chroma.from_documents(documents=texts, embedding=embeddings, collection_name=new_collection_name,
                                              persist_directory=persist_directory)
 
@@ -235,15 +241,19 @@ tools = [
 ]
 
 with gr.Blocks() as demo:
+    collection_name = gr.Dropdown(list_collections_name, label="Collection Name")
+
     # 将最上面的三个 UI 控件并排放置
     with gr.Row():
-        collection_name = gr.Dropdown(list_collections_name, label="Collection Name")
+        # 在 Gradio UI 中添加一个复选框，用于控制加载已存在的集合
+        load_existing_collection = gr.Checkbox(label="Load Existing Collection")
         new_collection_name = gr.Textbox("", label="New Collection Name")
         DirectoryLoader_path = gr.Textbox("", label="Directory Path")
 
     print_speed_step = gr.Slider(5, 20, render=False, label="Print Speed Step")
     gr.ChatInterface(
-        echo, additional_inputs=[collection_name, new_collection_name, DirectoryLoader_path, print_speed_step],
+        echo, additional_inputs=[collection_name, load_existing_collection, new_collection_name, DirectoryLoader_path,
+                                 print_speed_step],
         title="RainbowGPT-Agent",
         description="How to reach me: zhujiadongvip@163.com",
         css=".gradio-container {background-color: red}"
