@@ -5,7 +5,6 @@ import os
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.utilities import GoogleSerperAPIWrapper
 from langchain.agents import initialize_agent, AgentType
 from langchain.document_transformers import EmbeddingsRedundantFilter
 from langchain.retrievers import ContextualCompressionRetriever, BM25Retriever
@@ -31,7 +30,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
 # 打印 API 密钥
 print(OPENAI_API_KEY)
-logfile = "Rainbow_Agent_V1.1_output.log"
+logfile = "Rainbow_Agent_Search_V1.1_gradio_ui.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
@@ -39,10 +38,8 @@ handler = FileCallbackHandler(logfile)
 llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
 
 embeddings = OpenAIEmbeddings()
-# embeddings = HuggingFaceEmbeddings()
 
-# Google_Search = GoogleSerperAPIWrapper()
-# # 设置代理（替换为你的代理地址和端口）
+s# # 设置代理（替换为你的代理地址和端口）
 proxy_url = 'http://localhost:7890'
 os.environ['http_proxy'] = proxy_url
 os.environ['https_proxy'] = proxy_url
@@ -67,6 +64,7 @@ local_search_template = """
 我的问题是: {human_input}
 
 """
+
 local_search_prompt = PromptTemplate(
     input_variables=["combined_text", "human_input"],
     template=local_search_template,
@@ -80,30 +78,12 @@ local_chain = LLMChain(
 # 使用预训练的gpt2分词器
 tokenizers = GPT2Tokenizer.from_pretrained("gpt2")
 
-
-# 逐字打印
-def print_char_by_char(answer):
-    for char in answer:
-        print(char, end='', flush=True)
-        time.sleep(0.01)
-
-
-# Helper function for printing docs
-
-def pretty_print_docs(docs):
-    print(f"\n{'-' * 100}\n".join([f"Document {i + 1}:\n\n" + d.page_content for i, d in enumerate(docs)]))
-    print("\n====================搜索匹配完成==============\n")
-
-
 # 在文件顶部定义docsearch_db
 docsearch_db = None
 
 
 def echo(message, history, collection_name, load_existing_collection, new_collection_name, DirectoryLoader_path,
          print_speed_step):
-    print(load_existing_collection)
-    print(type(load_existing_collection))
-    # response = f"你选中的知识库名字是: {collection_name}\n 你提出的问题是: {message}."
     global docsearch_db
 
     if not load_existing_collection:
@@ -111,7 +91,6 @@ def echo(message, history, collection_name, load_existing_collection, new_collec
         print("Collection exists, load it")
         docsearch_db = Chroma(client=client, embedding_function=embeddings, collection_name=collection_name)
     else:
-        first_flag = True
         # 设置向量存储相关配置
         print("==========doc data vector search=======")
         print(DirectoryLoader_path)
@@ -171,11 +150,6 @@ def echo(message, history, collection_name, load_existing_collection, new_collec
 def ask_local_vector_db(question):
     global docsearch_db
 
-    # old docsearch_db
-    # docs = docsearch_db.similarity_search(question, k=10)
-    # pretty_print_docs(docs)
-    # print("**************************************************")
-
     # new docsearch_db 结合基础检索器+Embedding 压缩+BM25 关检词检索筛选
     chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 50})
     splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
@@ -192,7 +166,6 @@ def ask_local_vector_db(question):
         bm25_Retriever = BM25Retriever.from_documents(compressed_docs)
         bm25_Retriever.k = 30
         docs = bm25_Retriever.get_relevant_documents(question)
-        # pretty_print_docs(docs)
     except ValueError as e:
         print(f"Error while creating BM25Retriever: {e}")
         docs = []
