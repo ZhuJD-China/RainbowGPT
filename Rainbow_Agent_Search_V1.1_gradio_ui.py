@@ -39,7 +39,7 @@ llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
 
 embeddings = OpenAIEmbeddings()
 
-s# # 设置代理（替换为你的代理地址和端口）
+# # 设置代理（替换为你的代理地址和端口）
 proxy_url = 'http://localhost:7890'
 os.environ['http_proxy'] = proxy_url
 os.environ['https_proxy'] = proxy_url
