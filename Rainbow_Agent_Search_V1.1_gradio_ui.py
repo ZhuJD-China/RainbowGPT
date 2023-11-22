@@ -75,6 +75,7 @@ def echo(message, history, collection_name, load_existing_collection, new_collec
     global tools
 
     llm = ChatOpenAI(temperature=float(temperature_num), model="gpt-3.5-turbo-16k-0613")
+    # print("temperature_num=", float(temperature_num))
 
     if not load_existing_collection:
         # Collection exists, load it
@@ -151,7 +152,9 @@ def ask_local_vector_db(question):
     global docsearch_db
     global llm
 
-    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
+    llm = ChatOpenAI(temperature=float(temperature_num), model="gpt-3.5-turbo-16k-0613")
+    # print("temperature_num=", float(temperature_num))
+
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input"],
         template=local_search_template,
@@ -238,7 +241,7 @@ with gr.Blocks() as demo:
         DirectoryLoader_path = gr.Textbox("", label="Data Directory Path")
 
     temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
-    print_speed_step = gr.Slider(5, 20, render=False, label="Print Speed Step")
+    print_speed_step = gr.Slider(10, 20, render=False, label="Print Speed Step")
     gr.ChatInterface(
         echo, additional_inputs=[collection_name, load_existing_collection, new_collection_name, DirectoryLoader_path,
                                  temperature_num, print_speed_step],
