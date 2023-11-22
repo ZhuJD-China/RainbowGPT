@@ -74,6 +74,12 @@ def echo(message, history, collection_name, load_existing_collection, new_collec
     global llm
     global tools
 
+    if message == "":
+        response = "哎呀！好像有点小尴尬，您似乎忘记提出问题了。别着急，随时输入您的问题，我将尽力为您提供帮助！"
+        for i in range(0, len(response), int(print_speed_step)):
+            yield response[: i + int(print_speed_step)]
+        return
+
     llm = ChatOpenAI(temperature=float(temperature_num), model="gpt-3.5-turbo-16k-0613")
     # print("temperature_num=", float(temperature_num))
 
@@ -87,10 +93,9 @@ def echo(message, history, collection_name, load_existing_collection, new_collec
             tool_to_remove = "Local_Search"
             # 从工具列表中移除特定名称的工具
             tools = [tool for tool in tools if tool.name != tool_to_remove]
-            print("Local_Search tool has remove")
+            print("Not load any Collection and Local_Search tool has remove")
             # for tool in tools:
             #     print(tool.name)
-
     else:
         # 设置向量存储相关配置
         print("==========doc data vector search=======")
