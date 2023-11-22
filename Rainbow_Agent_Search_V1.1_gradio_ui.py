@@ -34,11 +34,6 @@ logfile = "Rainbow_Agent_Search_V1.1_gradio_ui.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
-# 创建 ChatOpenAI 实例作为底层语言模型
-llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
-
-embeddings = OpenAIEmbeddings()
-
 # # 设置代理（替换为你的代理地址和端口）
 proxy_url = 'http://localhost:7890'
 os.environ['http_proxy'] = proxy_url
@@ -65,31 +60,36 @@ local_search_template = """
 
 """
 
-local_search_prompt = PromptTemplate(
-    input_variables=["combined_text", "human_input"],
-    template=local_search_template,
-)
-# 本地知识库工具
-local_chain = LLMChain(
-    llm=llm, prompt=local_search_prompt,
-    verbose=True,
-)
-
-# 使用预训练的gpt2分词器
-tokenizers = GPT2Tokenizer.from_pretrained("gpt2")
+# 创建 ChatOpenAI 实例作为底层语言模型
+llm = None
+embeddings = OpenAIEmbeddings()
 
 # 在文件顶部定义docsearch_db
 docsearch_db = None
 
 
 def echo(message, history, collection_name, load_existing_collection, new_collection_name, DirectoryLoader_path,
-         print_speed_step):
+         temperature_num, print_speed_step):
     global docsearch_db
+    global llm
+    global tools
+
+    llm = ChatOpenAI(temperature=float(temperature_num), model="gpt-3.5-turbo-16k-0613")
 
     if not load_existing_collection:
         # Collection exists, load it
-        print("Collection exists, load it")
-        docsearch_db = Chroma(client=client, embedding_function=embeddings, collection_name=collection_name)
+        if collection_name:
+            print(f"{collection_name}", " Collection exists, load it")
+            docsearch_db = Chroma(client=client, embedding_function=embeddings, collection_name=collection_name)
+        else:
+            # 要删除的工具的名称
+            tool_to_remove = "Local_Search"
+            # 从工具列表中移除特定名称的工具
+            tools = [tool for tool in tools if tool.name != tool_to_remove]
+            print("Local_Search tool has remove")
+            # for tool in tools:
+            #     print(tool.name)
+
     else:
         # 设置向量存储相关配置
         print("==========doc data vector search=======")
@@ -149,6 +149,20 @@ def echo(message, history, collection_name, load_existing_collection, new_collec
 
 def ask_local_vector_db(question):
     global docsearch_db
+    global llm
+
+    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
+    local_search_prompt = PromptTemplate(
+        input_variables=["combined_text", "human_input"],
+        template=local_search_template,
+    )
+    # 本地知识库工具
+    local_chain = LLMChain(
+        llm=llm, prompt=local_search_prompt,
+        verbose=True,
+    )
+    # 使用预训练的gpt2分词器
+    tokenizers = GPT2Tokenizer.from_pretrained("gpt2")
 
     # new docsearch_db 结合基础检索器+Embedding 压缩+BM25 关检词检索筛选
     chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 50})
@@ -214,19 +228,20 @@ tools = [
 ]
 
 with gr.Blocks() as demo:
-    collection_name = gr.Dropdown(list_collections_name, label="Collection Name")
+    collection_name = gr.Dropdown(list_collections_name, label="Select existed Collection")
 
     # 将最上面的三个 UI 控件并排放置
     with gr.Row():
         # 在 Gradio UI 中添加一个复选框，用于控制加载已存在的集合
-        load_existing_collection = gr.Checkbox(label="Load Existing Collection")
-        new_collection_name = gr.Textbox("", label="New Collection Name")
-        DirectoryLoader_path = gr.Textbox("", label="Directory Path")
+        load_existing_collection = gr.Checkbox(label="Create New Collection")
+        new_collection_name = gr.Textbox("", label="Input New Collection Name")
+        DirectoryLoader_path = gr.Textbox("", label="Data Directory Path")
 
+    temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
     print_speed_step = gr.Slider(5, 20, render=False, label="Print Speed Step")
     gr.ChatInterface(
         echo, additional_inputs=[collection_name, load_existing_collection, new_collection_name, DirectoryLoader_path,
-                                 print_speed_step],
+                                 temperature_num, print_speed_step],
         title="RainbowGPT-Agent",
         description="How to reach me: zhujiadongvip@163.com",
         css=".gradio-container {background-color: red}"
