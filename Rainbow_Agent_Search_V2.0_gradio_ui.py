@@ -1,3 +1,6 @@
+import datetime
+import sys
+import threading
 import time
 import chromadb
 import openai
@@ -14,15 +17,58 @@ from loguru import logger
 from langchain.callbacks import FileCallbackHandler
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import DirectoryLoader
-from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import MessagesPlaceholder
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.tools import GoogleSerperRun, Tool
 from langchain.vectorstores import Chroma
 from transformers import GPT2Tokenizer
-import logging
 import gradio as gr
+from typing import Iterable
+from gradio.themes.base import Base
+from gradio.themes.utils import colors, fonts, sizes
+
+
+
+class Seafoam(Base):
+    def __init__(
+            self,
+            *,
+            primary_hue: colors.Color | str = colors.emerald,
+            secondary_hue: colors.Color | str = colors.blue,
+            neutral_hue: colors.Color | str = colors.gray,
+            spacing_size: sizes.Size | str = sizes.spacing_md,
+            radius_size: sizes.Size | str = sizes.radius_md,
+            text_size: sizes.Size | str = sizes.text_lg,
+            font: fonts.Font
+                  | str
+                  | Iterable[fonts.Font | str] = (
+                    fonts.GoogleFont("Quicksand"),
+                    "ui-sans-serif",
+                    "sans-serif",
+            ),
+            font_mono: fonts.Font
+                       | str
+                       | Iterable[fonts.Font | str] = (
+                    fonts.GoogleFont("IBM Plex Mono"),
+                    "ui-monospace",
+                    "monospace",
+            ),
+    ):
+        super().__init__(
+            primary_hue=primary_hue,
+            secondary_hue=secondary_hue,
+            neutral_hue=neutral_hue,
+            spacing_size=spacing_size,
+            radius_size=radius_size,
+            text_size=text_size,
+            font=font,
+            font_mono=font_mono,
+        )
+
+
+seafoam = Seafoam()
 
 # 加载环境变量中的 OpenAI API 密钥
 load_dotenv()
@@ -30,7 +76,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
 # 打印 API 密钥
 print(OPENAI_API_KEY)
-logfile = "Rainbow_Agent_Search_V1.1_gradio_ui.log"
+logfile = "Rainbow_Agent_Search_V2.0_gradio_ui.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
@@ -158,11 +204,13 @@ Calculator_tool = Tool(
 tools.append(Calculator_tool)
 
 
-def echo(message, history, collection_name, collection_checkbox_group, new_collection_name, DirectoryLoader_path,
-         temperature_num, print_speed_step, tool_checkbox_group):
+def echo(message, history, collection_name_select, collection_checkbox_group, new_collection_name,
+         temperature_num, print_speed_step, tool_checkbox_group, uploaded_files):
     global docsearch_db
     global llm
     global tools
+    global RainbowGPT
+    global list_collections_name
 
     tools = []  # 重置工具列表
     tools.append(Calculator_tool)
@@ -185,78 +233,129 @@ def echo(message, history, collection_name, collection_checkbox_group, new_colle
 
     llm = ChatOpenAI(temperature=float(temperature_num), model="gpt-3.5-turbo-16k-0613")
 
+    if collection_checkbox_group == "Create New Collection":
+        if new_collection_name == None or new_collection_name == "":
+            response = "新知识库的名字没有写，创建中止！"
+            for i in range(0, len(response), int(print_speed_step)):
+                yield response[: i + int(print_speed_step)]
+            return
+
+        # 获取当前脚本所在文件夹的绝对路径
+        current_script_folder = os.path.abspath(os.path.dirname(__file__))
+        # 获取当前时间并格式化为字符串
+        current_time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        base_folder = "\\data\\" + str(new_collection_name)
+        # 根据时间创建唯一的文件夹名
+        save_folder = current_script_folder + f"{base_folder}_{current_time}"
+
+        try:
+            os.makedirs(save_folder, exist_ok=True)
+        except Exception as e:
+            print(f"创建文件夹失败：{e}")
+
+        # 保存每个文件到指定文件夹
+        try:
+            for file in uploaded_files:
+                # 将文件指针重置到文件的开头
+                source_file_path = str(file.orig_name)
+                # 读取文件内容
+                with open(source_file_path, 'rb') as source_file:
+                    file_data = source_file.read()
+                # 使用原始文件名构建保存文件的路径
+                save_path = os.path.join(save_folder, os.path.basename(file.orig_name))
+                # 保存文件
+                # 保存文件到目标文件夹
+                with open(save_path, 'wb') as target_file:
+                    target_file.write(file_data)
+        except Exception as e:
+            print(f"保存文件时发生异常：{e}")
+
+        # 设置向量存储相关配置
+        response = "开始转换文件夹中的所有数据成知识库........"
+        for i in range(0, len(response), int(print_speed_step)):
+            yield response[: i + int(print_speed_step)]
+
+        loader = DirectoryLoader(str(save_folder), show_progress=True,
+                                 use_multithreading=True,
+                                 silent_errors=True)
+
+        documents = loader.load()
+        if documents == None:
+            response = "文件读取失败！" + str(save_folder)
+            for i in range(0, len(response), int(print_speed_step)):
+                yield response[: i + int(print_speed_step)]
+            return
+
+        response = str(documents)
+        for i in range(0, len(response), len(response) // 3):
+            yield response[: i + (len(response) // 3)]
+
+        print("documents len= ", documents.__len__())
+        response = "文档数据长度为： " + str(documents.__len__())
+        for i in range(0, len(response), int(print_speed_step)):
+            yield response[: i + int(print_speed_step)]
+
+        input_chunk_size = 1024
+        intput_chunk_overlap = 24
+        embeddings.chunk_size = 1024
+        embeddings.show_progress_bar = True
+        embeddings.request_timeout = 20
+
+        text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
+                                              chunk_overlap=int(intput_chunk_overlap))
+
+        texts = text_splitter.split_documents(documents)
+        print(texts)
+        response = str(texts)
+        for i in range(0, len(response), len(response) // 3):
+            yield response[: i + (len(response) // 3)]
+        print("after split documents len= ", texts.__len__())
+        response = "切分之后文档数据长度为：" + str(texts.__len__())
+        for i in range(0, len(response), int(print_speed_step)):
+            yield response[: i + int(print_speed_step)]
+        # Collection does not exist, create it
+
+        docsearch_db = Chroma.from_documents(documents=texts, embedding=embeddings,
+                                             collection_name=str(new_collection_name + "_" + current_time),
+                                             persist_directory=persist_directory)
+        response = "知识库建立完毕！请去打开读取知识库按钮并输入宁的问题！"
+
+        for i in range(0, len(response), int(print_speed_step)):
+            yield response[: i + int(print_speed_step)]
+
+        # TODO
+        # collections = client.list_collections()
+        # list_collections_name.clear()
+        # for collection in collections:
+        #     collection_name = collection.name
+        #     list_collections_name.append(collection_name)
+        # collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection")
+        return
+
     if flag_get_Local_Search_tool:
         if collection_checkbox_group == "Read Existing Collection":
             # Collection exists, load it
-            if collection_name:
-                print(f"{collection_name}", " Collection exists, load it")
-                response = f"{collection_name}" + "知识库已经创建, 正在加载中...请耐心等待我的回答...."
+            if collection_name_select:
+                print(f"{collection_name_select}", " Collection exists, load it")
+                response = f"{collection_name_select}" + "知识库已经创建, 正在加载中...请耐心等待我的回答...."
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[: i + int(print_speed_step)]
-                docsearch_db = Chroma(client=client, embedding_function=embeddings, collection_name=collection_name)
+                docsearch_db = Chroma(client=client, embedding_function=embeddings,
+                                      collection_name=collection_name_select)
             else:
                 response = "没有选中任何知识库，请至少选择一个知识库，回答中止！"
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[: i + int(print_speed_step)]
                 return
-        elif collection_checkbox_group == "Create New Collection":
-            # 设置向量存储相关配置
-            print("==========doc data vector search=======")
-            # print(DirectoryLoader_path)
-            response = "开始转换文件夹中的所有数据成知识库，文件夹路径为" + str(DirectoryLoader_path)
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
-
-            loader = DirectoryLoader(DirectoryLoader_path, show_progress=True, use_multithreading=True,
-                                     silent_errors=True)
-
-            documents = loader.load()
-            # print(documents)
-            response = str(documents)
-            for i in range(0, len(response), len(response) // 3):
-                yield response[: i + (len(response) // 3)]
-
-            print("documents len= ", documents.__len__())
-            response = "文档数据长度为： " + str(documents.__len__())
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
-
-            input_chunk_size = 1024
-            intput_chunk_overlap = 24
-            embeddings.chunk_size = 1024
-            embeddings.show_progress_bar = True
-            embeddings.request_timeout = 20
-
-            text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
-                                                  chunk_overlap=int(intput_chunk_overlap))
-
-            texts = text_splitter.split_documents(documents)
-            print(texts)
-            response = str(texts)
-            for i in range(0, len(response), len(response) // 3):
-                yield response[: i + (len(response) // 3)]
-            print("after split documents len= ", texts.__len__())
-            response = "切分之后文档数据长度为：" + str(texts.__len__())
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
-            # Collection does not exist, create it
-
-            docsearch_db = Chroma.from_documents(documents=texts, embedding=embeddings,
-                                                 collection_name=new_collection_name,
-                                                 persist_directory=persist_directory)
-            response = "知识库建立完毕！开始回答！.........稍等片刻........."
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
         elif collection_checkbox_group == None:
             response = "打开知识库搜索工具但是没有打开读取知识库开关！"
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
             return
     if not flag_get_Local_Search_tool and collection_checkbox_group == "Read Existing Collection":
-        if not flag_get_Local_Search_tool:
-            response = "读取知识库但是没有打开知识库搜索工具！失去本地知识库搜索能力！使用模型本身记忆回答！"
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
+        response = "读取知识库但是没有打开知识库搜索工具！失去本地知识库搜索能力！使用模型本身记忆回答！"
+        for i in range(0, len(response), int(print_speed_step)):
+            yield response[: i + int(print_speed_step)]
 
     agent_kwargs = {
         "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
@@ -268,7 +367,7 @@ def echo(message, history, collection_name, collection_checkbox_group, new_colle
         tools=tools,
         llm=llm,
         agent=AgentType.OPENAI_FUNCTIONS,
-        verbose=True,
+        verbose=False,
         agent_kwargs=agent_kwargs,
         memory=memory,
         max_iterations=10,
@@ -288,7 +387,14 @@ def echo(message, history, collection_name, collection_checkbox_group, new_colle
     # return response
 
 
-with gr.Blocks() as demo:
+with gr.Blocks(theme=seafoam) as RainbowGPT:
+    # TODO
+    # collections = client.list_collections()
+    # list_collections_name.clear()
+    # for collection in collections:
+    #     collection_name = collection.name
+    #     list_collections_name.append(collection_name)
+
     with gr.Row():
         # 创建一个包含选项的多选框组
         tool_options = ["Google Search", "Local Knowledge Base Search"]
@@ -296,22 +402,22 @@ with gr.Blocks() as demo:
 
         collection_options = ["None", "Read Existing Collection", "Create New Collection"]
         collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options")
-        collection_name = gr.Dropdown(list_collections_name, label="Select existed Collection")
+
+        collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection")
+
     # 将最上面的三个 UI 控件并排放置
     with gr.Row():
         new_collection_name = gr.Textbox("", label="Input New Collection Name")
-        DirectoryLoader_path = gr.Textbox("", label="Data Directory Path")
+        uploaded_files = gr.File(file_count="multiple", label="Upload Files")
 
     temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
     print_speed_step = gr.Slider(10, 20, render=False, label="Print Speed Step")
     gr.ChatInterface(
-        echo, additional_inputs=[collection_name, collection_checkbox_group, new_collection_name, DirectoryLoader_path,
-                                 temperature_num, print_speed_step, tool_checkbox_group],
+        echo, additional_inputs=[collection_name_select, collection_checkbox_group, new_collection_name,
+                                 temperature_num, print_speed_step, tool_checkbox_group, uploaded_files],
         title="RainbowGPT-Agent",
         description="How to reach me: zhujiadongvip@163.com",
-        css=".gradio-container {background-color: red}"
+        css=".gradio-container {background-color: red}",
     )
 
-demo.queue().launch(share=True)
-
-
+RainbowGPT.queue().launch(share=True)
