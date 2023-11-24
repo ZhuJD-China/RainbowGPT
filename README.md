@@ -1,4 +1,4 @@
-﻿# RainbowGPT
+# RainbowGPT
 
 🚀 # RainbowAgent
 
@@ -14,13 +14,13 @@ BM25 is an improved TF-IDF algorithm that considers the impact of document lengt
 
 ```latex
 BM25(D, Q) = ∑_{i=1}^{n} IDF(q_i) * (f(q_i, D) * (k_1 + 1)) / (f(q_i, D) + k_1 * (1 - b + b * |D| / avg_dl))
+```
 Where:
 
 f(q_i, D) is the frequency of the word q_i in document D.
 avg_dl is the average document length.
 k_1 and b are tuning parameters.
 IDF(q_i) is the inverse document frequency.
-```
 BM25 Retrievers
 BM25-based Retriever: Specialized in finding relevant documents based on keywords, suitable for sparse retrieval.
 
@@ -28,6 +28,7 @@ Embedding Similarity Retriever: Uses embedding vectors for document and query em
 
 Application
 By combining the results of sparse and dense retrievals, RainbowAgent leverages the strengths of each to improve retrieval performance, achieving more comprehensive document matching.
+
 
 👋 Retrieval Search
 ![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png)
