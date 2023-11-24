@@ -12,7 +12,7 @@ The knowledge base QA search algorithm employs context compression as an optimiz
 
 BM25 is an improved TF-IDF algorithm that considers the impact of document length on weights, better capturing the importance of words in the document. The algorithm is expressed by the following formula:
 
-\[BM25(D, Q) = \sum_{i=1}^{n} \text{IDF}(q_i) \cdot \frac{f(q_i, D) \cdot (k_1 + 1)}{f(q_i, D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{\text{avg\_dl}}\right)}\]
+![BM25 Formula](https://latex.codecogs.com/svg.latex?BM25(D,%20Q)%20=%20\sum_{i=1}^{n}%20\text{IDF}(q_i)%20\cdot%20\frac{f(q_i,%20D)%20\cdot%20(k_1%20+%201)}{f(q_i,%20D)%20+%20k_1%20\cdot%20\left(1%20-%20b%20+%20b%20\cdot%20\frac{|D|}{\text{avg_dl}}\right)})
 
 Where:
 - \(f(q_i, D)\) is the frequency of the word \(q_i\) in document \(D\).
