@@ -14,11 +14,6 @@ The knowledge base QA search algorithm employs context compression as an optimiz
 
 - **Embedding Similarity Retriever:** Utilizes embedding vectors for document and query embedding, excelling in the identification of relevant documents through semantic similarity. This retriever is well-suited for dense retrieval scenarios.
 
-## Application
-
-RainbowAgent goes beyond conventional methods by intelligently combining the outcomes of sparse and dense retrievals. This strategic fusion optimizes retrieval performance, leading to a more thorough and comprehensive document matching process.
-
-
 👋 Retrieval Search
 ![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png)
 
