@@ -88,7 +88,6 @@ Google_Search = GoogleSearchAPIWrapper()
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
-# print(client.list_collections())
 collections = client.list_collections()
 list_collections_name = []
 for collection in collections:
@@ -97,13 +96,15 @@ for collection in collections:
 
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm = None
+llm_name_global = None
+# llm = ChatOpenAI(temperature=float(temperature_num_global), model="gpt-3.5-turbo-16k-0613")
 embeddings = None
 # embeddings = OpenAIEmbeddings()
 # embeddings = HuggingFaceEmbeddings()
 Embedding_Model_select_global = 0
 temperature_num_global = 0
-
 llm_math_chain = LLMMathChain.from_llm(ChatOpenAI())
+
 # 在文件顶部定义docsearch_db
 docsearch_db = None
 
@@ -114,7 +115,7 @@ local_search_template = """
 “{combined_text}”
 
 如果无法回答问题则回复:无法找到答案
-我的问题是: {human_input}   
+我的问题是: {human_input}
 
 """
 
@@ -125,16 +126,16 @@ def ask_local_vector_db(question):
     global embeddings
     global Embedding_Model_select_global
     global temperature_num_global
+    global llm_name_global
 
     if Embedding_Model_select_global == 0:
         embeddings = OpenAIEmbeddings()
-        embeddings.chunk_size = 1024
         embeddings.show_progress_bar = True
         embeddings.request_timeout = 20
     elif Embedding_Model_select_global == 1:
         embeddings = HuggingFaceEmbeddings()
 
-    llm = ChatOpenAI(temperature=float(temperature_num_global), model="gpt-3.5-turbo-16k-0613")
+    llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input"],
@@ -252,7 +253,8 @@ Calculator_tool = Tool(
 tools.append(Calculator_tool)
 
 
-def echo(message, history, collection_name_select, collection_checkbox_group, new_collection_name,
+def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
+         new_collection_name,
          temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select):
     global docsearch_db
     global llm
@@ -262,10 +264,13 @@ def echo(message, history, collection_name_select, collection_checkbox_group, ne
     global embeddings
     global Embedding_Model_select_global
     global temperature_num_global
+    global llm_name_global
+
+    temperature_num_global = float(temperature_num)
+    llm_name_global = str(llm_options_checkbox_group)
 
     if Embedding_Model_select == "Openai Embedding" or Embedding_Model_select == "" or Embedding_Model_select == None:
         embeddings = OpenAIEmbeddings()
-        embeddings.chunk_size = 1024
         embeddings.show_progress_bar = True
         embeddings.request_timeout = 20
         Embedding_Model_select_global = 0
@@ -298,8 +303,7 @@ def echo(message, history, collection_name_select, collection_checkbox_group, ne
             yield response[: i + int(print_speed_step)]
         return
 
-    temperature_num_global = float(temperature_num)
-    llm = ChatOpenAI(temperature=float(temperature_num), model="gpt-3.5-turbo-16k-0613")
+    llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
 
     if collection_checkbox_group == "Create New Collection":
         if new_collection_name == None or new_collection_name == "":
@@ -468,16 +472,24 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
 
     with gr.Row():
         # 创建一个包含选项的多选框组
+        llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
+                       "gpt-4-vision-preview"]
+        llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
+                                                 value=llm_options[0])
+
         tool_options = ["Google Search", "Local Knowledge Base Search"]
         tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
 
         collection_options = ["None", "Read Existing Collection", "Create New Collection"]
-        collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options")
+        collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options",
+                                             value=collection_options[0])
 
         collection_options = ["Openai Embedding", "HuggingFace Embedding"]
-        Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options")
+        Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options",
+                                          value=collection_options[0])
 
-        collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection")
+        collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection",
+                                             value="...")
 
     # 将最上面的三个 UI 控件并排放置
     with gr.Row():
@@ -488,7 +500,8 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
     temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
     print_speed_step = gr.Slider(10, 20, render=False, label="Print Speed Step")
     gr.ChatInterface(
-        echo, additional_inputs=[collection_name_select, collection_checkbox_group, new_collection_name,
+        echo, additional_inputs=[llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
+                                 new_collection_name,
                                  temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
                                  Embedding_Model_select],
         title="RainbowGPT-Agent",
