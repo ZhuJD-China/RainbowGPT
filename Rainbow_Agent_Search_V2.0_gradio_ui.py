@@ -30,7 +30,6 @@ from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
 
 
-
 class Seafoam(Base):
     def __init__(
             self,
@@ -180,7 +179,7 @@ Google_Search_tool = Tool(
     name="Google_Search",
     func=Google_Search.run,
     description="""
-        你可以使用互联网搜索引擎工具进行信息查询,尝试直接找到问题答案。 
+        若本地知识库没有答案，或者问题中需要网络搜索的时候都可以使用这个互联网搜索引擎工具进行信息查询,尝试直接找到问题答案。 
         将搜索到的按照问题的相关性和时间进行排序，并且你必须严格参照搜索到的资料和你自己的认识结合进行回答！
         如果搜索到一样的数据不要重复再搜索！
         注意你需要提出非常有针对性准确的问题和回答。
@@ -197,7 +196,7 @@ Local_Search_tool = Tool(
 Calculator_tool = Tool(
     name="Calculator",
     func=llm_math_chain.run,
-    description="有关数学计算的问题你就可以使用这个工具计算",
+    description="当问题中有明确的需要数学计算的时候你就可以使用这个工具计算",
     return_direct=True,
 )
 
@@ -218,8 +217,14 @@ def echo(message, history, collection_name_select, collection_checkbox_group, ne
     for tg in tool_checkbox_group:
         if tg == "Google Search" and Google_Search_tool not in tools:
             tools.append(Google_Search_tool)
+            response = "Google Search 工具加入 回答中..........."
+            for i in range(0, len(response), int(print_speed_step)):
+                yield response[: i + int(print_speed_step)]
         elif tg == "Local Knowledge Base Search" and Local_Search_tool not in tools:
             tools.append(Local_Search_tool)
+            response = "Local Knowledge Base Search 工具加入 回答中..........."
+            for i in range(0, len(response), int(print_speed_step)):
+                yield response[: i + int(print_speed_step)]
         if Local_Search_tool in tools:
             flag_get_Local_Search_tool = True
 
@@ -367,7 +372,7 @@ def echo(message, history, collection_name_select, collection_checkbox_group, ne
         tools=tools,
         llm=llm,
         agent=AgentType.OPENAI_FUNCTIONS,
-        verbose=False,
+        verbose=True,
         agent_kwargs=agent_kwargs,
         memory=memory,
         max_iterations=10,
