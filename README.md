@@ -20,6 +20,7 @@ f(q_i, D) is the frequency of the word q_i in document D.
 avg_dl is the average document length.
 k_1 and b are tuning parameters.
 IDF(q_i) is the inverse document frequency.
+```
 BM25 Retrievers
 BM25-based Retriever: Specialized in finding relevant documents based on keywords, suitable for sparse retrieval.
 
