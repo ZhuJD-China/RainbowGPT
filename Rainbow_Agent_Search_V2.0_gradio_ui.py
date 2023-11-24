@@ -105,18 +105,24 @@ Embedding_Model_select_global = 0
 temperature_num_global = 0
 llm_math_chain = LLMMathChain.from_llm(ChatOpenAI())
 
+# 文档切分的长度
+input_chunk_size_global = None
+# 本地知识库嵌入token max
+local_data_embedding_token_max_global = None
+
 # 在文件顶部定义docsearch_db
 docsearch_db = None
 
 # Local_Search Prompt模版
 local_search_template = """
 你作为一个强大的AI问答和知识库内容总结分析的专家。
-必须通过以下双引号内的知识库内容进行问答:
+可以通过以下双引号内的知识库内容进行分析问答:
 “{combined_text}”
 
-如果无法回答问题则回复:无法找到答案
-我的问题是: {human_input}
+如果无法回答问题则回复:无法找到答案，但是需要对所搜索到的知识库进行简单的总结的回答。
+如果可以回答问题则回复根据知识库和问题进行总结后的回答。
 
+我的问题是: {human_input}
 """
 
 
@@ -127,6 +133,7 @@ def ask_local_vector_db(question):
     global Embedding_Model_select_global
     global temperature_num_global
     global llm_name_global
+    global input_chunk_size_global
 
     if Embedding_Model_select_global == 0:
         embeddings = OpenAIEmbeddings()
@@ -211,7 +218,7 @@ def ask_local_vector_db(question):
         cleaned_context = context.page_content.replace('\n', ' ').strip()
         cleaned_context = f"{cleaned_context}"
         tokens = tokenizers.encode(cleaned_context, add_special_tokens=False)
-        if total_toknes + len(tokens) <= (1024 * 12):
+        if total_toknes + len(tokens) <= (int(input_chunk_size_global) * 12):
             cleaned_matches.append(cleaned_context)
             total_toknes += len(tokens)
         else:
@@ -255,7 +262,8 @@ tools.append(Calculator_tool)
 
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
          new_collection_name,
-         temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select):
+         temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select,
+         input_chunk_size, local_data_embedding_token_max):
     global docsearch_db
     global llm
     global tools
@@ -265,7 +273,11 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global Embedding_Model_select_global
     global temperature_num_global
     global llm_name_global
+    global input_chunk_size_global
+    global local_data_embedding_token_max_global
 
+    local_data_embedding_token_max_global = int(local_data_embedding_token_max)
+    input_chunk_size_global = int(input_chunk_size)
     temperature_num_global = float(temperature_num)
     llm_name_global = str(llm_options_checkbox_group)
 
@@ -367,7 +379,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
 
-        input_chunk_size = 1024
         intput_chunk_overlap = 24
         text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
                                               chunk_overlap=int(intput_chunk_overlap))
@@ -381,15 +392,14 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         response = "切分之后文档数据长度为：" + str(texts.__len__())
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
-        # Collection does not exist, create it
 
+        # Collection does not exist, create it
         docsearch_db = Chroma.from_documents(documents=texts, embedding=embeddings,
                                              collection_name=str(new_collection_name + "_" + current_time),
                                              persist_directory=persist_directory,
                                              Embedding_Model_select=Embedding_Model_select_global)
 
         response = "知识库建立完毕！请去打开读取知识库按钮并输入宁的问题！"
-
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
 
@@ -488,6 +498,9 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options",
                                           value=collection_options[0])
 
+        input_chunk_size = gr.Textbox(value="1024", label="Input Chunk Size")
+        local_data_embedding_token_max = gr.Slider(10240, 15360, step=1,
+                                                   label="Local Data Max Tokens")
         collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection",
                                              value="...")
 
@@ -503,7 +516,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         echo, additional_inputs=[llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
                                  new_collection_name,
                                  temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
-                                 Embedding_Model_select],
+                                 Embedding_Model_select, input_chunk_size, local_data_embedding_token_max],
         title="RainbowGPT-Agent",
         description="How to reach me: zhujiadongvip@163.com",
         css=".gradio-container {background-color: red}",

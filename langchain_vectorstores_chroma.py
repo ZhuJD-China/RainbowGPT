@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import time
 import base64
 import logging
 import uuid
@@ -30,6 +30,13 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger()
 DEFAULT_K = 4  # Number of Documents to return.
+
+
+def countdown(seconds):
+    for i in range(seconds, 0, -1):
+        print(f"倒计时: {i} 秒")
+        time.sleep(1)
+    print("倒计时结束！")
 
 
 def _results_to_docs(results: Any) -> List[Document]:
