@@ -12,21 +12,22 @@ The knowledge base QA search algorithm employs context compression as an optimiz
 
 BM25 is an improved TF-IDF algorithm that considers the impact of document length on weights, better capturing the importance of words in the document. The algorithm is expressed by the following formula:
 
-```latex
-BM25(D, Q) = ∑_{i=1}^{n} IDF(q_i) * (f(q_i, D) * (k_1 + 1)) / (f(q_i, D) + k_1 * (1 - b + b * |D| / avg_dl))
-```
+\[BM25(D, Q) = \sum_{i=1}^{n} \text{IDF}(q_i) \cdot \frac{f(q_i, D) \cdot (k_1 + 1)}{f(q_i, D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{\text{avg\_dl}}\right)}\]
+
 Where:
+- \(f(q_i, D)\) is the frequency of the word \(q_i\) in document \(D\).
+- \(\text{avg\_dl}\) is the average document length.
+- \(k_1\) and \(b\) are tuning parameters.
+- \(\text{IDF}(q_i)\) is the inverse document frequency.
 
-f(q_i, D) is the frequency of the word q_i in document D.
-avg_dl is the average document length.
-k_1 and b are tuning parameters.
-IDF(q_i) is the inverse document frequency.
-BM25 Retrievers
-BM25-based Retriever: Specialized in finding relevant documents based on keywords, suitable for sparse retrieval.
+## BM25 Retrievers
 
-Embedding Similarity Retriever: Uses embedding vectors for document and query embedding, excelling in finding relevant documents based on semantic similarity, suitable for dense retrieval.
+- **BM25-based Retriever:** Specialized in finding relevant documents based on keywords, suitable for sparse retrieval.
 
-Application
+- **Embedding Similarity Retriever:** Uses embedding vectors for document and query embedding, excelling in finding relevant documents based on semantic similarity, suitable for dense retrieval.
+
+## Application
+
 By combining the results of sparse and dense retrievals, RainbowAgent leverages the strengths of each to improve retrieval performance, achieving more comprehensive document matching.
 
 
