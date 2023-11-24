@@ -3,6 +3,7 @@ import chromadb
 import openai
 import os
 from dotenv import load_dotenv
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain_experimental.plan_and_execute import load_chat_planner, load_agent_executor, PlanAndExecute
 
 # 加载环境变量中的 OpenAI API 密钥
@@ -23,7 +24,6 @@ from langchain.document_loaders import TextLoader, WebBaseLoader, DirectoryLoade
 from langchain.agents import initialize_agent, Tool, load_tools
 from langchain.agents import AgentType
 from langchain.tools import BaseTool
-from langchain import LLMMathChain, SerpAPIWrapper
 from langchain.chat_models import ChatOpenAI
 from loguru import logger
 from langchain.callbacks import FileCallbackHandler, StdOutCallbackHandler
@@ -37,7 +37,9 @@ handler = FileCallbackHandler(logfile)
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
 
-embeddings = OpenAIEmbeddings()
+# embeddings = OpenAIEmbeddings()
+# Get embeddings.
+embeddings = HuggingFaceEmbeddings()
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
@@ -70,9 +72,9 @@ else:
     print("documents len= ", documents.__len__())
     input_chunk_size = input("请输入切分token长度（按回车使用默认值 4000）：") or "4000"
     intput_chunk_overlap = input("请输入overlap token长度（按回车使用默认值 0）：") or "200"
-    embeddings.chunk_size = int(input_chunk_size)
-    embeddings.show_progress_bar = True
-    embeddings.request_timeout = 20
+    # embeddings.chunk_size = int(input_chunk_size)
+    # embeddings.show_progress_bar = True
+    # embeddings.request_timeout = 20
 
     text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
                                           chunk_overlap=int(intput_chunk_overlap))
@@ -113,8 +115,9 @@ local_database_tool = Tool(
 
 # tools = load_tools(["google-serper", "llm-math", "wikipedia",
 #                     "terminal", "python_repl", "arxiv"], llm=llm)
-tools = load_tools(["google-serper", "llm-math",
-                    "terminal", "python_repl", "arxiv"], llm=llm)
+# tools = load_tools(["google-serper", "llm-math",
+#                     "terminal", "python_repl", "arxiv"], llm=llm)
+tools = []
 tools.append(local_database_tool)
 
 # 初始化agent代理

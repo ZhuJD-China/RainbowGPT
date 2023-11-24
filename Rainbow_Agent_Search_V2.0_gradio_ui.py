@@ -17,7 +17,7 @@ from loguru import logger
 from langchain.callbacks import FileCallbackHandler
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import DirectoryLoader
-from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import MessagesPlaceholder
 from langchain.text_splitter import CharacterTextSplitter
@@ -28,6 +28,7 @@ import gradio as gr
 from typing import Iterable
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
+from langchain.retrievers import BM25Retriever, EnsembleRetriever
 
 
 class Seafoam(Base):
@@ -94,31 +95,46 @@ for collection in collections:
     collection_name = collection.name
     list_collections_name.append(collection_name)
 
+# 创建 ChatOpenAI 实例作为底层语言模型
+llm = None
+embeddings = None
+# embeddings = OpenAIEmbeddings()
+# embeddings = HuggingFaceEmbeddings()
+Embedding_Model_select_global = 0
+temperature_num_global = 0
+
+llm_math_chain = LLMMathChain.from_llm(ChatOpenAI())
+# 在文件顶部定义docsearch_db
+docsearch_db = None
+
 # Local_Search Prompt模版
 local_search_template = """
-你作为一个AI问答助手。
+你作为一个强大的AI问答和知识库内容总结分析的专家。
 必须通过以下双引号内的知识库内容进行问答:
 “{combined_text}”
 
 如果无法回答问题则回复:无法找到答案
-我的问题是: {human_input}
+我的问题是: {human_input}   
 
 """
-
-# 创建 ChatOpenAI 实例作为底层语言模型
-llm = None
-embeddings = OpenAIEmbeddings()
-llm_math_chain = LLMMathChain.from_llm(ChatOpenAI())
-# 在文件顶部定义docsearch_db
-docsearch_db = None
 
 
 def ask_local_vector_db(question):
     global docsearch_db
     global llm
+    global embeddings
+    global Embedding_Model_select_global
+    global temperature_num_global
 
-    llm = ChatOpenAI(temperature=float(temperature_num.value), model="gpt-3.5-turbo-16k-0613")
-    # print("temperature_num=", float(temperature_num))
+    if Embedding_Model_select_global == 0:
+        embeddings = OpenAIEmbeddings()
+        embeddings.chunk_size = 1024
+        embeddings.show_progress_bar = True
+        embeddings.request_timeout = 20
+    elif Embedding_Model_select_global == 1:
+        embeddings = HuggingFaceEmbeddings()
+
+    llm = ChatOpenAI(temperature=float(temperature_num_global), model="gpt-3.5-turbo-16k-0613")
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input"],
@@ -132,40 +148,73 @@ def ask_local_vector_db(question):
     # 使用预训练的gpt2分词器
     tokenizers = GPT2Tokenizer.from_pretrained("gpt2")
 
-    # new docsearch_db 结合基础检索器+Embedding 压缩+BM25 关检词检索筛选
-    chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 50})
-    splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
-    redundant_filter = EmbeddingsRedundantFilter(embeddings=embeddings)
-    relevant_filter = EmbeddingsFilter(embeddings=embeddings, similarity_threshold=0.76)
-    pipeline_compressor = DocumentCompressorPipeline(
-        transformers=[splitter, redundant_filter, relevant_filter]
-    )
-    compression_retriever = ContextualCompressionRetriever(base_compressor=pipeline_compressor,
-                                                           base_retriever=chroma_retriever)
-    compressed_docs = compression_retriever.get_relevant_documents(question, tools=tools)
-    # 添加以下异常处理
-    try:
-        bm25_Retriever = BM25Retriever.from_documents(compressed_docs)
-        bm25_Retriever.k = 30
-        docs = bm25_Retriever.get_relevant_documents(question)
-    except ValueError as e:
-        print(f"Error while creating BM25Retriever: {e}")
-        docs = []
+    if Embedding_Model_select_global == 0:
+        # 结合基础检索器+Embedding上下文压缩
+        chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
+        # 获取变量的内存地址并打印
+        address = id(docsearch_db)
+        print("docsearch_db变量的内存地址:", hex(address))
+        # 将压缩器和文档转换器串在一起
+        splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
+        redundant_filter = EmbeddingsRedundantFilter(embeddings=embeddings)
+        relevant_filter = EmbeddingsFilter(embeddings=embeddings, similarity_threshold=0.76)
+        pipeline_compressor = DocumentCompressorPipeline(
+            transformers=[splitter, redundant_filter, relevant_filter]
+        )
+        compression_retriever = ContextualCompressionRetriever(base_compressor=pipeline_compressor,
+                                                               base_retriever=chroma_retriever)
+        compressed_docs = compression_retriever.get_relevant_documents(question, tools=tools)
+
+        # 设置最大尝试次数
+        max_retries = 3
+        retries = 0
+        while retries < max_retries:
+            try:
+                # 将稀疏检索器（如 BM25）与密集检索器（如嵌入相似性）相结合
+                # 初始化 bm25 检索器和 faiss 检索器
+                bm25_retriever = BM25Retriever.from_documents(compressed_docs)
+                bm25_retriever.k = 10
+                # 初始化 ensemble 检索器
+                ensemble_retriever = EnsembleRetriever(
+                    retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
+                )
+                docs = ensemble_retriever.get_relevant_documents(question)
+                break  # 如果成功执行，跳出循环
+            except openai.error.OpenAIError as openai_error:
+                if "Rate limit reached" in str(openai_error):
+                    print(f"Rate limit reached: {openai_error}")
+                    # 如果是速率限制错误，等待一段时间后重试
+                    time.sleep(20)
+                    retries += 1
+                else:
+                    print(f"OpenAI API error: {openai_error}")
+                    docs = []
+                    break  # 如果遇到其他错误，跳出循环
+        # 处理循环结束后的情况
+        if retries == max_retries:
+            print(f"Max retries reached. Code execution failed.")
+    elif Embedding_Model_select_global == 1:
+        chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
+        retrieved_docs = chroma_retriever.get_relevant_documents(question)
+        bm25_retriever = BM25Retriever.from_documents(retrieved_docs)
+        bm25_retriever.k = 10
+        # 初始化 ensemble 检索器
+        ensemble_retriever = EnsembleRetriever(
+            retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
+        )
+        docs = ensemble_retriever.get_relevant_documents(question)
 
     cleaned_matches = []
     total_toknes = 0
-    # print(docs)
     for context in docs:
         cleaned_context = context.page_content.replace('\n', ' ').strip()
-
         cleaned_context = f"{cleaned_context}"
         tokens = tokenizers.encode(cleaned_context, add_special_tokens=False)
-        if total_toknes + len(tokens) <= (1024 * 10):
+        if total_toknes + len(tokens) <= (1024 * 12):
             cleaned_matches.append(cleaned_context)
             total_toknes += len(tokens)
         else:
             break
-
     # 将清理过的匹配项组合合成一个字符串
     combined_text = " ".join(cleaned_matches)
 
@@ -175,6 +224,14 @@ def ask_local_vector_db(question):
 
 # 创建工具列表
 tools = []
+Local_Search_tool = Tool(
+    name="Local_Search",
+    func=ask_local_vector_db,
+    description="""
+        如果你自己无法回答当前的问题，你可以通过本地向量数据知识库尝试寻找问答案。
+        注意你需要提出非常有针对性准确的问题和回答。
+        """
+)
 Google_Search_tool = Tool(
     name="Google_Search",
     func=Google_Search.run,
@@ -182,14 +239,6 @@ Google_Search_tool = Tool(
         若本地知识库没有答案，或者问题中需要网络搜索的时候都可以使用这个互联网搜索引擎工具进行信息查询,尝试直接找到问题答案。 
         将搜索到的按照问题的相关性和时间进行排序，并且你必须严格参照搜索到的资料和你自己的认识结合进行回答！
         如果搜索到一样的数据不要重复再搜索！
-        注意你需要提出非常有针对性准确的问题和回答。
-        """
-)
-Local_Search_tool = Tool(
-    name="Local_Search",
-    func=ask_local_vector_db,
-    description="""
-        你可以首先通过本地向量数据知识库尝试寻找问答案。
         注意你需要提出非常有针对性准确的问题和回答。
         """
 )
@@ -204,12 +253,25 @@ tools.append(Calculator_tool)
 
 
 def echo(message, history, collection_name_select, collection_checkbox_group, new_collection_name,
-         temperature_num, print_speed_step, tool_checkbox_group, uploaded_files):
+         temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select):
     global docsearch_db
     global llm
     global tools
     global RainbowGPT
     global list_collections_name
+    global embeddings
+    global Embedding_Model_select_global
+    global temperature_num_global
+
+    if Embedding_Model_select == "Openai Embedding" or Embedding_Model_select == "" or Embedding_Model_select == None:
+        embeddings = OpenAIEmbeddings()
+        embeddings.chunk_size = 1024
+        embeddings.show_progress_bar = True
+        embeddings.request_timeout = 20
+        Embedding_Model_select_global = 0
+    elif Embedding_Model_select == "HuggingFace Embedding":
+        embeddings = HuggingFaceEmbeddings()
+        Embedding_Model_select_global = 1
 
     tools = []  # 重置工具列表
     tools.append(Calculator_tool)
@@ -236,6 +298,7 @@ def echo(message, history, collection_name_select, collection_checkbox_group, ne
             yield response[: i + int(print_speed_step)]
         return
 
+    temperature_num_global = float(temperature_num)
     llm = ChatOpenAI(temperature=float(temperature_num), model="gpt-3.5-turbo-16k-0613")
 
     if collection_checkbox_group == "Create New Collection":
@@ -302,10 +365,6 @@ def echo(message, history, collection_name_select, collection_checkbox_group, ne
 
         input_chunk_size = 1024
         intput_chunk_overlap = 24
-        embeddings.chunk_size = 1024
-        embeddings.show_progress_bar = True
-        embeddings.request_timeout = 20
-
         text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
                                               chunk_overlap=int(intput_chunk_overlap))
 
@@ -322,7 +381,9 @@ def echo(message, history, collection_name_select, collection_checkbox_group, ne
 
         docsearch_db = Chroma.from_documents(documents=texts, embedding=embeddings,
                                              collection_name=str(new_collection_name + "_" + current_time),
-                                             persist_directory=persist_directory)
+                                             persist_directory=persist_directory,
+                                             Embedding_Model_select=Embedding_Model_select_global)
+
         response = "知识库建立完毕！请去打开读取知识库按钮并输入宁的问题！"
 
         for i in range(0, len(response), int(print_speed_step)):
@@ -347,6 +408,11 @@ def echo(message, history, collection_name_select, collection_checkbox_group, ne
                     yield response[: i + int(print_speed_step)]
                 docsearch_db = Chroma(client=client, embedding_function=embeddings,
                                       collection_name=collection_name_select)
+
+                # 获取变量的内存地址并打印
+                address = id(docsearch_db)
+                print("Read docsearch_db变量的内存地址:", hex(address))
+
             else:
                 response = "没有选中任何知识库，请至少选择一个知识库，回答中止！"
                 for i in range(0, len(response), int(print_speed_step)):
@@ -408,18 +474,23 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         collection_options = ["None", "Read Existing Collection", "Create New Collection"]
         collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options")
 
+        collection_options = ["Openai Embedding", "HuggingFace Embedding"]
+        Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options")
+
         collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection")
 
     # 将最上面的三个 UI 控件并排放置
     with gr.Row():
         new_collection_name = gr.Textbox("", label="Input New Collection Name")
+
         uploaded_files = gr.File(file_count="multiple", label="Upload Files")
 
     temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
     print_speed_step = gr.Slider(10, 20, render=False, label="Print Speed Step")
     gr.ChatInterface(
         echo, additional_inputs=[collection_name_select, collection_checkbox_group, new_collection_name,
-                                 temperature_num, print_speed_step, tool_checkbox_group, uploaded_files],
+                                 temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
+                                 Embedding_Model_select],
         title="RainbowGPT-Agent",
         description="How to reach me: zhujiadongvip@163.com",
         css=".gradio-container {background-color: red}",
