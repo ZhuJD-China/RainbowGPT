@@ -2,17 +2,27 @@
 
 🚀 **RainbowAgent Integration**
 
-RainbowAgent seamlessly combines various technologies, including an AI Agent proxy, ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
+RainbowAgent seamlessly integrates various technologies, including an AI Agent proxy, ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
 
 ## Knowledge Base QA Search Algorithm
 
-The knowledge base QA search algorithm employs context compression as an optimization method for document retrieval. Leveraging the context of the query, it strategically reduces document content through a document compressor. This process ensures the return of only information relevant to the query, thereby significantly enhancing retrieval efficiency. The ensemble of retrievers combines diverse results, showcasing a synergy that elevates overall performance.
+The knowledge base QA search algorithm optimizes document retrieval through context compression. Leveraging the query context, it strategically reduces document content using a document compressor. This enhances retrieval efficiency by returning only information relevant to the query. The ensemble of retrievers combines diverse results, creating a synergy that elevates overall performance.
 
 ## BM25 Retrievers
 
 - **BM25-based Retriever:** Specialized in efficiently locating relevant documents based on keywords, making it particularly effective for sparse retrieval.
 
-- **Embedding Similarity Retriever:** Utilizes embedding vectors for document and query embedding, excelling in the identification of relevant documents through semantic similarity. This retriever is well-suited for dense retrieval scenarios.
+- **Embedding Similarity Retriever:** Utilizes embedding vectors for document and query embedding, excelling in identifying relevant documents through semantic similarity. This retriever is well-suited for dense retrieval scenarios.
+
+# EnsembleRetriever
+
+EnsembleRetriever is a powerful retrieval mechanism that combines the strengths of various retrievers. It takes a list of retrievers as input, integrates their results using the `get_relevant_documents()` methods, and reranks the outcomes using the Reciprocal Rank Fusion algorithm.
+
+By leveraging the diverse strengths of different algorithms, EnsembleRetriever achieves superior performance compared to individual retrievers.
+
+## Common Usage Pattern
+
+The most effective use of EnsembleRetriever involves combining a sparse retriever, such as BM25, with a dense retriever, like embedding similarity. This approach, known as "hybrid search," optimally utilizes the complementary strengths of both retrievers. The sparse retriever excels in finding relevant documents based on keywords, while the dense retriever is proficient in identifying relevant documents through semantic similarity.
 
 👋 Retrieval Search
 ![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png)
