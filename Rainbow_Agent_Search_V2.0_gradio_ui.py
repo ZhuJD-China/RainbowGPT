@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain, LLMMathChain
-from langchain.agents import initialize_agent, AgentType
+from langchain.agents import initialize_agent, AgentType, load_tools
 from langchain.document_transformers import EmbeddingsRedundantFilter
 from langchain.retrievers import ContextualCompressionRetriever, BM25Retriever
 from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
@@ -80,12 +80,6 @@ logfile = "Rainbow_Agent_Search_V2.0_gradio_ui.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
-# # 设置代理（替换为你的代理地址和端口）
-proxy_url = 'http://localhost:7890'
-os.environ['http_proxy'] = proxy_url
-os.environ['https_proxy'] = proxy_url
-Google_Search = GoogleSearchAPIWrapper()
-
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
 collections = client.list_collections()
@@ -103,7 +97,6 @@ embeddings = None
 # embeddings = HuggingFaceEmbeddings()
 Embedding_Model_select_global = 0
 temperature_num_global = 0
-llm_math_chain = LLMMathChain.from_llm(ChatOpenAI())
 
 # 文档切分的长度
 input_chunk_size_global = None
@@ -113,17 +106,24 @@ local_data_embedding_token_max_global = None
 # 在文件顶部定义docsearch_db
 docsearch_db = None
 
+human_input_global = None
+
 # Local_Search Prompt模版
 local_search_template = """
 你作为一个强大的AI问答和知识库内容总结分析的专家。
 可以通过以下双引号内的知识库内容进行分析问答:
+
 “{combined_text}”
 
-如果无法回答问题则回复:无法找到答案，但是需要对所搜索到的知识库进行简单的总结的回答。
-如果可以回答问题则回复根据知识库和问题进行总结后的回答。
+如果无法回答问题则回复说无法找到答案，并且回复所搜索到的知识库分析总结。
+如果可以回答问题则根据知识库和问题进行一定的思考后，回复给出针对问题最精确的回答。
 
 我的问题是: {human_input}
+
 """
+
+# 全局工具列表创建
+tools = []
 
 
 def ask_local_vector_db(question):
@@ -134,6 +134,9 @@ def ask_local_vector_db(question):
     global temperature_num_global
     global llm_name_global
     global input_chunk_size_global
+    global local_data_embedding_token_max_global
+    global human_input_global
+    global tools
 
     if Embedding_Model_select_global == 0:
         embeddings = OpenAIEmbeddings()
@@ -181,7 +184,7 @@ def ask_local_vector_db(question):
                 # 将稀疏检索器（如 BM25）与密集检索器（如嵌入相似性）相结合
                 # 初始化 bm25 检索器和 faiss 检索器
                 bm25_retriever = BM25Retriever.from_documents(compressed_docs)
-                bm25_retriever.k = 10
+                bm25_retriever.k = 5
                 # 初始化 ensemble 检索器
                 ensemble_retriever = EnsembleRetriever(
                     retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
@@ -205,7 +208,7 @@ def ask_local_vector_db(question):
         chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
         retrieved_docs = chroma_retriever.get_relevant_documents(question)
         bm25_retriever = BM25Retriever.from_documents(retrieved_docs)
-        bm25_retriever.k = 10
+        bm25_retriever.k = 2
         # 初始化 ensemble 检索器
         ensemble_retriever = EnsembleRetriever(
             retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
@@ -214,32 +217,38 @@ def ask_local_vector_db(question):
 
     cleaned_matches = []
     total_toknes = 0
-    for context in docs:
+    last_index = 0
+    for index, context in enumerate(docs):
         cleaned_context = context.page_content.replace('\n', ' ').strip()
         cleaned_context = f"{cleaned_context}"
         tokens = tokenizers.encode(cleaned_context, add_special_tokens=False)
-        if total_toknes + len(tokens) <= (int(input_chunk_size_global) * 12):
+        if total_toknes + len(tokens) <= (int(local_data_embedding_token_max_global)):
             cleaned_matches.append(cleaned_context)
             total_toknes += len(tokens)
         else:
+            last_index = index
             break
     # 将清理过的匹配项组合合成一个字符串
     combined_text = " ".join(cleaned_matches)
 
-    answer = local_chain.predict(combined_text=combined_text, human_input=question)
+    answer = local_chain.predict(combined_text=combined_text, human_input=human_input_global)
     return answer
 
 
-# 创建工具列表
-tools = []
 Local_Search_tool = Tool(
     name="Local_Search",
     func=ask_local_vector_db,
     description="""
-        如果你自己无法回答当前的问题，你可以通过本地向量数据知识库尝试寻找问答案。
+        可以通过本地知识数据库库尝试寻找问答案。
         注意你需要提出非常有针对性准确的问题和回答。
         """
 )
+
+# # 设置代理（替换为你的代理地址和端口）
+proxy_url = 'http://localhost:7890'
+os.environ['http_proxy'] = proxy_url
+os.environ['https_proxy'] = proxy_url
+Google_Search = GoogleSearchAPIWrapper()
 Google_Search_tool = Tool(
     name="Google_Search",
     func=Google_Search.run,
@@ -250,14 +259,13 @@ Google_Search_tool = Tool(
         注意你需要提出非常有针对性准确的问题和回答。
         """
 )
-Calculator_tool = Tool(
-    name="Calculator",
-    func=llm_math_chain.run,
-    description="当问题中有明确的需要数学计算的时候你就可以使用这个工具计算",
-    return_direct=True,
-)
 
-tools.append(Calculator_tool)
+tools_temp = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
+tools.append(tools_temp[0])
+
+
+# bing - search
+# python_repl
 
 
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
@@ -275,6 +283,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global llm_name_global
     global input_chunk_size_global
     global local_data_embedding_token_max_global
+    global human_input_global
+
+    human_input_global = message
 
     local_data_embedding_token_max_global = int(local_data_embedding_token_max)
     input_chunk_size_global = int(input_chunk_size)
@@ -291,7 +302,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         Embedding_Model_select_global = 1
 
     tools = []  # 重置工具列表
-    tools.append(Calculator_tool)
+    tools_temp = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
+    tools.append(tools_temp[0])
+
     flag_get_Local_Search_tool = False
     for tg in tool_checkbox_group:
         if tg == "Google Search" and Google_Search_tool not in tools:
@@ -499,7 +512,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                                           value=collection_options[0])
 
         input_chunk_size = gr.Textbox(value="1024", label="Input Chunk Size")
-        local_data_embedding_token_max = gr.Slider(10240, 15360, step=1,
+        local_data_embedding_token_max = gr.Slider(8000, 13428, step=1,
                                                    label="Local Data Max Tokens")
         collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection",
                                              value="...")

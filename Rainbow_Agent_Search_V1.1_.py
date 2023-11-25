@@ -39,8 +39,8 @@ handler = FileCallbackHandler(logfile)
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
 
-embeddings = OpenAIEmbeddings()
-# embeddings = HuggingFaceEmbeddings()
+# embeddings = OpenAIEmbeddings()
+embeddings = HuggingFaceEmbeddings()
 
 # Google_Search = GoogleSerperAPIWrapper()
 # # 设置代理（替换为你的代理地址和端口）
