@@ -1,16 +1,14 @@
 import datetime
-import sys
-import threading
 import time
 import chromadb
 import openai
 import os
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain, LLMMathChain
+from langchain.chains import LLMChain
 from langchain.agents import initialize_agent, AgentType, load_tools
 from langchain.document_transformers import EmbeddingsRedundantFilter
-from langchain.retrievers import ContextualCompressionRetriever, BM25Retriever
+from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
 from langchain.utilities.google_search import GoogleSearchAPIWrapper
 from loguru import logger
@@ -21,7 +19,7 @@ from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import MessagesPlaceholder
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.tools import GoogleSerperRun, Tool
+from langchain.tools import Tool
 from langchain.vectorstores import Chroma
 from transformers import GPT2Tokenizer
 import gradio as gr
