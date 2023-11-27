@@ -1,5 +1,11 @@
 # RainbowGPT
 
+<div align="center">
+  <p>
+    <a align="center" href="https://github.com/ZhuJD-China/RainbowGPT" target="_blank">
+      <img width="50%" height="150"  src="https://github.com/ZhuJD-China/RainbowGPT/imgs/logo.jpg"></a>
+  </p>
+
 🚀 **RainbowAgent Integration**
 
 RainbowAgent seamlessly integrates various technologies, including an AI Agent proxy, ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
