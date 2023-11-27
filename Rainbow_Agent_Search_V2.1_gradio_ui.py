@@ -111,7 +111,7 @@ local_search_template = """
 你作为一个强大的AI问答和知识库内容总结分析的专家。
 可以通过以下双引号内的知识库内容进行分析问答:
 
-“{combined_text}”
+“ {combined_text} ”
 
 如果无法回答问题则回复说无法找到答案，并且回复所搜索到的知识库分析总结。
 如果可以回答问题则根据知识库和问题进行一定的思考后，回复给出针对问题最精确的回答。
@@ -399,7 +399,7 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         for i in range(0, len(response), len(response) // 3):
             yield response[: i + (len(response) // 3)]
         print("after split documents len= ", texts.__len__())
-        response = "切分之后文档数据长度为：" + str(texts.__len__())
+        response = "切分之后文档数据长度为：" + str(texts.__len__() + " 数据开始写入词向量库.....")
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
 
@@ -515,7 +515,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                                               value=collection_options[0])
 
         with gr.Column():
-            input_chunk_size = gr.Textbox(value="1024", label="Input Chunk Size")
+            input_chunk_size = gr.Textbox(value="512", label="Input Chunk Size")
             local_data_embedding_token_max = gr.Slider(5120, 12288, step=1,
                                                        label="Local Data Max Tokens")
 
