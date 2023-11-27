@@ -88,11 +88,6 @@ handler = FileCallbackHandler(logfile)
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
-collections = client.list_collections()
-list_collections_name = []
-for collection in collections:
-    collection_name = collection.name
-    list_collections_name.append(collection_name)
 
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm = None
@@ -525,7 +520,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                                                        label="Local Data Max Tokens")
 
             # 创建一个包含Select existed Collection的Dropdown组件
-            collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection",
+            collection_name_select = gr.Dropdown(["..."], label="Select existed Collection",
                                                  value="...")
             # 为Local Knowledge Collection Select Options的Radio组件添加一个change事件，当它的值改变时，
             # 调用update_collection_name函数，并将Select existed Collection的Dropdown组件作为输出
