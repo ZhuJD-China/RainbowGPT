@@ -27,6 +27,14 @@ from typing import Iterable
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
+import tiktoken
+
+
+def num_tokens_from_string(string: str, encoding_name: str) -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
 
 
 class Seafoam(Base):
@@ -221,10 +229,11 @@ def ask_local_vector_db(question):
     for index, context in enumerate(docs):
         cleaned_context = context.page_content.replace('\n', ' ').strip()
         cleaned_context = f"{cleaned_context}"
-        tokens = tokenizers.encode(cleaned_context, add_special_tokens=False)
-        if total_toknes + len(tokens) <= (int(local_data_embedding_token_max_global)):
+        tokens = num_tokens_from_string(cleaned_context, "cl100k_base")
+        # tokens = tokenizers.encode(cleaned_context, add_special_tokens=False)
+        if total_toknes + tokens <= (int(local_data_embedding_token_max_global)):
             cleaned_matches.append(cleaned_context)
-            total_toknes += len(tokens)
+            total_toknes += tokens
         else:
             last_index = index
             break
@@ -258,6 +267,8 @@ Google_Search_tool = Tool(
 
 llm_math_tool = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
 tools.append(llm_math_tool[0])
+
+
 # bing_search_tool = load_tools(["bing-search"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
 
 
@@ -518,7 +529,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
 
         with gr.Column():
             input_chunk_size = gr.Textbox(value="1024", label="Input Chunk Size")
-            local_data_embedding_token_max = gr.Slider(8000, 13428, step=1,
+            local_data_embedding_token_max = gr.Slider(5120, 12288, step=1,
                                                        label="Local Data Max Tokens")
             collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection",
                                                  value="...")
