@@ -97,10 +97,7 @@ for collection in collections:
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm = None
 llm_name_global = None
-# llm = ChatOpenAI(temperature=float(temperature_num_global), model="gpt-3.5-turbo-16k-0613")
 embeddings = None
-# embeddings = OpenAIEmbeddings()
-# embeddings = HuggingFaceEmbeddings()
 Embedding_Model_select_global = 0
 temperature_num_global = 0
 
@@ -162,11 +159,9 @@ def ask_local_vector_db(question):
         llm=llm, prompt=local_search_prompt,
         verbose=True,
     )
-    # 使用预训练的gpt2分词器
-    tokenizers = GPT2Tokenizer.from_pretrained("gpt2")
 
     if Embedding_Model_select_global == 0:
-        print("OpenAIEmbeddings")
+        print("OpenAIEmbeddings Search")
         # 结合基础检索器+Embedding上下文压缩
         chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
         # # 获取变量的内存地址并打印
@@ -212,7 +207,7 @@ def ask_local_vector_db(question):
         if retries == max_retries:
             print(f"Max retries reached. Code execution failed.")
     elif Embedding_Model_select_global == 1:
-        print("HuggingFaceEmbeddings")
+        print("HuggingFaceEmbedding Search")
         chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
         retrieved_docs = chroma_retriever.get_relevant_documents(question)
         bm25_retriever = BM25Retriever.from_documents(retrieved_docs)
@@ -237,6 +232,7 @@ def ask_local_vector_db(question):
         else:
             last_index = index
             break
+    print("Embedding了 ", str(last_index + 1), " 个知识库文档块")
     # 将清理过的匹配项组合合成一个字符串
     combined_text = " ".join(cleaned_matches)
 
@@ -267,9 +263,6 @@ Google_Search_tool = Tool(
 
 llm_math_tool = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
 tools.append(llm_math_tool[0])
-
-
-# bing_search_tool = load_tools(["bing-search"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
 
 
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
@@ -328,11 +321,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
                 yield response[: i + int(print_speed_step)]
             if Local_Search_tool in tools:
                 flag_get_Local_Search_tool = True
-        # elif tg == "Bing Search" and bing_search_tool not in tools:
-        #     tools.append(bing_search_tool)
-        #     response = "Bing Search 工具加入 回答中..........."
-        #     for i in range(0, len(response), int(print_speed_step)):
-        #         yield response[: i + int(print_speed_step)]
 
     if message == "" and (
             (collection_checkbox_group == "Read Existing Collection") or (collection_checkbox_group == None)
@@ -430,13 +418,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
 
-        # TODO
-        # collections = client.list_collections()
-        # list_collections_name.clear()
-        # for collection in collections:
-        #     collection_name = collection.name
-        #     list_collections_name.append(collection_name)
-        # collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection")
         return
 
     if flag_get_Local_Search_tool:
@@ -465,7 +446,7 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
                 yield response[: i + int(print_speed_step)]
             return
     if not flag_get_Local_Search_tool and collection_checkbox_group == "Read Existing Collection":
-        response = "读取知识库但是没有打开知识库搜索工具！失去本地知识库搜索能力！使用模型本身记忆回答！"
+        response = "读取知识库但是没有打开知识库搜索工具！失去本地知识库搜索能力！使用模型本身记忆或者其他工具回答！"
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
 
@@ -499,14 +480,24 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     # return response
 
 
-with gr.Blocks(theme=seafoam) as RainbowGPT:
-    # TODO
-    # collections = client.list_collections()
-    # list_collections_name.clear()
-    # for collection in collections:
-    #     collection_name = collection.name
-    #     list_collections_name.append(collection_name)
+# 定义一个函数，根据Local Knowledge Collection Select Options的值来返回Select existed Collection的选项
+def update_collection_name(collection_option):
+    if collection_option == "None":
+        collection_name_choices = ["..."]
+    elif collection_option == "Read Existing Collection":
+        # 获取已存在的collection的名称列表
+        collections = client.list_collections()
+        collection_name_choices = []
+        for collection in collections:
+            collection_name = collection.name
+            collection_name_choices.append(collection_name)
+    elif collection_option == "Create New Collection":
+        collection_name_choices = ["..."]
+    # 调用gr.Dropdown.update方法，传入新的选项列表
+    return gr.Dropdown.update(choices=collection_name_choices)
 
+
+with gr.Blocks(theme=seafoam) as RainbowGPT:
     with gr.Row():
         with gr.Column():
             # 创建一个包含选项的多选框组
@@ -519,6 +510,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
             tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
 
         with gr.Column():
+            # 创建一个包含Local Knowledge Collection Select Options的Radio组件
             collection_options = ["None", "Read Existing Collection", "Create New Collection"]
             collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options",
                                                  value=collection_options[0])
@@ -531,8 +523,14 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
             input_chunk_size = gr.Textbox(value="1024", label="Input Chunk Size")
             local_data_embedding_token_max = gr.Slider(5120, 12288, step=1,
                                                        label="Local Data Max Tokens")
+
+            # 创建一个包含Select existed Collection的Dropdown组件
             collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection",
                                                  value="...")
+            # 为Local Knowledge Collection Select Options的Radio组件添加一个change事件，当它的值改变时，
+            # 调用update_collection_name函数，并将Select existed Collection的Dropdown组件作为输出
+            collection_checkbox_group.change(fn=update_collection_name, inputs=collection_checkbox_group,
+                                             outputs=collection_name_select)
         with gr.Column():
             new_collection_name = gr.Textbox("", label="Input New Collection Name")
             uploaded_files = gr.File(file_count="multiple", label="Upload Files")
