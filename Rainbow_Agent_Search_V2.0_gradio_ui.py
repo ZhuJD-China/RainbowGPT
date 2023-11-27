@@ -258,7 +258,7 @@ Google_Search_tool = Tool(
 
 llm_math_tool = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
 tools.append(llm_math_tool[0])
-bing_search_tool = load_tools(["bing-search"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
+# bing_search_tool = load_tools(["bing-search"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
 
 
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
@@ -315,13 +315,13 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
             response = "Local Knowledge Base Search 工具加入 回答中..........."
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
-        elif tg == "Bing Search" and bing_search_tool not in tools:
-            tools.append(bing_search_tool)
-            response = "Bing Search 工具加入 回答中..........."
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
             if Local_Search_tool in tools:
                 flag_get_Local_Search_tool = True
+        # elif tg == "Bing Search" and bing_search_tool not in tools:
+        #     tools.append(bing_search_tool)
+        #     response = "Bing Search 工具加入 回答中..........."
+        #     for i in range(0, len(response), int(print_speed_step)):
+        #         yield response[: i + int(print_speed_step)]
 
     if message == "" and (
             (collection_checkbox_group == "Read Existing Collection") or (collection_checkbox_group == None)
