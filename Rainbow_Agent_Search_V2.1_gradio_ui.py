@@ -82,7 +82,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
 # 打印 API 密钥
 print(OPENAI_API_KEY)
-logfile = "Rainbow_Agent_Search_V2.0_gradio_ui.log"
+logfile = "Rainbow_Agent_Search_V2.1_gradio_ui.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
