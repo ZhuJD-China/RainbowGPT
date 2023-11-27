@@ -242,10 +242,6 @@ Local_Search_tool = Tool(
         """
 )
 
-# # 设置代理（替换为你的代理地址和端口）
-proxy_url = 'http://localhost:7890'
-os.environ['http_proxy'] = proxy_url
-os.environ['https_proxy'] = proxy_url
 Google_Search = GoogleSearchAPIWrapper()
 Google_Search_tool = Tool(
     name="Google_Search",
@@ -269,7 +265,7 @@ tools.append(tools_temp[0])
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
          new_collection_name,
          temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select,
-         input_chunk_size, local_data_embedding_token_max):
+         input_chunk_size, local_data_embedding_token_max, Google_proxy):
     global docsearch_db
     global llm
     global tools
@@ -282,6 +278,11 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global input_chunk_size_global
     global local_data_embedding_token_max_global
     global human_input_global
+
+    # 设置代理（替换为你的代理地址和端口）
+    proxy_url = str(Google_proxy)
+    os.environ['http_proxy'] = proxy_url
+    os.environ['https_proxy'] = proxy_url
 
     human_input_global = message
 
@@ -491,46 +492,49 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
     #     collection_name = collection.name
     #     list_collections_name.append(collection_name)
 
+
     with gr.Row():
+        with gr.Column():
         # 创建一个包含选项的多选框组
-        llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
-                       "gpt-4-vision-preview"]
-        llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
-                                                 value=llm_options[0])
+            llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
+                           "gpt-4-vision-preview"]
+            llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
+                                                     value=llm_options[0])
+            Google_proxy = gr.Textbox(value="http://localhost:7890", label="Google Http Proxy")
+            tool_options = ["Google Search", "Local Knowledge Base Search"]
+            tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
 
-        tool_options = ["Google Search", "Local Knowledge Base Search"]
-        tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
+        with gr.Column():
+            collection_options = ["None", "Read Existing Collection", "Create New Collection"]
+            collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options",
+                                                 value=collection_options[0])
 
-        collection_options = ["None", "Read Existing Collection", "Create New Collection"]
-        collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options",
-                                             value=collection_options[0])
+            collection_options = ["Openai Embedding", "HuggingFace Embedding"]
+            Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options",
+                                              value=collection_options[0])
 
-        collection_options = ["Openai Embedding", "HuggingFace Embedding"]
-        Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options",
-                                          value=collection_options[0])
-
-        input_chunk_size = gr.Textbox(value="1024", label="Input Chunk Size")
-        local_data_embedding_token_max = gr.Slider(8000, 13428, step=1,
-                                                   label="Local Data Max Tokens")
-        collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection",
-                                             value="...")
-
-    # 将最上面的三个 UI 控件并排放置
-    with gr.Row():
-        new_collection_name = gr.Textbox("", label="Input New Collection Name")
-
-        uploaded_files = gr.File(file_count="multiple", label="Upload Files")
+        with gr.Column():
+            input_chunk_size = gr.Textbox(value="1024", label="Input Chunk Size")
+            local_data_embedding_token_max = gr.Slider(8000, 13428, step=1,
+                                                       label="Local Data Max Tokens")
+            collection_name_select = gr.Dropdown(list_collections_name, label="Select existed Collection",
+                                                 value="...")
+        with gr.Column():
+            new_collection_name = gr.Textbox("", label="Input New Collection Name")
+            uploaded_files = gr.File(file_count="multiple", label="Upload Files")
 
     temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
     print_speed_step = gr.Slider(10, 20, render=False, label="Print Speed Step")
+
     gr.ChatInterface(
         echo, additional_inputs=[llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
                                  new_collection_name,
                                  temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
-                                 Embedding_Model_select, input_chunk_size, local_data_embedding_token_max],
+                                 Embedding_Model_select, input_chunk_size, local_data_embedding_token_max,
+                                 Google_proxy],
         title="RainbowGPT-Agent",
         description="How to reach me: zhujiadongvip@163.com",
-        css=".gradio-container {background-color: red}",
+        # css=".gradio-container {background-color: red}",
     )
 
 RainbowGPT.queue().launch(share=True)
