@@ -158,11 +158,12 @@ def ask_local_vector_db(question):
     tokenizers = GPT2Tokenizer.from_pretrained("gpt2")
 
     if Embedding_Model_select_global == 0:
+        print("OpenAIEmbeddings")
         # 结合基础检索器+Embedding上下文压缩
         chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
-        # 获取变量的内存地址并打印
-        address = id(docsearch_db)
-        print("docsearch_db变量的内存地址:", hex(address))
+        # # 获取变量的内存地址并打印
+        # address = id(docsearch_db)
+        # print("docsearch_db变量的内存地址:", hex(address))
         # 将压缩器和文档转换器串在一起
         splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
         redundant_filter = EmbeddingsRedundantFilter(embeddings=embeddings)
@@ -203,6 +204,7 @@ def ask_local_vector_db(question):
         if retries == max_retries:
             print(f"Max retries reached. Code execution failed.")
     elif Embedding_Model_select_global == 1:
+        print("HuggingFaceEmbeddings")
         chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
         retrieved_docs = chroma_retriever.get_relevant_documents(question)
         bm25_retriever = BM25Retriever.from_documents(retrieved_docs)
@@ -492,10 +494,9 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
     #     collection_name = collection.name
     #     list_collections_name.append(collection_name)
 
-
     with gr.Row():
         with gr.Column():
-        # 创建一个包含选项的多选框组
+            # 创建一个包含选项的多选框组
             llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
                            "gpt-4-vision-preview"]
             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
