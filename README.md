@@ -3,7 +3,7 @@
 <div align="center">
   <p>
     <a align="center" href="https://github.com/ZhuJD-China/RainbowGPT" target="_blank">
-      <img width="50%" height="150"  src="https://github.com/ZhuJD-China/RainbowGPT/imgs/logo.jpg"></a>
+      <img width="50%" height="150"  src="[https://github.com/ZhuJD-China/RainbowGPT/imgs/logo.jpg](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/logo.jpg)"></a>
   </p>
 </div>
 
