@@ -251,17 +251,14 @@ Google_Search_tool = Tool(
     description="""
         若本地知识库没有答案，或者问题中需要网络搜索的时候都可以使用这个互联网搜索引擎工具进行信息查询,尝试直接找到问题答案。 
         将搜索到的按照问题的相关性和时间进行排序，并且你必须严格参照搜索到的资料和你自己的认识结合进行回答！
-        如果搜索到一样的数据不要重复再搜索！
+        如果搜索到一样的数据不要重复利用！
         注意你需要提出非常有针对性准确的问题和回答。
         """
 )
 
-tools_temp = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
-tools.append(tools_temp[0])
-
-
-# bing - search
-# python_repl
+llm_math_tool = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
+tools.append(llm_math_tool[0])
+bing_search_tool = load_tools(["bing-search"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
 
 
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
@@ -318,8 +315,13 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
             response = "Local Knowledge Base Search 工具加入 回答中..........."
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
-        if Local_Search_tool in tools:
-            flag_get_Local_Search_tool = True
+        elif tg == "Bing Search" and bing_search_tool not in tools:
+            tools.append(bing_search_tool)
+            response = "Bing Search 工具加入 回答中..........."
+            for i in range(0, len(response), int(print_speed_step)):
+                yield response[: i + int(print_speed_step)]
+            if Local_Search_tool in tools:
+                flag_get_Local_Search_tool = True
 
     if message == "" and (
             (collection_checkbox_group == "Read Existing Collection") or (collection_checkbox_group == None)
@@ -437,9 +439,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
                 docsearch_db = Chroma(client=client, embedding_function=embeddings,
                                       collection_name=collection_name_select)
 
-                # 获取变量的内存地址并打印
-                address = id(docsearch_db)
-                print("Read docsearch_db变量的内存地址:", hex(address))
+                # # 获取变量的内存地址并打印
+                # address = id(docsearch_db)
+                # print("Read docsearch_db变量的内存地址:", hex(address))
 
             else:
                 response = "没有选中任何知识库，请至少选择一个知识库，回答中止！"
