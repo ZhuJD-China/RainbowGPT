@@ -20,7 +20,7 @@ import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "7"  # 使用GPU设备索引为0的GPU
 
-logfile = "RainbowGPT_Search.log"
+logfile = "RainbowChatglm3_Search.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
