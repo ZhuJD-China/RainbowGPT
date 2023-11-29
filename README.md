@@ -9,7 +9,15 @@
 
 🚀 **RainbowAgent Integration**
 
-RainbowAgent seamlessly integrates various technologies, including an AI Agent proxy, ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
+RainbowAgent seamlessly integrates various technologies, including an AI Agent proxy, GPT-4 , GPT3.5 , ChatGlm3 LLM , ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
+
+
+# ChatGLM3
+<p align="center">
+🤗 <a href="https://huggingface.co/THUDM/chatglm3-6b" target="_blank">HF Repo</a> • 🤖 <a href="https://modelscope.cn/models/ZhipuAI/chatglm3-6b" target="_blank">ModelScope</a> • 🐦 <a href="https://twitter.com/thukeg" target="_blank">Twitter</a> • 📃 <a href="https://arxiv.org/abs/2103.10360" target="_blank">[GLM@ACL 22]</a> <a href="https://github.com/THUDM/GLM" target="_blank">[GitHub]</a> • 📃 <a href="https://arxiv.org/abs/2210.02414" target="_blank">[GLM-130B@ICLR 23]</a> <a href="https://github.com/THUDM/GLM-130B" target="_blank">[GitHub]</a> <br>
+</p>
+<p align="center">
+
 
 ## Knowledge Base QA Search Algorithm
 
