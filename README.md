@@ -14,7 +14,7 @@ RainbowAgent seamlessly integrates various technologies, including an AI Agent p
 
 # ChatGLM3
 <p align="center">
-🤗 <a href="https://huggingface.co/THUDM/chatglm3-6b" target="_blank">ChatGLM3 HF Repo</a> •  <br>
+🤗 <a href="https://huggingface.co/THUDM/chatglm3-6b" target="_blank">HF Repo</a> • 🤖 <a href="https://modelscope.cn/models/ZhipuAI/chatglm3-6b" target="_blank">ModelScope</a> • <a href="https://github.com/THUDM/GLM" target="_blank">[GitHub]</a> • 📃 <a href="https://arxiv.org/abs/2210.02414" target="_blank">[GLM-130B@ICLR 23]</a> <a href="https://github.com/THUDM/GLM-130B" target="_blank">[GitHub]</a> <br>
 ✨ <a href="https://github.com/openai/openai-cookbook" >Navigate at [cookbook.openai.com]</a> •  <br>
 🦜️🔗 <a href="https://github.com/langchain-ai/langchain" > LangChain ⚡ Building applications with LLMs through composability ⚡</a>  •  <br>
 </p>
