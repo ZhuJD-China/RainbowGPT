@@ -7,7 +7,7 @@
   </p>
 </div>
 
-🚀 # RainbowAgent Integration
+🚀 ## RainbowAgent Integration
 
 RainbowAgent seamlessly integrates various technologies, including an AI Agent proxy, GPT-4 , GPT3.5 , ChatGlm3 LLM , ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
 
