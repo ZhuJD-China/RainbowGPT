@@ -11,7 +11,7 @@ import urllib.request
 import ssl
 
 # 设置OpenAI API密钥
-openai.api_key = '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'
+openai.api_key = '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'
 
 
 def get_Stock_History_White_Yellow_Line(code, day_his):
@@ -139,29 +139,29 @@ pro = ts.pro_api()  # 初始化接口
 
 def main():
     stocks = {
-        # '002544.SZ': '普天科技',
-        # '002315.SZ': '焦点科技',
-        # '002037.SZ': '保利联合',
-        '002665.SZ': '首航高科',
-        '601996.SH': '丰林集团',
+        '603595.SH': '东尼电子',
     }
 
     date_str = datetime.datetime.now().strftime('%Y%m%d')
     day_to = input("请输入要查询过去多少天的历史价格：(格式是30，默认值是30): ") or "30"
-    macd_rsi_kdj_start = input("请输入macd rsi kdj的起始时间：(默认值是20230601): ") or "20230601"
-    macd_rsi_kdj_end = input("请输入macd rsi kdj的结束时间：(默认值是20230630): ") or "20230704"
-    daily_k_lines_start = input("请输入日线查询的起始时间：(默认值是2023-06-01): ") or "2023-06-01"
-    daily_k_lines_end = input("请输入日线查询的结束时间：(默认值是2023-06-30): ") or "2023-07-04"
+    macd_rsi_kdj_start = input("请输入macd rsi kdj的起始时间：(默认值是20230601): ") or "20230824"
+    macd_rsi_kdj_end = input("请输入macd rsi kdj的结束时间：(默认值是20230630): ") or "20230913"
+    daily_k_lines_start = input("请输入日线查询的起始时间：(默认值是2023-06-01): ") or "2023-08-24"
+    daily_k_lines_end = input("请输入日线查询的结束时间：(默认值是2023-06-30): ") or "2023-09-13"
     day_H_W_Y_line = input("请输入多少天的股票历史白黄线：(默认值是1): ") or "1"
 
     for code, name in stocks.items():
         directory = os.path.join(f"{date_str}_{code}_{name}")
         try:
+            os.makedirs(directory, exist_ok=True)
 
-            os.makedirs(directory, exist_ok=True)  # 创建文件夹，如果文件夹已存在则不会引发错误
-
-            content = get_news(name)
-            write_to_files(directory, content)
+            # Fetch news content
+            try:
+                content = get_news(name)
+                write_to_files(directory, content)
+            except Exception as e:
+                print(f"获取新闻[{name}]出错: {str(e)}")
+                content = ""  # Set content to an empty string in case of an error
 
             rsi_kdj_contents = get_macd_rsi_kdj(code.split('.')[0], macd_rsi_kdj_start, macd_rsi_kdj_end)
             with open(directory + '/' + str(name) + '_rsi_kdj_contents.txt', 'w') as f:
@@ -175,7 +175,16 @@ def main():
             with open(directory + '/' + str(name) + '_Stock_History_White_Yellow_Line.txt', 'w') as f:
                 f.write(str(Stock_History_White_Yellow_Line))
 
+            # Check if the news file exists before opening it
+            news_file_path = os.path.join(directory, 'news_0.txt')
+            try:
+                with open(news_file_path, 'r', encoding='utf-8') as f:
+                    news_content = f.read()
+            except FileNotFoundError:
+                news_content = ""
+                print(f"News file not found for {name}. Setting news_content to an empty string.")
 
+            # Rest of the code for data processing and analysis
 
         except Exception as e:
             print(f"获取新闻[{name}]出错: {str(e)}")
