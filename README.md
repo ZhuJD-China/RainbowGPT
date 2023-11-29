@@ -7,12 +7,10 @@
   </p>
 </div>
 
-🚀 **RainbowAgent Integration**
+🚀 #RainbowAgent Integration
 
 RainbowAgent seamlessly integrates various technologies, including an AI Agent proxy, GPT-4 , GPT3.5 , ChatGlm3 LLM , ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
 
-
-# Integration
 <p align="center">
 ✨ <a href="https://github.com/openai/openai-cookbook" >Navigate at [cookbook.openai.com]</a> •  <br>
 🦜️🔗 <a href="https://github.com/langchain-ai/langchain" > LangChain ⚡ Building applications with LLMs through composability ⚡</a>  •  <br>
