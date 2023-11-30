@@ -90,8 +90,4 @@ The most effective use of EnsembleRetriever involves combining a sparse retrieve
 ![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/exp.png)
 
 
-<p align="center">
-  <a href="https://star-history.com/#ZhuJD-China/RainbowGPT&Date">
-    <img src="https://api.star-history.com/svg?repos=ZhuJD-China/RainbowGPT&type=Date" alt="Star History Chart">
-  </a>
-</p>
+[![Star History Chart](https://api.star-history.com/svg?repos=ZhuJD-China/RainbowGPT&type=Timeline)](https://star-history.com/#ZhuJD-China/RainbowGPT&Timeline)
