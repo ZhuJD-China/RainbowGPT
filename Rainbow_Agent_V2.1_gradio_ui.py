@@ -35,7 +35,7 @@ load_dotenv()
 # 免费授权API接口网站: https://api.chatanywhere.org/v1/oauth/free/github/render
 # 转发Host1: https://api.chatanywhere.com.cn (国内中转，延时更低，推荐)
 # 转发Host2: https://api.chatanywhere.cn (国外使用,国内需要全局代理)
-# openai.api_base = "https://api.chatanywhere.com.cn/v1"
+openai.api_base = "https://api.chatanywhere.com.cn/v1"
 # 加载环境变量中的 OpenAI API 密钥
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
@@ -95,6 +95,7 @@ handler = FileCallbackHandler(logfile)
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
+collection_name_select_global = None
 
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm = None
@@ -142,6 +143,7 @@ def ask_local_vector_db(question):
     global local_data_embedding_token_max_global
     global human_input_global
     global tools
+    global collection_name_select_global
 
     if Embedding_Model_select_global == 0:
         embeddings = OpenAIEmbeddings()
@@ -160,15 +162,16 @@ def ask_local_vector_db(question):
     local_chain = LLMChain(
         llm=llm, prompt=local_search_prompt,
         verbose=True,
+        return_final_only=True,  # 指示是否仅返回最终解析的结果
     )
 
+    docs = []
     if Embedding_Model_select_global == 0:
         print("OpenAIEmbeddings Search")
         # 结合基础检索器+Embedding上下文压缩
+        # 将稀疏检索器（如 BM25）与密集检索器（如嵌入相似性）相结合
         chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
-        # # 获取变量的内存地址并打印
-        # address = id(docsearch_db)
-        # print("docsearch_db变量的内存地址:", hex(address))
+
         # 将压缩器和文档转换器串在一起
         splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
         redundant_filter = EmbeddingsRedundantFilter(embeddings=embeddings)
@@ -178,20 +181,22 @@ def ask_local_vector_db(question):
         )
         compression_retriever = ContextualCompressionRetriever(base_compressor=pipeline_compressor,
                                                                base_retriever=chroma_retriever)
-        compressed_docs = compression_retriever.get_relevant_documents(question, tools=tools)
+        # compressed_docs = compression_retriever.get_relevant_documents(question, tools=tools)
+
+        the_collection = client.get_collection(name=collection_name_select_global)
+        the_metadata = the_collection.get()
+        the_doc_llist = the_metadata['documents']
+        bm25_retriever = BM25Retriever.from_texts(the_doc_llist)
+        bm25_retriever.k = 30
 
         # 设置最大尝试次数
         max_retries = 3
         retries = 0
         while retries < max_retries:
             try:
-                # 将稀疏检索器（如 BM25）与密集检索器（如嵌入相似性）相结合
-                # 初始化 bm25 检索器和 faiss 检索器
-                bm25_retriever = BM25Retriever.from_documents(compressed_docs)
-                bm25_retriever.k = 5
                 # 初始化 ensemble 检索器
                 ensemble_retriever = EnsembleRetriever(
-                    retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
+                    retrievers=[bm25_retriever, compression_retriever], weights=[0.5, 0.5]
                 )
                 docs = ensemble_retriever.get_relevant_documents(question)
                 break  # 如果成功执行，跳出循环
@@ -211,9 +216,16 @@ def ask_local_vector_db(question):
     elif Embedding_Model_select_global == 1:
         print("HuggingFaceEmbedding Search")
         chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
-        retrieved_docs = chroma_retriever.get_relevant_documents(question)
-        bm25_retriever = BM25Retriever.from_documents(retrieved_docs)
-        bm25_retriever.k = 2
+        # docs = chroma_retriever.get_relevant_documents(question)
+        # chroma_vectorstore = Chroma.from_texts(the_doc_llist, embeddings)
+        # chroma_retriever = chroma_vectorstore.as_retriever(search_kwargs={"k": 10})
+
+        the_collection = client.get_collection(name=collection_name_select_global)
+        the_metadata = the_collection.get()
+        the_doc_llist = the_metadata['documents']
+        bm25_retriever = BM25Retriever.from_texts(the_doc_llist)
+        bm25_retriever.k = 30
+
         # 初始化 ensemble 检索器
         ensemble_retriever = EnsembleRetriever(
             retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
@@ -283,6 +295,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global input_chunk_size_global
     global local_data_embedding_token_max_global
     global human_input_global
+    global collection_name_select_global
+
+    collection_name_select_global = str(collection_name_select)
 
     # 设置代理（替换为你的代理地址和端口）
     proxy_url = str(Google_proxy)
@@ -406,7 +421,7 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         for i in range(0, len(response), len(response) // 3):
             yield response[: i + (len(response) // 3)]
         print("after split documents len= ", texts.__len__())
-        response = "切分之后文档数据长度为：" + str(texts.__len__() + " 数据开始写入词向量库.....")
+        response = "切分之后文档数据长度为：" + str(texts.__len__()) + " 数据开始写入词向量库....."
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
 
