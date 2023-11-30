@@ -29,7 +29,7 @@ This API Key is used for forwarding API requests. You need to change the Host to
 - Forwarding Host2: `https://api.chatanywhere.cn` (For international usage, domestic users need a global proxy)
 - Check your balance and usage records (announcements are also posted here): [Balance Inquiry and Announcements](https://api.chatanywhere.org/)
 - The forwarding API cannot directly make requests to the official api.openai.com endpoint. You need to change the request address to `api.chatanywhere.com.cn` to use it. Most plugins and software can be modified accordingly.
-```markdown
+
 **Method 1**
 ```python
 import openai
