@@ -18,6 +18,18 @@ RainbowAgent seamlessly integrates various technologies, including an AI Agent p
 </p>
 <p align="center">
 
+## Free Use of GPT API
+We will regularly expand capacity based on usage, and we will continue to provide the API for free as long as we are not officially sanctioned. If this project is helpful to you, please consider giving us a ***Star***.
+
+This API Key is used for forwarding API requests. You need to change the Host to `api.chatanywhere.com.cn` (preferred for domestic usage) or `api.chatanywhere.cn` (for international usage, domestic users need a global proxy).
+
+## How to Use
+- 🚀 [Apply for a Free API Key in Beta](https://api.chatanywhere.org/v1/oauth/free/github/render)
+- Forwarding Host1: `https://api.chatanywhere.com.cn` (Domestic relay, lower latency, recommended)
+- Forwarding Host2: `https://api.chatanywhere.cn` (For international usage, domestic users need a global proxy)
+- Check your balance and usage records (announcements are also posted here): [Balance Inquiry and Announcements](https://api.chatanywhere.org/)
+- The forwarding API cannot directly make requests to the official api.openai.com endpoint. You need to change the request address to `api.chatanywhere.com.cn` to use it. Most plugins and software can be modified accordingly.
+
 
 ## Knowledge Base QA Search Algorithm
 
