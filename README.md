@@ -23,7 +23,6 @@ We will regularly expand capacity based on usage, and we will continue to provid
 
 This API Key is used for forwarding API requests. You need to change the Host to `api.chatanywhere.com.cn` (preferred for domestic usage) or `api.chatanywhere.cn` (for international usage, domestic users need a global proxy).
 
-## How to Use Free GPT API
 - 🚀 [Apply for a Free API Key in Beta](https://api.chatanywhere.org/v1/oauth/free/github/render)
 - Forwarding Host1: `https://api.chatanywhere.com.cn` (Domestic relay, lower latency, recommended)
 - Forwarding Host2: `https://api.chatanywhere.cn` (For international usage, domestic users need a global proxy)
