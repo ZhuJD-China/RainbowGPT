@@ -504,7 +504,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         with gr.Column():
             # 创建一个包含选项的多选框组
             llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
-                           "gpt-4-vision-preview", "gpt-4-0613"]
+                           "gpt-4-vision-preview", "gpt-4", "gpt-3.5-turbo"]
             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                      value=llm_options[0])
             Google_proxy = gr.Textbox(value="http://localhost:7890", label="Google Http Proxy")
