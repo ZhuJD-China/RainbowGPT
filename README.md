@@ -29,6 +29,25 @@ This API Key is used for forwarding API requests. You need to change the Host to
 - Forwarding Host2: `https://api.chatanywhere.cn` (For international usage, domestic users need a global proxy)
 - Check your balance and usage records (announcements are also posted here): [Balance Inquiry and Announcements](https://api.chatanywhere.org/)
 - The forwarding API cannot directly make requests to the official api.openai.com endpoint. You need to change the request address to `api.chatanywhere.com.cn` to use it. Most plugins and software can be modified accordingly.
+```markdown
+**Method 1**
+```python
+import openai
+openai.api_base = "https://api.chatanywhere.com.cn/v1"
+# openai.api_base = "https://api.chatanywhere.cn/v1"
+```
+**Method 2 (Use if Method 1 doesn't work)**
+Modify the environment variable OPENAI_API_BASE. Search for how to change environment variables on your specific system. If changes to the environment variable don't take effect, restart your system.
+```bash
+OPENAI_API_BASE=https://api.chatanywhere.com.cn/v1
+or OPENAI_API_BASE=https://api.chatanywhere.cn/v1
+```
+**Open Source gpt_academic**
+Locate the `config.py` file and modify the `API_URL_REDIRECT` configuration to the following:
+```python
+API_URL_REDIRECT = {"https://api.openai.com/v1/chat/completions": "https://api.chatanywhere.com.cn/v1/chat/completions"}
+# API_URL_REDIRECT = {"https://api.openai.com/v1/chat/completions": "https://api.chatanywhere.cn/v1/chat/completions"}
+```
 
 
 ## Knowledge Base QA Search Algorithm
