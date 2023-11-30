@@ -29,6 +29,19 @@ from gradio.themes.utils import colors, fonts, sizes
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 import tiktoken
 
+load_dotenv()
+
+# 加载互联网共享接口
+# 免费授权API接口网站: https://api.chatanywhere.org/v1/oauth/free/github/render
+# 转发Host1: https://api.chatanywhere.com.cn (国内中转，延时更低，推荐)
+# 转发Host2: https://api.chatanywhere.cn (国外使用,国内需要全局代理)
+# openai.api_base = "https://api.chatanywhere.com.cn/v1"
+# 加载环境变量中的 OpenAI API 密钥
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+openai.api_key = OPENAI_API_KEY
+# 打印 API 密钥
+print(openai.api_key)
+
 
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
     """Returns the number of tokens in a text string."""
@@ -76,12 +89,6 @@ class Seafoam(Base):
 
 seafoam = Seafoam()
 
-# 加载环境变量中的 OpenAI API 密钥
-load_dotenv()
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-openai.api_key = OPENAI_API_KEY
-# 打印 API 密钥
-print(OPENAI_API_KEY)
 logfile = "Rainbow_Agent_Search_V2.1_gradio_ui.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
@@ -256,7 +263,7 @@ Google_Search_tool = Tool(
         """
 )
 
-llm_math_tool = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
+llm_math_tool = load_tools(["arxiv"], llm=llm)
 tools.append(llm_math_tool[0])
 
 
@@ -497,7 +504,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         with gr.Column():
             # 创建一个包含选项的多选框组
             llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
-                           "gpt-4-vision-preview"]
+                           "gpt-4-vision-preview", "gpt-4-0613"]
             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                      value=llm_options[0])
             Google_proxy = gr.Textbox(value="http://localhost:7890", label="Google Http Proxy")
