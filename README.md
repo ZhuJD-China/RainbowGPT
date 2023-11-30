@@ -49,6 +49,8 @@ API_URL_REDIRECT = {"https://api.openai.com/v1/chat/completions": "https://api.c
 # API_URL_REDIRECT = {"https://api.openai.com/v1/chat/completions": "https://api.chatanywhere.cn/v1/chat/completions"}
 ```
 
+The free API Key has a limit of 60 requests per hour per IP address and Key. In other words, if you use multiple keys under the same IP, the total hourly request limit for all keys cannot exceed 60. Similarly, if you use a single key across multiple IPs, the hourly request limit for that key cannot exceed 60.
+
 
 ## Knowledge Base QA Search Algorithm
 
