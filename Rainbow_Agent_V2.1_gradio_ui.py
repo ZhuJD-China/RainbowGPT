@@ -555,15 +555,33 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
     temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
     print_speed_step = gr.Slider(10, 20, render=False, label="Print Speed Step")
 
+    custom_title = """
+    <h1 style='text-align: center; margin-bottom: 1rem; font-family: "Courier New", monospace; 
+               background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
+               -webkit-background-clip: text;
+               color: transparent;'>
+        RainbowGPT-Agent
+    </h1>
+    """
+
+    custom_description = """
+    <div style='font-size: 12px; font-family: Arial, sans-serif; text-align: right; 
+                background: linear-gradient(135deg, #ff4e50, #fc913a, #fed766, #4f98ca, #4f98ca, #fc913a, #ff4e50);
+                -webkit-background-clip: text;
+                color: transparent;'>
+        <p>How to reach me: <a href='mailto:zhujiadongvip@163.com'>zhujiadongvip@163.com</a></p>
+    </div>
+    """
+
     gr.ChatInterface(
         echo, additional_inputs=[llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
                                  new_collection_name,
                                  temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
                                  Embedding_Model_select, input_chunk_size, local_data_embedding_token_max,
                                  Google_proxy],
-        title="RainbowGPT-Agent",
-        description="How to reach me: zhujiadongvip@163.com",
-        # css=".gradio-container {background-color: red}",
+        title=custom_title,
+        description=custom_description,
+        # css=".gradio-container {background-color: #f0f0f0;}",  # Add your desired background color here
     )
 
 RainbowGPT.queue().launch(share=True)
