@@ -34,6 +34,7 @@ embeddings = HuggingFaceEmbeddings(model_name="../models/all-mpnet-base-v2")
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
 print(client.list_collections())
+collection_name_select_global = None
 
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm_name_global = None
@@ -86,6 +87,7 @@ def ask_local_vector_db(question):
     global local_data_embedding_token_max_global
     global human_input_global
     global tools
+    global collection_name_select_global
 
     if Embedding_Model_select_global == 0:
         embeddings = OpenAIEmbeddings()
@@ -104,15 +106,21 @@ def ask_local_vector_db(question):
         verbose=True,
     )
 
+     print("HuggingFaceEmbedding Search")
     chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
-    retrieved_docs = chroma_retriever.get_relevant_documents(question)
-    bm25_retriever = BM25Retriever.from_documents(retrieved_docs)
-    bm25_retriever.k = 2
+  
+    the_collection = client.get_collection(name=collection_name_select_global)
+    the_metadata = the_collection.get()
+    the_doc_llist = the_metadata['documents']
+    bm25_retriever = BM25Retriever.from_texts(the_doc_llist)
+    bm25_retriever.k = 30
+
     # 初始化 ensemble 检索器
     ensemble_retriever = EnsembleRetriever(
         retrievers=[bm25_retriever, chroma_retriever], weights=[0.5, 0.5]
     )
     docs = ensemble_retriever.get_relevant_documents(question)
+
 
     cleaned_matches = []
     total_toknes = 0
@@ -165,6 +173,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global input_chunk_size_global
     global local_data_embedding_token_max_global
     global human_input_global
+    global collection_name_select_global
+
+    collection_name_select_global = str(collection_name_select)
 
     human_input_global = message
 
