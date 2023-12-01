@@ -14,6 +14,7 @@ print(dashscope.api_key)
 
 def slow_echo(message, history, llm_options_checkbox_group):
     response = ""
+    print("User: ", message)
     try:
         if llm_options_checkbox_group == "qwen-72b-chat":
             messages = [
@@ -23,8 +24,8 @@ def slow_echo(message, history, llm_options_checkbox_group):
                 messages=messages,
                 result_format='message',  # set the result is message format.
             )
-            # print("qwen-72b-chat" + str(response))
             response = response["output"]["choices"][0]["message"]["content"]
+            print(response)
             for i in range(0, len(response), int(10)):
                 yield response[: i + int(10)]
         else:
@@ -36,8 +37,8 @@ def slow_echo(message, history, llm_options_checkbox_group):
                 result_format='message',  # set the result to be "message" format..
                 # temperature=float(temperature_num)  # Add temperature parameter
             )
-            # print(str(response))
             response = response["output"]["choices"][0]["message"]["content"]
+            print(response)
             for i in range(0, len(response), int(10)):
                 yield response[: i + int(10)]
     except Exception as e:
