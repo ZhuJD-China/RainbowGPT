@@ -258,7 +258,7 @@ Local_Search_tool = Tool(
     name="Local_Search",
     func=ask_local_vector_db,
     description="""
-        可以通过本地知识数据库库尝试寻找问答案。
+        这是一个本地知识库搜索工具，你可以尝试寻找问答案。
         注意你需要提出非常有针对性准确的问题和回答。
         """
 )
@@ -270,7 +270,6 @@ Google_Search_tool = Tool(
     description="""
         若本地知识库没有答案，或者问题中需要网络搜索的时候都可以使用这个互联网搜索引擎工具进行信息查询,尝试直接找到问题答案。 
         将搜索到的按照问题的相关性和时间进行排序，并且你必须严格参照搜索到的资料和你自己的认识结合进行回答！
-        如果搜索到一样的数据不要重复利用！
         注意你需要提出非常有针对性准确的问题和回答。
         """
 )
@@ -519,7 +518,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         with gr.Column():
             # 创建一个包含选项的多选框组
             llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
-                           "gpt-4-vision-preview", "gpt-4", "gpt-3.5-turbo"]
+                           "gpt-4-vision-preview", "gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo"]
             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                      value=llm_options[0])
             Google_proxy = gr.Textbox(value="http://localhost:7890", label="Google Http Proxy")
@@ -538,8 +537,8 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
 
         with gr.Column():
             input_chunk_size = gr.Textbox(value="512", label="Input Chunk Size")
-            local_data_embedding_token_max = gr.Slider(5120, 12288, step=1,
-                                                       label="Local Data Max Tokens")
+            local_data_embedding_token_max = gr.Slider(2048, 12288, step=1,
+                                                       label="Local Data Max Tokens", value=5120)
 
             # 创建一个包含Select existed Collection的Dropdown组件
             collection_name_select = gr.Dropdown(["..."], label="Select existed Collection",
