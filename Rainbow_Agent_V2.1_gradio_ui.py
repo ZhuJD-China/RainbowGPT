@@ -35,7 +35,7 @@ load_dotenv()
 # 免费授权API接口网站: https://api.chatanywhere.org/v1/oauth/free/github/render
 # 转发Host1: https://api.chatanywhere.com.cn (国内中转，延时更低，推荐)
 # 转发Host2: https://api.chatanywhere.cn (国外使用,国内需要全局代理)
-openai.api_base = "https://api.chatanywhere.com.cn/v1"
+# openai.api_base = "https://api.chatanywhere.com.cn/v1"
 # 加载环境变量中的 OpenAI API 密钥
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
@@ -258,8 +258,10 @@ Local_Search_tool = Tool(
     name="Local_Search",
     func=ask_local_vector_db,
     description="""
-        这是一个本地知识库搜索工具，你可以尝试寻找问答案。
-        注意你需要提出非常有针对性准确的问题和回答。
+        这是一个本地知识库搜索工具，你可以优先使用本地搜索并总结回答。
+        1.你先根据我的问题提取出最适合embedding模型向量匹配的关键字进行搜索。
+        2.注意你需要提出非常有针对性准确的问题和回答。
+        3.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考。
         """
 )
 
@@ -268,9 +270,11 @@ Google_Search_tool = Tool(
     name="Google_Search",
     func=Google_Search.run,
     description="""
-        若本地知识库没有答案，或者问题中需要网络搜索的时候都可以使用这个互联网搜索引擎工具进行信息查询,尝试直接找到问题答案。 
-        将搜索到的按照问题的相关性和时间进行排序，并且你必须严格参照搜索到的资料和你自己的认识结合进行回答！
-        注意你需要提出非常有针对性准确的问题和回答。
+        若本地知识库没有答案，或者问题中需要网络搜索的时候都可以使用这个互联网搜索工具进行信息查询。
+        1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索，同时增加一些搜索技巧包括(使用引号进行短语搜索，利用OR运算符扩展搜索范围，通过站点搜索限定特定网站，范围搜索和星号通配符提高搜索精度，时间范围调整搜索结果，搜索图像和视频，在Google Scholar查找学术论文)
+        2.将搜索到的按照我提出的问题的相关性和时间进行综合排序。
+        3.你必须严格参照搜索到的资料和你自己的认识结合进行回答！
+        4.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考，并且尝试多次搜索你需要的知识。
         """
 )
 
