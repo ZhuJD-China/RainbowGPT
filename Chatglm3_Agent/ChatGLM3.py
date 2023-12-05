@@ -2,7 +2,6 @@ import json
 from langchain.llms.base import LLM
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 from typing import List, Optional
-from utils import tool_config_from_file
 import os
 import yaml
 

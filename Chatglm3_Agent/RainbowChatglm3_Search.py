@@ -17,6 +17,7 @@ from langchain.retrievers import BM25Retriever, EnsembleRetriever
 import tiktoken
 from ChatGLM3 import ChatGLM3
 import os
+from langchain.chains import LLMChain
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "7"  # 使用GPU设备索引为0的GPU
 
@@ -106,7 +107,7 @@ def ask_local_vector_db(question):
         verbose=True,
     )
 
-     print("HuggingFaceEmbedding Search")
+    print("HuggingFaceEmbedding Search")
     chroma_retriever = docsearch_db.as_retriever(search_kwargs={"k": 30})
   
     the_collection = client.get_collection(name=collection_name_select_global)
