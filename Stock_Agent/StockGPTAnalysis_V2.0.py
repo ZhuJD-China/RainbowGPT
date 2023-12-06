@@ -1,6 +1,9 @@
 import threading
-
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from py_mini_racer import py_mini_racer
+from tqdm import tqdm
 from dotenv import load_dotenv
 import openai
 import datetime
@@ -12,6 +15,7 @@ from dotenv import load_dotenv
 import gradio as gr
 import akshare as ak
 import get_news_stock
+import get_concept_data
 
 load_dotenv()
 # 加载互联网共享接口
@@ -27,47 +31,60 @@ dashscope.api_key = DASHSCOPE_API_KEY
 print(dashscope.api_key)
 print(openai.api_key)
 
+print("行业板块名称更新.............")
+concept_name = get_concept_data.stock_board_concept_name_ths()
+
 
 def openai_0_28_1_api_call(model="gpt-3.5-turbo-1106",
                            instruction="",
                            message="你好啊？", timestamp_str="", result=None, index=None, stock_name=None):
-    print("openai_0_28_1_api_call..................")
-    completion = openai.ChatCompletion.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": instruction},
-            {"role": "user", "content": message}
-        ]
-    )
-    gpt_response = completion['choices'][0]['message']['content']
-    gpt_file_name = f"{stock_name}_gpt_response_{timestamp_str}.txt"
-    with open(gpt_file_name, 'w', encoding='utf-8') as gpt_file:
-        gpt_file.write(gpt_response)
-    print(f"OpenAI API 响应已保存到文件: {gpt_file_name}")
-    # return gpt_response
-    result[index] = gpt_response  # 将结果存储在结果列表中，使用给定的索引
+    try:
+        print("openai_0_28_1_api_call..................")
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": instruction},
+                {"role": "user", "content": message}
+            ]
+        )
+        gpt_response = response['choices'][0]['message']['content']
+        gpt_file_name = f"{stock_name}_gpt_response_{timestamp_str}.txt"
+        with open(gpt_file_name, 'w', encoding='utf-8') as gpt_file:
+            gpt_file.write(gpt_response)
+        print(f"OpenAI API 响应已保存到文件: {gpt_file_name}")
+        # return gpt_response
+        result[index] = gpt_response  # 将结果存储在结果列表中，使用给定的索引
+    except Exception as e:
+        print(f"发生异常: {response}")
+        # 在这里可以添加适当的异常处理代码，例如记录异常日志或采取其他适当的措施
+        result[index] = f"发生异常: {response}"
 
 
 def qwen_api_call(model="qwen-72b-chat",
-                  instruction="需要你发挥强大的A股分析专家能力。请详细分析市场趋势、行业前景，揭示潜在投资机会",
+                  instruction="",
                   message="你好啊？", timestamp_str="", result=None, index=None, stock_name=None):
-    print("qwen_api_call............................")
-    messages = [
-        {"role": "system", "content": instruction},
-        {"role": "user", "content": message}
-    ]
-    response = dashscope.Generation.call(
-        model=model,
-        messages=messages,
-        result_format='message',  # set the result is message format.
-    )
-    qwen_response = response["output"]["choices"][0]["message"]["content"]
-    qwen_file_name = f"{stock_name}_qwen_response_{timestamp_str}.txt"
-    with open(qwen_file_name, 'w', encoding='utf-8') as qwen_file:
-        qwen_file.write(qwen_response)
-    print(f"qwen API 响应已保存到文件: {qwen_file_name}")
-    # return qwen_response
-    result[index] = qwen_response  # 将结果存储在结果列表中，使用给定的索引
+    try:
+        print("qwen_api_call............................")
+        messages = [
+            {"role": "system", "content": instruction},
+            {"role": "user", "content": message}
+        ]
+        response = dashscope.Generation.call(
+            model=model,
+            messages=messages,
+            result_format='message',  # set the result is message format.
+        )
+        qwen_response = response["output"]["choices"][0]["message"]["content"]
+        qwen_file_name = f"{stock_name}_qwen_response_{timestamp_str}.txt"
+        with open(qwen_file_name, 'w', encoding='utf-8') as qwen_file:
+            qwen_file.write(qwen_response)
+        print(f"qwen API 响应已保存到文件: {qwen_file_name}")
+        # return qwen_response
+        result[index] = qwen_response  # 将结果存储在结果列表中，使用给定的索引
+    except Exception as e:
+        print(f"发生异常: {response}")
+        # 在这里可以添加适当的异常处理代码，例如记录异常日志或采取其他适当的措施
+        result[index] = f"发生异常: {response}"
 
 
 def calculate_technical_indicators(stock_zh_a_hist_df,
@@ -111,7 +128,7 @@ def calculate_technical_indicators(stock_zh_a_hist_df,
 
 
 def process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hist_df, stock_news_em_df,
-                   stock_individual_fund_flow_df, specific_stock_data, technical_indicators_df,
+                   stock_individual_fund_flow_df, technical_indicators_df,
                    stock_financial_analysis_indicator_df, single_industry_df, concept_info_df):
     prompt_template = """当前股票主营业务介绍:
     {stock_zyjs_ths_df}
@@ -137,9 +154,6 @@ def process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hi
     当前股票历史的资金流动:
     {stock_individual_fund_flow_df}
     
-    当前股票即时的资金流动:
-    {specific_stock_data}
-    
     当前股票的财务指标数据:
     {stock_financial_analysis_indicator_df}
     
@@ -149,7 +163,6 @@ def process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hi
                                            stock_zh_a_hist_df=stock_zh_a_hist_df,
                                            stock_news_em_df=stock_news_em_df,
                                            stock_individual_fund_flow_df=stock_individual_fund_flow_df,
-                                           specific_stock_data=specific_stock_data,
                                            technical_indicators_df=technical_indicators_df,
                                            stock_financial_analysis_indicator_df=stock_financial_analysis_indicator_df,
                                            single_industry_df=single_industry_df,
@@ -161,7 +174,7 @@ def process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hi
 def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen, market, symbol, stock_name,
                    start_date,
                    end_date, concept):
-    instruction = "需要你发挥强大的A股分析专家能力。请详细分析市场趋势、行业前景，揭示潜在投资机会"
+    instruction = "你作为A股分析专家,请详细分析市场趋势、行业前景，揭示潜在投资机会,请确保提供充分的数据支持和专业见解。"
 
     # 主营业务介绍 TODO 根据主营业务网络搜索相关事件报道
     stock_zyjs_ths_df = ak.stock_zyjs_ths(symbol=symbol).to_string(index=False)
@@ -180,7 +193,7 @@ def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen, 
     single_industry_df = single_industry_df.to_string(index=False)
 
     # 获取概念板块的数据情况
-    concept_info_df = ak.stock_board_concept_info_ths(symbol=concept)
+    concept_info_df = get_concept_data.stock_board_concept_info_ths(symbol=concept, stock_board_ths_map_df=concept_name)
     concept_info_df = concept_info_df.to_string(index=False)
 
     # 个股历史数据查询
@@ -208,16 +221,15 @@ def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen, 
     recent_data = sorted_data.head(num_records)
     stock_individual_fund_flow_df = recent_data.to_string(index=False)
 
-    # 即时的个股资金流
-    stock_fund_flow_individual_df = ak.stock_fund_flow_individual(symbol="即时")
-    specific_stock_data = stock_fund_flow_individual_df[
-        stock_fund_flow_individual_df['股票简称'] == stock_name].to_string(
-        index=False)
-
     # 财务指标
     stock_financial_analysis_indicator_df = ak.stock_financial_analysis_indicator(symbol=symbol, start_year="2023")
     stock_financial_analysis_indicator_df = stock_financial_analysis_indicator_df.to_string(index=False)
 
+    # 即时的个股资金流
+    # stock_fund_flow_individual_df = ak.stock_fund_flow_individual(symbol="即时")
+    # specific_stock_data = stock_fund_flow_individual_df[
+    #     stock_fund_flow_individual_df['股票简称'] == stock_name].to_string(
+    #     index=False)
     # 个股公司股本变动
     # stock_share_change_cninfo_df = ak.stock_share_change_cninfo(symbol=symbol, start_date=str(list_date),
     #                                                             end_date=end_date).to_string(index=False)
@@ -230,12 +242,12 @@ def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen, 
     # 构建最终prompt
     finally_prompt = process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hist_df,
                                     stock_news_em_df,
-                                    stock_individual_fund_flow_df, specific_stock_data, technical_indicators_df
+                                    stock_individual_fund_flow_df, technical_indicators_df
                                     , stock_financial_analysis_indicator_df, single_industry_df, concept_info_df)
     # return finally_prompt
     user_message = (
         f"{finally_prompt}\n"
-        f"请基于以上信息，发挥你的A股分析专业知识，对未来3天该股票的价格走势做出深度预测。\n"
+        f"请基于以上收集到的实时的真实数据，发挥你的A股分析专业知识，对未来3天该股票的价格走势做出深度预测。\n"
         f"在预测中请全面考虑主营业务、基本数据、所在行业数据、所在概念板块数据、历史行情、最近新闻以及资金流动等多方面因素。\n"
         f"给出具体的涨跌百分比数据分析总结。\n\n"
         f"以下是具体问题，请详尽回答：\n\n"
@@ -250,7 +262,7 @@ def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen, 
         f"5. 在综合以上分析的基础上，向投资者推荐在未来3天内采取何种具体操作？"
         f"从不同的投资者角度明确给出买入、卖出、持有或补仓或减仓的建议，并说明理由，附上相应的止盈/止损策略。"
         f"记住给出的策略需要精确给我写出止盈位的价格，充分利用利润点，或者精确写出止损位的价格，规避亏损风险。\n\n"
-        f"期待你深刻的分析，将有力指导我的投资决策。"
+        f"你可以一步一步的去思考，期待你深刻的分析，将有力指导我的投资决策。"
     )
 
     print(user_message)
@@ -282,7 +294,8 @@ def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen, 
     )
 
     # 把两个线程对象保存在一个列表中
-    threads = [gpt_thread, qwen_thread]
+    # threads = [gpt_thread, qwen_thread]
+    threads = [qwen_thread]
 
     # 启动所有的线程
     for thread in threads:
@@ -303,12 +316,10 @@ def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen, 
 with gr.Row():
     with gr.Column():
         llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
-                       "gpt-4-vision-preview", "gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo"]
+                       "gpt-4", "gpt-3.5-turbo-16k"]
         llm_options_checkbox_group = gr.Dropdown(llm_options, label="GPT Model Select Options",
                                                  value=llm_options[0])
-        llm_options_qwen = ["qwen-72b-chat",
-                            "qwen-turbo", "qwen-plus",
-                            "qwen-max", ]
+        llm_options_qwen = ["qwen-72b-chat"]
         llm_options_checkbox_group_qwen = gr.Dropdown(llm_options_qwen, label="Qwen Model Select Options",
                                                       value=llm_options_qwen[0])
         # instruction = gr.Textbox(lines=1, placeholder="请输入模型instruction指令",

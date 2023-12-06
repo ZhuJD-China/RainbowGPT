@@ -16,31 +16,18 @@ def slow_echo(message, history, llm_options_checkbox_group):
     response = ""
     print("User: ", message)
     try:
-        if llm_options_checkbox_group == "qwen-72b-chat":
-            messages = [
-                {'role': 'user', 'content': message}]
-            response = dashscope.Generation.call(
-                model=str(llm_options_checkbox_group),
-                messages=messages,
-                result_format='message',  # set the result is message format.
-            )
-            response = response["output"]["choices"][0]["message"]["content"]
-            print(response)
-            for i in range(0, len(response), int(10)):
-                yield response[: i + int(10)]
-        else:
-            messages = [{'role': 'system', 'content': 'You are a helpful assistant.'},
-                        {'role': 'user', 'content': message}]
-            response = dashscope.Generation.call(
-                model=str(llm_options_checkbox_group),
-                messages=messages,
-                result_format='message',  # set the result to be "message" format..
-                # temperature=float(temperature_num)  # Add temperature parameter
-            )
-            response = response["output"]["choices"][0]["message"]["content"]
-            print(response)
-            for i in range(0, len(response), int(10)):
-                yield response[: i + int(10)]
+        messages = [{'role': 'system', 'content': 'You are a helpful assistant.'},
+                    {'role': 'user', 'content': message}]
+        response = dashscope.Generation.call(
+            model=str(llm_options_checkbox_group),
+            messages=messages,
+            result_format='message',  # set the result to be "message" format..
+            # temperature=float(temperature_num)  # Add temperature parameter
+        )
+        response = response["output"]["choices"][0]["message"]["content"]
+        print(response)
+        for i in range(0, len(response), int(10)):
+            yield response[: i + int(10)]
     except Exception as e:
         # 在这里处理可能发生的异常
         error_message = f"An error occurred: {e}"
