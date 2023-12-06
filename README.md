@@ -20,7 +20,7 @@
 </p>
 <p align="center">
 
-##✨ Getting Started
+## ✨ Getting Started
 ### Environment
 please make sure you have set up the environment and installed the required packages. Make sure you meet the above requirements, and then install the dependent libraries.
 ```bash
