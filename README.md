@@ -77,25 +77,30 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 
 📊 Explore the Stock Analysis module and unlock valuable insights for your investment decisions! 🚀 #StockAnalysis #RainbowGPT #AIInvesting
 
-👋 Retrieval Search
+# RainbowGPT Overview
+
+👋 **Retrieval Search**
 ![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png)
 
-⚡ Summarization
+⚡ **Summarization**
 ![Summarization](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png)
 
-🤖 Chatbots
+🤖 **Chatbots**
 ![Chatbots](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png)
 
-📚 SQL Agent
+📚 **SQL Agent**
 ![SQLAgent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png)
 
-🌐 Web Scraping
+🌐 **Web Scraping**
 ![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/WebScraping.png)
 
-🤗 Rainbow Agent UI
+🤗 **Rainbow Agent UI**
 ![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/exp.png)
 
-📊 StockGPT Analysis
+📊 **StockGPT Analysis**
 ![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock.png)
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ZhuJD-China/RainbowGPT&type=Timeline)](https://star-history.com/#ZhuJD-China/RainbowGPT&Timeline)
+
+🚀 Explore the diverse capabilities of RainbowGPT and leverage its powerful modules for your projects! 🌈✨
+
