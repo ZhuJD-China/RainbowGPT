@@ -73,7 +73,7 @@ EnsembleRetriever is a powerful retrieval mechanism that combines the strengths 
 By leveraging the diverse strengths of different algorithms, EnsembleRetriever achieves superior performance compared to individual retrievers.
 
 ## Common Usage Pattern
-🔄 The most effective use of the Stock Analysis module involves combining a sparse retriever (e.g., BM25) with a dense retriever (e.g., embedding similarity). This "hybrid search" optimally utilizes the complementary strengths of both retrievers for comprehensive stock analysis.
+🔄 The most effective use of the Knowledge Base QA Search involves combining a sparse retriever (e.g., BM25) with a dense retriever (e.g., embedding similarity). This "hybrid search" optimally utilizes the complementary strengths of both retrievers for comprehensive Knowledge.
 
 📊 Explore the Stock Analysis module and unlock valuable insights for your investment decisions! 🚀 #StockAnalysis #RainbowGPT #AIInvesting
 
