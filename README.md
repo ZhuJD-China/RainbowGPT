@@ -7,7 +7,7 @@
   </p>
 </div>
 
-## 🚀RainbowAgent Integration
+## 🌈✨RainbowAgent Integration
 📈RainbowGPT now includes a powerful Stock Analysis module, integrating various technologies to provide comprehensive insights into the stock market. 
 
 ⚡The RainbowGPT combines AI Agent proxy, GPT-4, GPT3.5, ChatGlm3, Qwen LLM, ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
@@ -20,7 +20,7 @@
 </p>
 <p align="center">
 
-## Getting Started
+##✨ Getting Started
 ### Environment
 please make sure you have set up the environment and installed the required packages. Make sure you meet the above requirements, and then install the dependent libraries.
 ```bash
