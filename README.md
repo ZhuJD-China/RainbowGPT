@@ -26,7 +26,7 @@ please make sure you have set up the environment and installed the required pack
 ```bash
 pip install -r requirements.txt
 ```
-"If you want to run Rainbow_Agent_V2.1.py, you should move 3rd_modify/langchain_vectorstores_chroma.py to your Langchain module."
+ **Markdown Tip:** When running `Rainbow_Agent_V2.1.py`, don't forget to relocate `3rd_modify/langchain_vectorstores_chroma.py` to your Langchain module! 🌈✨
 
 ### 🌐 Free Use of GPT API
 We are committed to expanding capacity based on usage and providing the API for free as long as we are not officially sanctioned. If you find this project helpful, please consider giving us a ⭐.
