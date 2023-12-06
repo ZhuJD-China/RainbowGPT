@@ -294,8 +294,8 @@ def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen, 
     )
 
     # 把两个线程对象保存在一个列表中
-    # threads = [gpt_thread, qwen_thread]
-    threads = [qwen_thread]
+    threads = [gpt_thread, qwen_thread]
+    # threads = [qwen_thread]
 
     # 启动所有的线程
     for thread in threads:
