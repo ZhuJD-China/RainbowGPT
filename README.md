@@ -8,8 +8,9 @@
 </div>
 
 ## 🚀RainbowAgent Integration
+📈RainbowGPT now includes a powerful Stock Analysis module, integrating various technologies to provide comprehensive insights into the stock market. 
 
-RainbowAgent seamlessly integrates various technologies, including an AI Agent proxy, GPT-4 , GPT3.5 , ChatGlm3, Qwen LLM , ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
+⚡The RainbowGPT combines AI Agent proxy, GPT-4, GPT3.5, ChatGlm3, Qwen LLM, ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
 
 <p align="center">
 ✨ <a href="https://github.com/openai/openai-cookbook" >Navigate at [cookbook.openai.com]</a> •  <br>
@@ -19,7 +20,8 @@ RainbowAgent seamlessly integrates various technologies, including an AI Agent p
 </p>
 <p align="center">
 
-## Free Use of GPT API
+## Getting Started
+### Free Use of GPT API
 We will regularly expand capacity based on usage, and we will continue to provide the API for free as long as we are not officially sanctioned. If this project is helpful to you, please consider giving us a ***Star***.
 
 This API Key is used for forwarding API requests. You need to change the Host to `api.chatanywhere.com.cn` (preferred for domestic usage) or `api.chatanywhere.cn` (for international usage, domestic users need a global proxy).
