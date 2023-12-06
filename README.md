@@ -27,16 +27,17 @@ please make sure you have set up the environment and installed the required pack
 pip install -r requirements.txt
 ```
 "If you want to run Rainbow_Agent_V2.1.py, you should move 3rd_modify/langchain_vectorstores_chroma.py to your Langchain module."
-### Free Use of GPT API
-We will regularly expand capacity based on usage, and we will continue to provide the API for free as long as we are not officially sanctioned. If this project is helpful to you, please consider giving us a ***Star***.
 
-This API Key is used for forwarding API requests. You need to change the Host to `api.chatanywhere.com.cn` (preferred for domestic usage) or `api.chatanywhere.cn` (for international usage, domestic users need a global proxy).
+### 🌐 Free Use of GPT API
+We are committed to expanding capacity based on usage and providing the API for free as long as we are not officially sanctioned. If you find this project helpful, please consider giving us a ⭐.
+
+This API Key is used for forwarding API requests. Change the Host to `api.chatanywhere.com.cn` (preferred for domestic usage) or `api.chatanywhere.cn` (for international usage, domestic users need a global proxy).
 
 - 🚀 [Apply for a Free API Key in Beta](https://api.chatanywhere.org/v1/oauth/free/github/render)
 - Forwarding Host1: `https://api.chatanywhere.com.cn` (Domestic relay, lower latency, recommended)
 - Forwarding Host2: `https://api.chatanywhere.cn` (For international usage, domestic users need a global proxy)
 - Check your balance and usage records (announcements are also posted here): [Balance Inquiry and Announcements](https://api.chatanywhere.org/)
-- The forwarding API cannot directly make requests to the official api.openai.com endpoint. You need to change the request address to `api.chatanywhere.com.cn` to use it. Most plugins and software can be modified accordingly.
+- The forwarding API cannot directly make requests to the official api.openai.com endpoint. Change the request address to `api.chatanywhere.com.cn` to use it. Most plugins and software can be modified accordingly.
 
 **Method 1**
 ```python
@@ -45,7 +46,7 @@ openai.api_base = "https://api.chatanywhere.com.cn/v1"
 # openai.api_base = "https://api.chatanywhere.cn/v1"
 ```
 **Method 2 (Use if Method 1 doesn't work)**
-Modify the environment variable OPENAI_API_BASE. Search for how to change environment variables on your specific system. If changes to the environment variable don't take effect, restart your system.
+Modify the environment variable `OPENAI_API_BASE`. Search for how to change environment variables on your specific system. If changes to the environment variable don't take effect, restart your system.
 ```bash
 OPENAI_API_BASE=https://api.chatanywhere.com.cn/v1
 or OPENAI_API_BASE=https://api.chatanywhere.cn/v1
@@ -57,28 +58,24 @@ API_URL_REDIRECT = {"https://api.openai.com/v1/chat/completions": "https://api.c
 # API_URL_REDIRECT = {"https://api.openai.com/v1/chat/completions": "https://api.chatanywhere.cn/v1/chat/completions"}
 ```
 
-The free API Key has a limit of 60 requests per hour per IP address and Key. In other words, if you use multiple keys under the same IP, the total hourly request limit for all keys cannot exceed 60. Similarly, if you use a single key across multiple IPs, the hourly request limit for that key cannot exceed 60.
+The free API Key has a limit of 60 requests per hour per IP address and Key. If you use multiple keys under the same IP, the total hourly request limit for all keys cannot exceed 60. Similarly, if you use a single key across multiple IPs, the hourly request limit for that key cannot exceed 60.
 
+## 🧠 Knowledge Base QA Search Algorithm
+The knowledge base QA search algorithm optimizes document retrieval through context compression. Leveraging the query context, it strategically reduces document content using a document compressor, enhancing retrieval efficiency by returning only information relevant to the query. The ensemble of retrievers combines diverse results, creating a synergy that elevates overall performance.
 
-## Knowledge Base QA Search Algorithm
-
-The knowledge base QA search algorithm optimizes document retrieval through context compression. Leveraging the query context, it strategically reduces document content using a document compressor. This enhances retrieval efficiency by returning only information relevant to the query. The ensemble of retrievers combines diverse results, creating a synergy that elevates overall performance.
-
-## BM25 Retrievers
-
+## 🎯 BM25 Retrievers
 - **BM25-based Retriever:** Specialized in efficiently locating relevant documents based on keywords, making it particularly effective for sparse retrieval.
-
 - **Embedding Similarity Retriever:** Utilizes embedding vectors for document and query embedding, excelling in identifying relevant documents through semantic similarity. This retriever is well-suited for dense retrieval scenarios.
 
-# EnsembleRetriever
-
+## 🚀 EnsembleRetriever
 EnsembleRetriever is a powerful retrieval mechanism that combines the strengths of various retrievers. It takes a list of retrievers as input, integrates their results using the `get_relevant_documents()` methods, and reranks the outcomes using the Reciprocal Rank Fusion algorithm.
 
 By leveraging the diverse strengths of different algorithms, EnsembleRetriever achieves superior performance compared to individual retrievers.
 
-## Common Usage Pattern
+## Common Usage Pattern for Stock Analysis
+🔄 The most effective use of the Stock Analysis module involves combining a sparse retriever (e.g., BM25) with a dense retriever (e.g., embedding similarity). This "hybrid search" optimally utilizes the complementary strengths of both retrievers for comprehensive stock analysis.
 
-The most effective use of EnsembleRetriever involves combining a sparse retriever, such as BM25, with a dense retriever, like embedding similarity. This approach, known as "hybrid search," optimally utilizes the complementary strengths of both retrievers. The sparse retriever excels in finding relevant documents based on keywords, while the dense retriever is proficient in identifying relevant documents through semantic similarity.
+📊 Explore the Stock Analysis module and unlock valuable insights for your investment decisions! 🚀 #StockAnalysis #RainbowGPT #AIInvesting
 
 👋 Retrieval Search
 ![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png)
