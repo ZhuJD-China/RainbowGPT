@@ -319,7 +319,7 @@ with gr.Row():
         start_date = gr.Textbox(lines=1, placeholder="请输入K线历史数据查询起始日期（YYYYMMDD，示例：20230805）: ",
                                 value="20230805")
         end_date = gr.Textbox(lines=1, placeholder="请输入K线历史数据结束日期（YYYYMMDD，示例：20231206）: ",
-                              value="20231205")
+                              value="20231206")
         concept = gr.Textbox(lines=1, placeholder="请输入当前股票所属概念板块名称(示例：光热发电): ", value="光热发电")
     with gr.Column():
         gpt_response = gr.Textbox(label="GPT Response")
@@ -341,4 +341,4 @@ iface = gr.Interface(
 )
 
 # Launch Gradio interface for the main application
-iface.launch()
+iface.queue().launch(share=True)
