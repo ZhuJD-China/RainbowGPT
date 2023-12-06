@@ -21,6 +21,12 @@
 <p align="center">
 
 ## Getting Started
+### Environment
+please make sure you have set up the environment and installed the required packages. Make sure you meet the above requirements, and then install the dependent libraries.
+```bash
+pip install -r requirements.txt
+```
+"If you want to run Rainbow_Agent_V2.1.py, you should move 3rd_modify/langchain_vectorstores_chroma.py to your Langchain module."
 ### Free Use of GPT API
 We will regularly expand capacity based on usage, and we will continue to provide the API for free as long as we are not officially sanctioned. If this project is helpful to you, please consider giving us a ***Star***.
 
