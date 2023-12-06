@@ -72,7 +72,7 @@ EnsembleRetriever is a powerful retrieval mechanism that combines the strengths 
 
 By leveraging the diverse strengths of different algorithms, EnsembleRetriever achieves superior performance compared to individual retrievers.
 
-## Common Usage Pattern for Stock Analysis
+## Common Usage Pattern
 🔄 The most effective use of the Stock Analysis module involves combining a sparse retriever (e.g., BM25) with a dense retriever (e.g., embedding similarity). This "hybrid search" optimally utilizes the complementary strengths of both retrievers for comprehensive stock analysis.
 
 📊 Explore the Stock Analysis module and unlock valuable insights for your investment decisions! 🚀 #StockAnalysis #RainbowGPT #AIInvesting
@@ -92,8 +92,10 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 🌐 Web Scraping
 ![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/WebScraping.png)
 
-🤗 新增UI界面
+🤗 Rainbow Agent UI
 ![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/exp.png)
 
+📊 StockGPT Analysis
+![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock.png)
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ZhuJD-China/RainbowGPT&type=Timeline)](https://star-history.com/#ZhuJD-China/RainbowGPT&Timeline)
