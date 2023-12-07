@@ -1,31 +1,33 @@
-import datetime
-import time
 import chromadb
 import openai
+from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
+import tiktoken
+import get_google_result
+import datetime
+import time
 import os
 from dotenv import load_dotenv
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from langchain.agents import initialize_agent, AgentType, load_tools
-from langchain.document_transformers import EmbeddingsRedundantFilter
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
-from langchain.utilities.google_search import GoogleSearchAPIWrapper
+import gradio as gr
+from gradio_theme import Seafoam
 from loguru import logger
+# 导入 langchain 模块的相关内容
+from langchain.agents import initialize_agent, AgentType, load_tools
 from langchain.callbacks import FileCallbackHandler
-from langchain.chat_models import ChatOpenAI
+from langchain.chains import LLMChain
 from langchain.document_loaders import DirectoryLoader
+from langchain.document_transformers import EmbeddingsRedundantFilter
 from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
-from langchain.memory import ConversationBufferMemory
-from langchain.prompts import MessagesPlaceholder
+from langchain.prompts import PromptTemplate, MessagesPlaceholder
+from langchain.retrievers import (
+    ContextualCompressionRetriever,
+    BM25Retriever,
+    EnsembleRetriever
+)
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.tools import Tool
 from langchain.vectorstores import Chroma
-import gradio as gr
-from gradio_theme import Seafoam
-from langchain.retrievers import BM25Retriever, EnsembleRetriever
-import tiktoken
-import get_google_result
+from langchain.chat_models import ChatOpenAI
+from langchain.memory import ConversationBufferMemory
 from zh_en_langid import filter_chinese_english_punctuation
 
 load_dotenv()
@@ -53,22 +55,18 @@ collection_name_select_global = None
 
 # http proxy
 proxy_url_global = None
-
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm = None
 llm_name_global = None
 embeddings = None
 Embedding_Model_select_global = 0
 temperature_num_global = 0
-
 # 文档切分的长度
 input_chunk_size_global = None
 # 本地知识库嵌入token max
 local_data_embedding_token_max_global = None
-
 # 在文件顶部定义docsearch_db
 docsearch_db = None
-
 human_input_global = None
 
 # 公共前部分
