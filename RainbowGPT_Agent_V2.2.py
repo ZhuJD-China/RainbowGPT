@@ -42,7 +42,7 @@ print(openai.api_key)
 
 seafoam = Seafoam()
 
-logfile = "Rainbow_Agent_V2.2.log"
+logfile = "RainbowGPT_Agent_V2.2.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
