@@ -21,13 +21,11 @@ from langchain.prompts import MessagesPlaceholder
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.tools import Tool
 from langchain.vectorstores import Chroma
-from transformers import GPT2Tokenizer
 import gradio as gr
-from typing import Iterable
-from gradio.themes.base import Base
-from gradio.themes.utils import colors, fonts, sizes
+from gradio_theme import Seafoam
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 import tiktoken
+import get_google_result
 
 load_dotenv()
 
@@ -42,60 +40,18 @@ openai.api_key = OPENAI_API_KEY
 # 打印 API 密钥
 print(openai.api_key)
 
-
-def num_tokens_from_string(string: str, encoding_name: str) -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
-    num_tokens = len(encoding.encode(string))
-    return num_tokens
-
-
-class Seafoam(Base):
-    def __init__(
-            self,
-            *,
-            primary_hue: colors.Color | str = colors.emerald,
-            secondary_hue: colors.Color | str = colors.blue,
-            neutral_hue: colors.Color | str = colors.gray,
-            spacing_size: sizes.Size | str = sizes.spacing_md,
-            radius_size: sizes.Size | str = sizes.radius_md,
-            text_size: sizes.Size | str = sizes.text_lg,
-            font: fonts.Font
-                  | str
-                  | Iterable[fonts.Font | str] = (
-                    fonts.GoogleFont("Quicksand"),
-                    "ui-sans-serif",
-                    "sans-serif",
-            ),
-            font_mono: fonts.Font
-                       | str
-                       | Iterable[fonts.Font | str] = (
-                    fonts.GoogleFont("IBM Plex Mono"),
-                    "ui-monospace",
-                    "monospace",
-            ),
-    ):
-        super().__init__(
-            primary_hue=primary_hue,
-            secondary_hue=secondary_hue,
-            neutral_hue=neutral_hue,
-            spacing_size=spacing_size,
-            radius_size=radius_size,
-            text_size=text_size,
-            font=font,
-            font_mono=font_mono,
-        )
-
-
 seafoam = Seafoam()
 
-logfile = "Rainbow_Agent_Search_V2.1_gradio_ui.log"
+logfile = "Rainbow_Agent_V2.2.log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
 persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
 collection_name_select_global = None
+
+# http proxy
+proxy_url_global = None
 
 # 创建 ChatOpenAI 实例作为底层语言模型
 llm = None
@@ -114,22 +70,29 @@ docsearch_db = None
 
 human_input_global = None
 
-# Local_Search Prompt模版
-local_search_template = """
-你作为一个强大的AI问答和知识库内容总结分析的专家。
-可以通过以下双引号内的知识库内容进行分析问答:
+# Search Prompt模版
+search_template = """
+你是一位卓越的AI问答和知识库内容分析专家，为了更好地发挥你的专业性，请在进行分析问答时着重关注以下知识库内容：
 
-“ {combined_text} ”
+“{combined_text}”
 
-如果无法回答问题则回复说无法找到答案，并且回复所搜索到的知识库分析总结。
-如果可以回答问题则根据知识库和问题进行一定的思考后，回复给出针对问题最精确的回答。
+在回答问题时，如果你无法给出明确答案，请回复表明无法找到答案，并附上所搜索到的知识库分析总结。
+如果你能回答问题，希望你能展现深入的思考和对知识库内容的精准理解，以提供最为专业和有价值的回答。
 
-我的问题是: {human_input}
+我现在要问的问题是：{human_input}
 
+请确保回答内容既详细又清晰，充分利用你的专业知识为问题提供全面而准确的解答。
 """
 
 # 全局工具列表创建
 tools = []
+
+
+def num_tokens_from_string(string: str, encoding_name: str) -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
 
 
 def ask_local_vector_db(question):
@@ -156,7 +119,7 @@ def ask_local_vector_db(question):
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input"],
-        template=local_search_template,
+        template=search_template,
     )
     # 本地知识库工具
     local_chain = LLMChain(
@@ -265,21 +228,112 @@ Local_Search_tool = Tool(
         """
 )
 
-Google_Search = GoogleSearchAPIWrapper()
+
+def truncate_string_to_max_tokens(input_string, max_tokens, tokenizer_name, step_size=5):
+    """
+    Truncate the input string to a maximum number of tokens with caching and a step size.
+
+    Parameters:
+    - input_string: The input string to truncate.
+    - max_tokens: The maximum number of tokens allowed.
+    - tokenizer_name: The name of the tokenizer.
+    - step_size: The step size for increasing truncation length.
+
+    Returns:
+    - Truncated string.
+    """
+
+    # 从步长开始，逐渐增加截断长度，确保不超过最大令牌数
+    for truncation_length in range(1, len(input_string) + 1, step_size):
+        truncated_string = input_string[:truncation_length]
+
+        # 计算当前截断字符串的令牌数量（使用带缓存的计算函数）
+        current_tokens = num_tokens_from_string(truncated_string, tokenizer_name)
+
+        # 如果当前令牌数超过最大令牌数，返回上一个截断字符串
+        if current_tokens > max_tokens:
+            return input_string[:truncation_length - step_size]
+
+    # 如果整个字符串都符合要求，返回原始字符串
+    return input_string
+
+
+def Google_Search_run(question):
+    global llm
+    global embeddings
+    global Embedding_Model_select_global
+    global temperature_num_global
+    global llm_name_global
+    global human_input_global
+    global tools
+    global proxy_url_global
+    global local_data_embedding_token_max_global
+
+    get_google_result.set_global_proxy(proxy_url_global)
+
+    llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
+
+    local_search_prompt = PromptTemplate(
+        input_variables=["combined_text", "human_input"],
+        template=search_template,
+    )
+    # 本地知识库工具
+    local_chain = LLMChain(
+        llm=llm, prompt=local_search_prompt,
+        verbose=True,
+        return_final_only=True,  # 指示是否仅返回最终解析的结果
+    )
+
+    google_answer_box = (get_google_result.selenium_google_answer_box
+                         (question, "Stock_Agent/chromedriver-120.0.6099.56.0.exe"))
+
+    # Google_Search = GoogleSearchAPIWrapper()
+    # GoogleSearchAPI_data = Google_Search.run(question)
+    custom_search_link, data_title_Summary = get_google_result.google_custom_search(question)
+
+    # 使用 join 方法将字符串列表连接成一个字符串
+    data_title_Summary_str = ''.join(data_title_Summary)
+
+    link_datial_res = []
+    for link in custom_search_link[:1]:
+        website_content = get_google_result.get_website_content(link)
+        if website_content:
+            link_datial_res.append(website_content)
+    # Concatenate the strings in the list into a single string
+    link_datial_string = '\n'.join(link_datial_res)
+
+    finally_combined_text = f"""以下是答案框数据，是一项在Google搜索结果顶部显示搜索关键字答案的功能
+    答案框类型包括特色片段、知识卡和实时结果,同时也可能是不相干的数据，请你仔细分析与我的问题也没有关系再利用这个数据回答：
+    
+    {google_answer_box}
+    
+    搜索结果相似度TOP10的网站的标题和摘要数据：
+    {data_title_Summary_str}
+    
+    搜索结果相似度TOP1的网站的详细内容数据:
+    {link_datial_string}
+    """
+
+    truncated_text = truncate_string_to_max_tokens(finally_combined_text,
+                                                   local_data_embedding_token_max_global,
+                                                   "cl100k_base",
+                                                   step_size=256)
+
+    answer = local_chain.predict(combined_text=truncated_text, human_input=human_input_global)
+
+    return answer
+
+
 Google_Search_tool = Tool(
     name="Google_Search",
-    func=Google_Search.run,
+    func=Google_Search_run,
     description="""
-        若本地知识库没有答案，或者问题中需要网络搜索的时候都可以使用这个互联网搜索工具进行信息查询。
-        1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索，同时增加一些搜索技巧包括(使用引号进行短语搜索，利用OR运算符扩展搜索范围，通过站点搜索限定特定网站，范围搜索和星号通配符提高搜索精度，时间范围调整搜索结果，搜索图像和视频，在Google Scholar查找学术论文)
-        2.将搜索到的按照我提出的问题的相关性和时间进行综合排序。
-        3.你必须严格参照搜索到的资料和你自己的认识结合进行回答！
-        4.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考，并且尝试多次搜索你需要的知识。
-        """
+    若本地知识库没有答案，或者问题中需要网络搜索可用这个互联网搜索工具进行搜索问答。
+    1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索，同时增加一些搜索提示词包括(使用引号，时间范围，Google Scholar查找学术论文等关键字和符号)
+    2.将搜索到的按照我提出的问题的相关性和时间进行综合排序。
+    3.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考
+    """
 )
-
-llm_math_tool = load_tools(["arxiv"], llm=llm)
-tools.append(llm_math_tool[0])
 
 
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
@@ -299,13 +353,14 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global local_data_embedding_token_max_global
     global human_input_global
     global collection_name_select_global
+    global proxy_url_global
 
     collection_name_select_global = str(collection_name_select)
 
     # 设置代理（替换为你的代理地址和端口）
-    proxy_url = str(Google_proxy)
-    os.environ['http_proxy'] = proxy_url
-    os.environ['https_proxy'] = proxy_url
+    proxy_url_global = str(Google_proxy)
+    os.environ['http_proxy'] = proxy_url_global
+    os.environ['https_proxy'] = proxy_url_global
 
     human_input_global = message
 
@@ -324,8 +379,8 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         Embedding_Model_select_global = 1
 
     tools = []  # 重置工具列表
-    tools_temp = load_tools(["llm-math"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
-    tools.append(tools_temp[0])
+    llm_math_tool = load_tools(["arxiv"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
+    tools.append(llm_math_tool[0])
 
     flag_get_Local_Search_tool = False
     for tg in tool_checkbox_group:

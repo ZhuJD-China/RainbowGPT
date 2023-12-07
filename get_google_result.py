@@ -1,0 +1,179 @@
+import pandas as pd
+from googleapiclient.discovery import build
+import json
+import urllib.parse
+import urllib.request
+import requests
+from bs4 import BeautifulSoup
+
+from langchain.utilities.google_search import GoogleSearchAPIWrapper
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from dotenv import load_dotenv
+import os
+import requests
+
+load_dotenv()
+
+## Load Google API key and custom search engine ID from environment variables
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID')
+
+
+def set_global_proxy(proxy_url):
+    os.environ['http_proxy'] = proxy_url
+    os.environ['https_proxy'] = proxy_url
+
+
+def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=GOOGLE_CSE_ID):
+    """
+    Perform a Google Custom Search.
+
+    Parameters:
+    - query (str): The search query.
+    - api_key (str): Google API key.
+    - custom_search_engine_id (str): Google custom search engine ID.
+
+    Returns:
+    - dict: Results of the Google Custom Search API.
+    """
+    print("google_custom_search......")
+    print("http_proxy:", os.environ['http_proxy'])
+    service = build("customsearch", "v1", developerKey=api_key)
+    results = service.cse().list(q=query, cx=custom_search_engine_id).execute()
+    # 提取标题、链接和摘要信息
+    link_data = []
+    data_without_link = []
+    search_results = results.get('items', [])
+    for result in search_results:
+        title = result.get('title', '')
+        link = result.get('link', '')
+        snippet = result.get('snippet', '')
+
+        link_data.append(link)
+        merged_content = title + ' ' + snippet
+        data_without_link.append(merged_content)
+    # 创建DataFrame
+    return link_data, data_without_link
+
+
+def knowledge_graph_search(query, api_key):
+    """
+    Perform a Knowledge Graph Search.
+
+    Parameters:
+    - query (str): The search query.
+    - api_key (str): Google API key.
+
+    Returns:
+    - list: Results of the Knowledge Graph Search API.
+    """
+    service_url = 'https://kgsearch.googleapis.com/v1/entities:search'
+    params = {
+        'query': query,
+        'limit': 10,
+        'indent': True,
+        'key': api_key,
+    }
+    url = service_url + '?' + urllib.parse.urlencode(params)
+    response = json.loads(urllib.request.urlopen(url).read())
+    results = [(element['result']['name'], element['resultScore']) for element in response['itemListElement']]
+    return results
+
+
+def selenium_google_answer_box(query, chrome_driver_path):
+    """
+    Use Selenium to extract information from the Google answer box.
+
+    Parameters:
+    - query (str): The search query.
+    - chrome_driver_path (str): Path to the ChromeDriver executable.
+
+    Returns:
+    - list: Extracted information from the Google answer box.
+    """
+    print("selenium_google_answer_box......")
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--headless')
+    options.add_argument('--disable-images')
+    options.add_argument('--disable-plugins')
+    options.add_argument('--disable-gpu')
+    options.page_load_strategy = 'eager'
+
+    service = Service(chrome_driver_path)
+    driver = webdriver.Chrome(service=service, options=options)
+
+    def ask_google_internal(query):
+        query = query.replace(' ', '+')
+        driver.get('http://www.google.com/search?q=' + query)
+        count = 0
+        answers = []
+        for y in range(200, 300, 40):
+            answer = driver.execute_script(
+                "return document.elementFromPoint(arguments[0], arguments[1]);",
+                350, y).text
+            if answer:
+                answers.append(answer)
+                count += 1
+            if count == 3:
+                break
+        return answers
+
+    results = ask_google_internal(query)
+    driver.quit()
+    return results
+
+
+def get_website_content(url):
+    """
+    Get the main content of a website.
+
+    Parameters:
+    - url (str): The URL of the website.
+
+    Returns:
+    - str: The main content of the website, or None if the request fails.
+    """
+    print("get_website_content.....")
+    response = requests.get(url)
+    if response.status_code == 200:
+        html_content = response.text
+        soup = BeautifulSoup(html_content, 'html.parser')
+        # Extract text content from HTML
+        text_content = soup.get_text(separator=' ')
+        cleaned_context = text_content.replace('\n', ' ').strip()
+
+        return cleaned_context
+    else:
+        print(f"Failed to retrieve content. Status code: {response.status_code}")
+        return None
+
+
+# set_global_proxy("http://localhost:7890")
+"""
+google_search_results = google_custom_search("2023年12月7日新闻", GOOGLE_API_KEY, GOOGLE_CSE_ID)
+print(google_search_results.to_string(index_names=False))
+
+Google_Search = GoogleSearchAPIWrapper()
+data = Google_Search.run("2023年12月7日新闻")
+print(data)
+
+kg_search_results = knowledge_graph_search('Taylor Swift', GOOGLE_API_KEY)
+print("Knowledge Graph Search Results:", kg_search_results)
+
+selenium_results = selenium_google_answer_box("以太坊的价格",
+                                              "Stock_Agent/chromedriver-120.0.6099.56.0.exe")
+print("Selenium Google Search Results:", selenium_results)
+
+for link in google_search_results['Link']:
+    website_content = get_website_content(link)
+    if website_content:
+        print("Website Content:")
+        print(website_content)
+
+"""
