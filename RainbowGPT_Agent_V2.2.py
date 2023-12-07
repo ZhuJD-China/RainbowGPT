@@ -344,9 +344,9 @@ Google_Search_tool = Tool(
     name="Google_Search",
     func=Google_Search_run,
     description="""
-    若本地知识库没有答案，或者问题中需要网络搜索可用这个互联网搜索工具进行搜索问答。
+    如果本地知识库中无答案或问题需要网络搜索可用这个互联网搜索工具进行搜索问答。
     1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索,可以选择英语或者中文搜索
-    2.同时增加一些搜索提示词包括(使用引号，时间范围，Google Scholar查找学术论文等关键字和符号)
+    2.同时增加一些搜索提示词包括(使用引号，时间范围，关键字和符号)
     3.如果问题比较复杂，你可以一步一步的思考去搜索和回答
     """
 )
@@ -521,10 +521,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
                     yield response[: i + int(print_speed_step)]
                 docsearch_db = Chroma(client=client, embedding_function=embeddings,
                                       collection_name=collection_name_select)
-
-                # # 获取变量的内存地址并打印
-                # address = id(docsearch_db)
-                # print("Read docsearch_db变量的内存地址:", hex(address))
 
             else:
                 response = "没有选中任何知识库，请至少选择一个知识库，回答中止！"
