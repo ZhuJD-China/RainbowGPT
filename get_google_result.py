@@ -122,7 +122,11 @@ def selenium_google_answer_box(query, chrome_driver_path):
                 count += 1
             if count == 3:
                 break
-        return answers
+        # 将列表中的文本连接成一个字符串，使用换行符分隔
+        result = '\n'.join(answers)
+        # 仅保留前100个字符，如果结果长度小于100，则返回整个结果
+        result = result[:150] if len(result) > 150 else result
+        return result
 
     results = ask_google_internal(query)
     driver.quit()

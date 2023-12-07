@@ -26,6 +26,7 @@ from gradio_theme import Seafoam
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 import tiktoken
 import get_google_result
+from zh_en_langid import filter_chinese_english_punctuation
 
 load_dotenv()
 
@@ -70,19 +71,32 @@ docsearch_db = None
 
 human_input_global = None
 
-# Search Prompt模版
-search_template = """
-你是一位卓越的AI问答和知识库内容分析专家，为了更好地发挥你的专业性，请在进行分析问答时着重关注以下知识库内容：
+# 公共前部分
+common_text_before = """
+你是一位卓越的AI问答和知识库内容分析专家，为了更好地发挥你的专业性。
+请在进行分析问答时着重关注以下知识库内容：
+"""
 
-“{combined_text}”
-
-在回答问题时，如果你无法给出明确答案，请回复表明无法找到答案，并附上所搜索到的知识库分析总结。
-如果你能回答问题，希望你能展现深入的思考和对知识库内容的精准理解，以提供最为专业和有价值的回答。
-
+# 公共后部分
+common_text_after = """
 我现在要问的问题是：{human_input}
 
+希望你能展现深入的思考和对知识库内容的精准理解，以提供最为专业和有价值的回答。
 请确保回答内容既详细又清晰，充分利用你的专业知识为问题提供全面而准确的解答。
 """
+
+# local Search Prompt模版
+local_search_template = common_text_before + """
+以下双引号内是所搜索到的知识库数据：
+“{combined_text}”
+""" + common_text_after
+
+# google Search Prompt模版
+google_search_template = common_text_before + """
+答案框数据类型包括特色片段、知识卡和实时结果，请你仔细分析答案框内容与我的问题后再决定是否利用这个数据回答。
+以下双引号内是所搜索到的知识库数据：
+“{combined_text}”
+""" + common_text_after
 
 # 全局工具列表创建
 tools = []
@@ -119,7 +133,7 @@ def ask_local_vector_db(question):
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input"],
-        template=search_template,
+        template=local_search_template,
     )
     # 本地知识库工具
     local_chain = LLMChain(
@@ -275,7 +289,7 @@ def Google_Search_run(question):
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input"],
-        template=search_template,
+        template=google_search_template,
     )
     # 本地知识库工具
     local_chain = LLMChain(
@@ -286,6 +300,9 @@ def Google_Search_run(question):
 
     google_answer_box = (get_google_result.selenium_google_answer_box
                          (question, "Stock_Agent/chromedriver-120.0.6099.56.0.exe"))
+
+    # 使用正则表达式保留中文、英文和标点符号
+    google_answer_box = filter_chinese_english_punctuation(google_answer_box)
 
     # Google_Search = GoogleSearchAPIWrapper()
     # GoogleSearchAPI_data = Google_Search.run(question)
@@ -302,9 +319,10 @@ def Google_Search_run(question):
     # Concatenate the strings in the list into a single string
     link_datial_string = '\n'.join(link_datial_res)
 
-    finally_combined_text = f"""以下是答案框数据，是一项在Google搜索结果顶部显示搜索关键字答案的功能
-    答案框类型包括特色片段、知识卡和实时结果,同时也可能是不相干的数据，请你仔细分析与我的问题也没有关系再利用这个数据回答：
-    
+    # 使用正则表达式保留中文、英文和标点符号
+    link_datial_string = filter_chinese_english_punctuation(link_datial_string)
+
+    finally_combined_text = f"""当前关键字搜索的答案框数据：
     {google_answer_box}
     
     搜索结果相似度TOP10的网站的标题和摘要数据：
@@ -329,9 +347,9 @@ Google_Search_tool = Tool(
     func=Google_Search_run,
     description="""
     若本地知识库没有答案，或者问题中需要网络搜索可用这个互联网搜索工具进行搜索问答。
-    1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索，同时增加一些搜索提示词包括(使用引号，时间范围，Google Scholar查找学术论文等关键字和符号)
-    2.将搜索到的按照我提出的问题的相关性和时间进行综合排序。
-    3.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考
+    1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索,可以选择英语或者中文搜索
+    2.同时增加一些搜索提示词包括(使用引号，时间范围，Google Scholar查找学术论文等关键字和符号)
+    3.如果问题比较复杂，你可以一步一步的思考去搜索和回答
     """
 )
 
@@ -596,8 +614,8 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
 
         with gr.Column():
             input_chunk_size = gr.Textbox(value="512", label="Input Chunk Size")
-            local_data_embedding_token_max = gr.Slider(2048, 12288, step=1,
-                                                       label="Local Data Max Tokens", value=5120)
+            local_data_embedding_token_max = gr.Slider(1024, 12288, step=2,
+                                                       label="Embeddings Data Max Tokens", value=3072)
 
             # 创建一个包含Select existed Collection的Dropdown组件
             collection_name_select = gr.Dropdown(["..."], label="Select existed Collection",
