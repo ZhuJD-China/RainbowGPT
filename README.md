@@ -31,6 +31,7 @@ Certainly! It looks like you are providing instructions for setting up an enviro
    pip install -r requirements.txt
    ```
    **Note:** If you encounter any issues, ensure that you have the correct dependencies installed.
+   
   ⚠️ Before running `RainbowGPT_Agent_V2.2.py`, ensure to relocate the `3rd_modify/langchain_vectorstores_chroma.py` file to your Langchain module. This step is crucial for proper execution. 🌈✨
 
 ### API Configuration
