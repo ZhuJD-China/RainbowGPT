@@ -57,7 +57,7 @@ Before using the application, follow these steps to configure API-related inform
    - To start a Qwen server with OpenAI-like capabilities, use the following commands:
      ```python
      pip install fastapi uvicorn openai pydantic sse_starlette
-     python get_local_openai_api.py
+     python Rainbow_utils/get_local_openai_api.py
      ```
      After starting the server, configure the `api_base` and `api_key` in your client. Ensure that the configuration follows the specified format.
      ```python
