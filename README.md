@@ -69,13 +69,6 @@ Before using the application, follow these steps to configure API-related inform
         openai_api_key="EMPTY",
         streaming=False,
      )
-     agent_chain = initialize_agent(
-        tools,
-        llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True,
-     )
-     agent_chain.run("question")
      ```
      
 Now your environment is set up, and the API is configured. You are ready to run the application!
