@@ -82,7 +82,7 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 
 | 👋 **Retrieval Search** | 📚 **SQL Agent** | ⚡🌐 **Web Scraping Summarization** | 🤖 **Chatbots** |
 | --- | --- | --- | --- |
-| ![Retrieval Search](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png) | ![SQL Agent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png) | ![Web Scraping Summarization](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png) | ![Chatbots](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png) |
+| <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png" width="250"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png" width="250"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png" width="250"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png" width="250"/> |
 
 
 
