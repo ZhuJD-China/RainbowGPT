@@ -10,7 +10,7 @@
 ## 🌈✨RainbowAgent Integration
 📈RainbowGPT now includes a powerful Stock Analysis module, integrating various technologies to provide comprehensive insights into the stock market. 
 
-⚡The RainbowGPT combines AI Agent proxy, GPT-4, GPT3.5, ChatGlm3, Qwen LLM, ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
+⚡The RainbowGPT combines AI Agent proxy, GPT-4, GPT3.5, ChatGlm3, Qwen, Local LLM base-API LLM, ChromaDB vector database, Langchain knowledge base question-answer retrieval, and the Google search engine.
 
 <p align="center">
 ✨ <a href="https://github.com/openai/openai-cookbook" >Navigate at [cookbook.openai.com]</a> •  <br>
