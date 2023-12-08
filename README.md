@@ -33,12 +33,6 @@
 6. [Common Usage Pattern](#common-usage-pattern)
 7. [Stock Analysis Module](#-stock-analysis-module)
 8. [RainbowGPT Overview](#-rainbowgpt-overview)
-   - [Retrieval Search](#retrieval-search)
-   - [SQL Agent](#sql-agent)
-   - [Web Scraping Summarization](#web-scraping-summarization)
-   - [Chatbots](#chatbots)
-   - [Rainbow Agent UI](#rainbow-agent-ui)
-   - [StockGPT Analysis](#stockgpt-analysis)
 
 ## ✨ Getting Started
 ### Environment Setup
