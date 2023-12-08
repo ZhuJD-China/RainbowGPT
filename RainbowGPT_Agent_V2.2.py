@@ -422,11 +422,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
 
     collection_name_select_global = str(collection_name_select)
 
-    # 设置代理（替换为你的代理地址和端口）
-    proxy_url_global = str(Google_proxy)
-    os.environ['http_proxy'] = proxy_url_global
-    os.environ['https_proxy'] = proxy_url_global
-
     human_input_global = message
     local_data_embedding_token_max_global = int(local_data_embedding_token_max)
     input_chunk_size_global = int(input_chunk_size)
@@ -465,6 +460,10 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         if tg == "Google Search" and Google_Search_tool not in tools:
             tools.append(Google_Search_tool)
             response = "Google Search 工具加入 回答中..........."
+
+            # 设置代理（替换为你的代理地址和端口）
+            proxy_url_global = str(Google_proxy)
+
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
         elif tg == "Local Knowledge Base Search" and Local_Search_tool not in tools:
@@ -653,7 +652,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
             local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
 
         with gr.Column():
-            Google_proxy = gr.Textbox(value="http://localhost:7890", label="Google Http Proxy")
+            Google_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
 
             tool_options = ["Google Search", "Local Knowledge Base Search"]
             tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
