@@ -46,7 +46,7 @@ Before using the application, follow these steps to configure API-related inform
 
 2. **Local API URL:**
    - To start a Qwen server with OpenAI-like capabilities, use the following commands:
-     ```bash
+     ```python
      pip install fastapi uvicorn openai pydantic sse_starlette
      python get_local_openai_api.py
      ```
