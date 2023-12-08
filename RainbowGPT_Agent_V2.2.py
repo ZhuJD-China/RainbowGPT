@@ -54,6 +54,8 @@ persist_directory = ".chromadb/"
 client = chromadb.PersistentClient(path=persist_directory)
 collection_name_select_global = None
 
+# local private llm api
+local_private_llm_api_global = None
 # http proxy
 proxy_url_global = None
 # 创建 ChatOpenAI 实例作为底层语言模型
@@ -136,7 +138,7 @@ def ask_local_vector_db(question):
     if llm_name_global == "Qwen-7B-Chat":
         llm = ChatOpenAI(
             model_name=llm_name_global,
-            openai_api_base="http://172.16.0.160:8000/v1",
+            openai_api_base=local_private_llm_api_global,
             openai_api_key="",
             streaming=False,
         )
@@ -301,7 +303,7 @@ def Google_Search_run(question):
     if llm_name_global == "Qwen-7B-Chat":
         llm = ChatOpenAI(
             model_name=llm_name_global,
-            openai_api_base="http://172.16.0.160:8000/v1",
+            openai_api_base=local_private_llm_api_global,
             openai_api_key="",
             streaming=False,
         )
@@ -379,7 +381,7 @@ Google_Search_tool = Tool(
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
          new_collection_name,
          temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select,
-         input_chunk_size, local_data_embedding_token_max, Google_proxy):
+         input_chunk_size, local_data_embedding_token_max, Google_proxy, local_private_llm_api):
     global docsearch_db
     global llm
     global tools
@@ -394,7 +396,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global human_input_global
     global collection_name_select_global
     global proxy_url_global
+    global local_private_llm_api_global
 
+    local_private_llm_api_global = str(local_private_llm_api)
     collection_name_select_global = str(collection_name_select)
 
     # 设置代理（替换为你的代理地址和端口）
@@ -403,7 +407,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     os.environ['https_proxy'] = proxy_url_global
 
     human_input_global = message
-
     local_data_embedding_token_max_global = int(local_data_embedding_token_max)
     input_chunk_size_global = int(input_chunk_size)
     temperature_num_global = float(temperature_num)
@@ -421,7 +424,7 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     if llm_name_global == "Qwen-7B-Chat":
         llm = ChatOpenAI(
             model_name=llm_name_global,
-            openai_api_base="http://172.16.0.160:8000/v1",
+            openai_api_base=local_private_llm_api_global,
             openai_api_key="",
             streaming=False,
         )
@@ -624,32 +627,36 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                            "gpt-4-vision-preview", "gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo", "Qwen-7B-Chat"]
             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                      value=llm_options[0])
+
+            local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1", label="Local Private llm api")
             Google_proxy = gr.Textbox(value="http://localhost:7890", label="Google Http Proxy")
+
+        with gr.Column():
             tool_options = ["Google Search", "Local Knowledge Base Search"]
             tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
 
-        with gr.Column():
             # 创建一个包含Local Knowledge Collection Select Options的Radio组件
             collection_options = ["None", "Read Existing Collection", "Create New Collection"]
             collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options",
                                                  value=collection_options[0])
-
-            collection_options = ["Openai Embedding", "HuggingFace Embedding"]
-            Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options",
-                                              value=collection_options[0])
-
-        with gr.Column():
-            input_chunk_size = gr.Textbox(value="512", label="Input Chunk Size")
-            local_data_embedding_token_max = gr.Slider(1024, 12288, step=2,
-                                                       label="Embeddings Data Max Tokens", value=3072)
-
             # 创建一个包含Select existed Collection的Dropdown组件
             collection_name_select = gr.Dropdown(["..."], label="Select existed Collection",
                                                  value="...")
+
             # 为Local Knowledge Collection Select Options的Radio组件添加一个change事件，当它的值改变时，
             # 调用update_collection_name函数，并将Select existed Collection的Dropdown组件作为输出
             collection_checkbox_group.change(fn=update_collection_name, inputs=collection_checkbox_group,
                                              outputs=collection_name_select)
+
+        with gr.Column():
+            collection_options = ["Openai Embedding", "HuggingFace Embedding"]
+            Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options",
+                                              value=collection_options[0])
+
+            input_chunk_size = gr.Textbox(value="512", label="Input Chunk Size")
+            local_data_embedding_token_max = gr.Slider(1024, 12288, step=2,
+                                                       label="Embeddings Data Max Tokens", value=3072)
+
         with gr.Column():
             new_collection_name = gr.Textbox("", label="Input New Collection Name")
             uploaded_files = gr.File(file_count="multiple", label="Upload Files")
@@ -680,7 +687,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                                  new_collection_name,
                                  temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
                                  Embedding_Model_select, input_chunk_size, local_data_embedding_token_max,
-                                 Google_proxy],
+                                 Google_proxy, local_private_llm_api],
         title=custom_title,
         description=custom_description,
         # css=".gradio-container {background-color: #f0f0f0;}",  # Add your desired background color here
