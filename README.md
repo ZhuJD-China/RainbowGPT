@@ -22,11 +22,20 @@
 
 ## ✨ Getting Started
 ### Environment
-please make sure you have set up the environment and installed the required packages. Make sure you meet the above requirements, and then install the dependent libraries.
+1.please make sure you have set up the environment and installed the required packages. Make sure you meet the above requirements, and then install the dependent libraries.
 ```bash
 pip install -r requirements.txt
 ```
  **Markdown Tip:** When running `RainbowGPT_Agent_V2.2.py`, don't forget to relocate `3rd_modify/langchain_vectorstores_chroma.py` to your Langchain module! 🌈✨
+
+2.Configure API Related Information
+Before using this application, make sure you have correctly configured the following API-related information in the `.env` file.
+**OpenAI API Key**
+Create an account on [OpenAI](https://platform.openai.com/) and obtain an API key.
+```plaintext
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+```
+Ensure to replace `YOUR_OPENAI_API_KEY` with the actual API key you obtained from OpenAI.
 
 ### 🌐 Free Use of GPT API
 We are committed to expanding capacity based on usage and providing the API for free as long as we are not officially sanctioned. If you find this project helpful, please consider giving us a ⭐.
