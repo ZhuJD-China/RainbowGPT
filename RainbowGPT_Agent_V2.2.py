@@ -33,17 +33,6 @@ from Rainbow_utils import get_google_result
 
 load_dotenv()
 
-# 加载互联网共享接口
-# 免费授权API接口网站: https://api.chatanywhere.org/v1/oauth/free/github/render
-# 转发Host1: https://api.chatanywhere.com.cn (国内中转，延时更低，推荐)
-# 转发Host2: https://api.chatanywhere.cn (国外使用,国内需要全局代理)
-# openai.api_base = "https://api.chatanywhere.com.cn/v1"
-# 加载环境变量中的 OpenAI API 密钥
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-openai.api_key = OPENAI_API_KEY
-# 打印 API 密钥
-print(openai.api_key)
-
 seafoam = Seafoam()
 
 logfile = "RainbowGPT_Agent_V2.2.log"
@@ -160,7 +149,9 @@ def ask_local_vector_db(question):
             streaming=False,
         )
     else:
-        llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
+        llm = ChatOpenAI(temperature=temperature_num_global,
+                         openai_api_key=os.getenv('OPENAI_API_KEY'),
+                         model=llm_name_global)
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input", "human_input_first"],
@@ -328,7 +319,9 @@ def Google_Search_run(question):
             streaming=False,
         )
     else:
-        llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
+        llm = ChatOpenAI(temperature=temperature_num_global,
+                         openai_api_key=os.getenv('OPENAI_API_KEY'),
+                         model=llm_name_global)
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input", "human_input_first"],
@@ -457,10 +450,14 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
             streaming=False,
         )
     else:
-        llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
+        llm = ChatOpenAI(temperature=temperature_num_global,
+                         openai_api_key=os.getenv('OPENAI_API_KEY'),
+                         model=llm_name_global)
 
     tools = []  # 重置工具列表
-    llm_math_tool = load_tools(["arxiv"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
+    llm_math_tool = load_tools(["arxiv"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k",
+                                                         openai_api_key=os.getenv('OPENAI_API_KEY'),
+                                                         ))
     tools.append(llm_math_tool[0])
 
     flag_get_Local_Search_tool = False
