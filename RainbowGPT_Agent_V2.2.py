@@ -8,7 +8,7 @@ import time
 import os
 from dotenv import load_dotenv
 import gradio as gr
-from gradio_theme import Seafoam
+from get_gradio_theme import Seafoam
 from loguru import logger
 # 导入 langchain 模块的相关内容
 from langchain.agents import initialize_agent, AgentType, load_tools
@@ -28,7 +28,7 @@ from langchain.tools import Tool
 from langchain.vectorstores import Chroma
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
-from zh_en_langid import filter_chinese_english_punctuation
+from get_zh_en_langid import filter_chinese_english_punctuation
 
 load_dotenv()
 
@@ -70,16 +70,20 @@ docsearch_db = None
 human_input_global = None
 
 # 公共前部分
-common_text_before = """
-你是一位卓越的AI问答和知识库内容分析专家，为了更好地发挥你的专业性。
-请在进行分析问答时着重关注以下知识库内容：
+common_text_before = """你是一位卓越的AI问答和知识库内容分析专家，为了更好地发挥你的专业性。
+希望你能展现深入的思考和对知识库内容的精准理解，以提供最为专业和有价值的回答。
+
+以下知识库内容是你在回答以下问题时候需要重点参考的：
 """
 
 # 公共后部分
 common_text_after = """
+我一开始要问的问题是：{human_input_first}
+
+然后经过新的一轮思考和搜索第三方知识库后,
 我现在要问的问题是：{human_input}
 
-希望你能展现深入的思考和对知识库内容的精准理解，以提供最为专业和有价值的回答。
+请根据以上所有的问题和目前搜索到的知识库回答。
 请确保回答内容既详细又清晰，充分利用你的专业知识为问题提供全面而准确的解答。
 """
 
@@ -130,7 +134,7 @@ def ask_local_vector_db(question):
     llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
 
     local_search_prompt = PromptTemplate(
-        input_variables=["combined_text", "human_input"],
+        input_variables=["combined_text", "human_input", "human_input_first"],
         template=local_search_template,
     )
     # 本地知识库工具
@@ -225,7 +229,8 @@ def ask_local_vector_db(question):
     # 将清理过的匹配项组合合成一个字符串
     combined_text = " ".join(cleaned_matches)
 
-    answer = local_chain.predict(combined_text=combined_text, human_input=human_input_global)
+    answer = local_chain.predict(combined_text=combined_text, human_input=question,
+                                 human_input_first=human_input_global)
     return answer
 
 
@@ -286,7 +291,7 @@ def Google_Search_run(question):
     llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
 
     local_search_prompt = PromptTemplate(
-        input_variables=["combined_text", "human_input"],
+        input_variables=["combined_text", "human_input", "human_input_first"],
         template=google_search_template,
     )
     # 本地知识库工具
@@ -335,7 +340,8 @@ def Google_Search_run(question):
                                                    "cl100k_base",
                                                    step_size=256)
 
-    answer = local_chain.predict(combined_text=truncated_text, human_input=human_input_global)
+    answer = local_chain.predict(combined_text=truncated_text, human_input=question,
+                                 human_input_first=human_input_global)
 
     return answer
 
