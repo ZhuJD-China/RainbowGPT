@@ -111,6 +111,12 @@ google_search_template = common_text_before + """
 # 全局工具列表创建
 tools = []
 
+# memory
+agent_kwargs = {
+    "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
+}
+memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
+
 
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
     """Returns the number of tokens in a text string."""
@@ -587,11 +593,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         response = "读取知识库但是没有打开知识库搜索工具！失去本地知识库搜索能力！使用模型本身记忆或者其他工具回答！"
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
-
-    agent_kwargs = {
-        "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-    }
-    memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
 
     # 初始化agent代理
     agent_open_functions = initialize_agent(
