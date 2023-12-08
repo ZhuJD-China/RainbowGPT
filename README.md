@@ -68,9 +68,9 @@ Before using the application, follow these steps to configure API-related inform
         streaming=False,
      )
      ```
-<div style="text-align: center;">
-  <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/private.png" width="400" />
-</div>
+   - <div style="text-align: center;">
+        <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/private.png" width="400" />
+      </div>
      
 Now your environment is set up, and the API is configured. You are ready to run the application!
 Feel free to let me know if you have any specific preferences or additional details you'd like to include!
