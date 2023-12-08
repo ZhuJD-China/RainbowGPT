@@ -25,8 +25,6 @@
    - [Environment Setup](#environment-setup)
    - [API Configuration](#api-configuration)
 2. [Free Use of GPT API](#-free-use-of-gpt-api)
-   - [Forwarding Hosts](#forwarding-hosts)
-   - [Open Source gpt_academic](#open-source-gpt_academic)
 3. [Knowledge Base QA Search Algorithm](#-knowledge-base-qa-search-algorithm)
 4. [BM25 Retrievers](#-bm25-retrievers)
 5. [EnsembleRetriever](#-ensembleretriever)
