@@ -90,8 +90,11 @@ common_text_after = """
 经过新的一轮思考和搜索知识库后：
 我现在要问的问题是：{human_input}
 
-请首先判断上述问题是否相似。如果它们的意思相同，请总结我的问题是什么? 然后根据知识库的内容提供回答。
-如果它们的意思不同，请先回答当前要提出的问题。因为当前问题可能是从一开始的问题中提炼出来的内容，你需要先回答当前问题作为前提，然后再回答一开始的问题。
+请首先判断上述问题是否相似？
+- 如果它们的意思相同，根据上述问题请总结我的问题是什么? 然后根据知识库的内容结合回答。
+- 如果它们的意思不同，请先回答当前要问的问题。(因为当前要问的问题可能是一开始的问题的部分或者前提)
+- 如果它们的问题是有递进和层次性的关系的，请按顺序回答，若有不知道的问题请继续提取关键字搜索后再回答！
+- 如果你已经知道上述所有问题的答案，请结合知识库直接回答！
 请确保回答内容既详细又清晰，充分利用你的专业知识为问题提供全面而准确的解答。
 """
 
@@ -103,7 +106,8 @@ local_search_template = common_text_before + """
 
 # google Search Prompt模版
 google_search_template = common_text_before + """
-答案框数据类型包括特色片段、知识卡和实时结果，请你仔细分析答案框内容与我的问题后再决定是否利用这个数据回答。
+答案框数据类型包括特色片段、知识卡和实时结果，请你仔细分析答案框内容与我的问题的相关性后决定是否利用这个数据准确回答。
+
 以下双引号内是所搜索到的知识库数据：
 “{combined_text}”
 """ + common_text_after
@@ -361,7 +365,8 @@ def Google_Search_run(question):
     # 使用正则表达式保留中文、英文和标点符号
     link_datial_string = filter_chinese_english_punctuation(link_datial_string)
 
-    finally_combined_text = f"""当前关键字搜索的答案框数据：
+    finally_combined_text = f"""
+    当前关键字搜索的答案框数据：
     {google_answer_box}
     
     搜索结果相似度TOP10的网站的标题和摘要数据：
@@ -369,6 +374,7 @@ def Google_Search_run(question):
     
     搜索结果相似度TOP1的网站的详细内容数据:
     {link_datial_string}
+    
     """
 
     truncated_text = truncate_string_to_max_tokens(finally_combined_text,
@@ -676,7 +682,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
 
             input_chunk_size = gr.Textbox(value="512", label="Input Chunk Size")
             local_data_embedding_token_max = gr.Slider(1024, 12288, step=2,
-                                                       label="Embeddings Data Max Tokens", value=3072)
+                                                       label="Embeddings Data Max Tokens", value=2048)
 
         with gr.Column():
             new_collection_name = gr.Textbox("", label="Input New Collection Name")
