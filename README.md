@@ -52,16 +52,11 @@ Before using the application, follow these steps to configure API-related inform
      ```
      After starting the server, configure the `api_base` and `api_key` in your client. Ensure that the configuration follows the specified format.
      ```python
-     from langchain.chat_models import ChatOpenAI
-     from langchain.agents import load_tools, initialize_agent, AgentType
      llm = ChatOpenAI(
         model_name="Qwen",
         openai_api_base="http://localhost:8000/v1",
         openai_api_key="EMPTY",
         streaming=False,
-     )
-     tools = load_tools(
-        ["arxiv"],
      )
      agent_chain = initialize_agent(
         tools,
