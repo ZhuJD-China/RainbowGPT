@@ -79,10 +79,18 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 
 # RainbowGPT Overview
 
+
+### Retrieval Search  |  Web Scraping Summarization
+<img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png" width="400"/>  <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png" width="400"/>
+
+### Chatbots  |  SQL Agent
+<img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png" width="400"/>  <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png" width="400"/>
+
+
 👋 **Retrieval Search**
 ![Retrieval_Search](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png)
 
-⚡ **Summarization**
+⚡🌐 **Web Scraping Summarization**
 ![Summarization](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png)
 
 🤖 **Chatbots**
@@ -91,8 +99,6 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 📚 **SQL Agent**
 ![SQLAgent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png)
 
-🌐 **Web Scraping**
-![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/WebScraping.png)
 
 🤗 **Rainbow Agent UI**
 ![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/exp.png)
@@ -102,5 +108,5 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ZhuJD-China/RainbowGPT&type=Timeline)](https://star-history.com/#ZhuJD-China/RainbowGPT&Timeline)
 
-🚀 Explore the diverse capabilities of RainbowGPT and leverage its powerful modules for your projects! 🌈✨
+🚀⚡ Explore the diverse capabilities of RainbowGPT and leverage its powerful modules for your projects! 🌈✨
 
