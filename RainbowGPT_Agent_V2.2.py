@@ -81,10 +81,11 @@ common_text_before = """你是一位卓越的AI问答和知识库内容分析专
 common_text_after = """
 我一开始要问的问题是：{human_input_first}
 
-然后经过新的一轮思考和搜索第三方知识库后,
+经过新的一轮思考和搜索知识库后：
 我现在要问的问题是：{human_input}
 
-请根据以上所有的问题和目前搜索到的知识库回答。
+请先判断以上的问题是否相似，如果意思是一样的就总结我的问题是什么？然后根据知识库内容来回答。
+如果意思是不一样的就先回答现在要问的问题，因为现在要问的问题可能是一开始要问的问题的前提，知道前提后再去回答一开始的问题。
 请确保回答内容既详细又清晰，充分利用你的专业知识为问题提供全面而准确的解答。
 """
 
@@ -132,7 +133,15 @@ def ask_local_vector_db(question):
     elif Embedding_Model_select_global == 1:
         embeddings = HuggingFaceEmbeddings()
 
-    llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
+    if llm_name_global == "Qwen-7B-Chat":
+        llm = ChatOpenAI(
+            model_name=llm_name_global,
+            openai_api_base="http://172.16.0.160:8000/v1",
+            openai_api_key="",
+            streaming=False,
+        )
+    else:
+        llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input", "human_input_first"],
@@ -289,7 +298,15 @@ def Google_Search_run(question):
 
     get_google_result.set_global_proxy(proxy_url_global)
 
-    llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
+    if llm_name_global == "Qwen-7B-Chat":
+        llm = ChatOpenAI(
+            model_name=llm_name_global,
+            openai_api_base="http://172.16.0.160:8000/v1",
+            openai_api_key="",
+            streaming=False,
+        )
+    else:
+        llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
 
     local_search_prompt = PromptTemplate(
         input_variables=["combined_text", "human_input", "human_input_first"],
@@ -401,6 +418,16 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         embeddings = HuggingFaceEmbeddings()
         Embedding_Model_select_global = 1
 
+    if llm_name_global == "Qwen-7B-Chat":
+        llm = ChatOpenAI(
+            model_name=llm_name_global,
+            openai_api_base="http://172.16.0.160:8000/v1",
+            openai_api_key="",
+            streaming=False,
+        )
+    else:
+        llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
+
     tools = []  # 重置工具列表
     llm_math_tool = load_tools(["arxiv"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k"))
     tools.append(llm_math_tool[0])
@@ -427,8 +454,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
         return
-
-    llm = ChatOpenAI(temperature=temperature_num_global, model=llm_name_global)
 
     if collection_checkbox_group == "Create New Collection":
         if new_collection_name == None or new_collection_name == "":
@@ -596,7 +621,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         with gr.Column():
             # 创建一个包含选项的多选框组
             llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
-                           "gpt-4-vision-preview", "gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo"]
+                           "gpt-4-vision-preview", "gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo", "Qwen-7B-Chat"]
             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                      value=llm_options[0])
             Google_proxy = gr.Textbox(value="http://localhost:7890", label="Google Http Proxy")
