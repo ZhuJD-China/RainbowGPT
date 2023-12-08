@@ -90,8 +90,8 @@ common_text_after = """
 经过新的一轮思考和搜索知识库后：
 我现在要问的问题是：{human_input}
 
-请先判断以上的问题是否相似，如果意思是一样的就总结我的问题是什么？然后根据知识库内容来回答。
-如果意思是不一样的就先回答现在要问的问题，因为现在要问的问题可能是一开始要问的问题的前提，知道前提后再去回答一开始的问题。
+请首先判断上述问题是否相似。如果它们的意思相同，请总结我的问题是什么? 然后根据知识库的内容提供回答。
+如果它们的意思不同，请先回答当前要提出的问题。因为当前问题可能是从一开始的问题中提炼出来的内容，你需要先回答当前问题作为前提，然后再回答一开始的问题。
 请确保回答内容既详细又清晰，充分利用你的专业知识为问题提供全面而准确的解答。
 """
 
@@ -645,8 +645,8 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                                                      value=llm_options[0])
 
             local_private_llm_name = gr.Textbox(value="Qwen-7B-Chat", label="Private llm name")
-            local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1", label="Private llm api")
-            local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm key")
+            local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1", label="Private llm openai-api base")
+            local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
 
         with gr.Column():
             Google_proxy = gr.Textbox(value="http://localhost:7890", label="Google Http Proxy")
