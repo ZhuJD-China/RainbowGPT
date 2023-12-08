@@ -2,13 +2,12 @@ import chromadb
 import openai
 from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
 import tiktoken
-import get_google_result
 import datetime
 import time
 import os
 from dotenv import load_dotenv
 import gradio as gr
-from get_gradio_theme import Seafoam
+from Rainbow_utils.get_gradio_theme import Seafoam
 from loguru import logger
 # 导入 langchain 模块的相关内容
 from langchain.agents import initialize_agent, AgentType, load_tools
@@ -28,7 +27,8 @@ from langchain.tools import Tool
 from langchain.vectorstores import Chroma
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
-from get_zh_en_langid import filter_chinese_english_punctuation
+from Rainbow_utils.get_zh_en_langid import filter_chinese_english_punctuation
+from Rainbow_utils import get_google_result
 
 load_dotenv()
 
