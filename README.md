@@ -33,9 +33,9 @@ Certainly! It looks like you are providing instructions for setting up an enviro
    **Note:** If you encounter any issues, ensure that you have the correct dependencies installed.
 2. **Relocate Module:**
    When running `RainbowGPT_Agent_V2.2.py`, relocate the `3rd_modify/langchain_vectorstores_chroma.py` file to your Langchain module.
-   ```plaintext
-   🌈✨ Move `3rd_modify/langchain_vectorstores_chroma.py` to your Langchain module before running `RainbowGPT_Agent_V2.2.py`.
-   ```
+   
+  ⚠️ Before running `RainbowGPT_Agent_V2.2.py`, ensure to relocate the `3rd_modify/langchain_vectorstores_chroma.py` file to your Langchain module. This step is crucial for proper execution. 🌈✨
+
 ### API Configuration
 Before using the application, you need to correctly configure API-related information in the `.env` file. Follow these steps:
 1. **OpenAI API Key:**
