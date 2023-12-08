@@ -80,9 +80,13 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 # RainbowGPT Overview
 
 
-| 👋 **Retrieval Search** | 📚 **SQL Agent** | ⚡🌐 **Web Scraping Summarization** | 🤖 **Chatbots** |
-| --- | --- | --- | --- |
-| <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png" width="250"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png" width="250"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png" width="250"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png" width="250"/> |
+| 👋 **Retrieval Search** | 📚 **SQL Agent** |
+| --- | --- |
+| <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png" width="300"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png" width="300"/> |
+
+| ⚡🌐 **Web Scraping Summarization** | 🤖 **Chatbots** |
+| --- | --- |
+| <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png" width="300"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png" width="300"/> |
 
 
 
