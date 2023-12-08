@@ -20,8 +20,25 @@
 </p>
 <p align="center">
 
-
-Certainly! It looks like you are providing instructions for setting up an environment and configuring API-related information for a project involving OpenAI. Below is an enhanced and more detailed version of the provided instructions in GitHub markdown format:
+## Table of Contents
+1. [Getting Started](#-getting-started)
+   - [Environment Setup](#environment-setup)
+   - [API Configuration](#api-configuration)
+2. [Free Use of GPT API](#-free-use-of-gpt-api)
+   - [Forwarding Hosts](#forwarding-hosts)
+   - [Open Source gpt_academic](#open-source-gpt_academic)
+3. [Knowledge Base QA Search Algorithm](#-knowledge-base-qa-search-algorithm)
+4. [BM25 Retrievers](#-bm25-retrievers)
+5. [EnsembleRetriever](#-ensembleretriever)
+6. [Common Usage Pattern](#common-usage-pattern)
+7. [Stock Analysis Module](#-stock-analysis-module)
+8. [RainbowGPT Overview](#-rainbowgpt-overview)
+   - [Retrieval Search](#retrieval-search)
+   - [SQL Agent](#sql-agent)
+   - [Web Scraping Summarization](#web-scraping-summarization)
+   - [Chatbots](#chatbots)
+   - [Rainbow Agent UI](#rainbow-agent-ui)
+   - [StockGPT Analysis](#stockgpt-analysis)
 
 ## ✨ Getting Started
 ### Environment Setup
