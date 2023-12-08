@@ -44,13 +44,33 @@ Before using the application, follow these steps to configure API-related inform
      ```
      Replace `YOUR_OPENAI_API_KEY` with the actual API key you obtained from OpenAI. Ensure accuracy to prevent authentication issues.
 
-2. **Local API URL:**
+2. **Local API URL (Qwen examples):**
    - To start a Qwen server with OpenAI-like capabilities, use the following commands:
      ```python
      pip install fastapi uvicorn openai pydantic sse_starlette
      python get_local_openai_api.py
      ```
      After starting the server, configure the `api_base` and `api_key` in your client. Ensure that the configuration follows the specified format.
+     ```python
+     from langchain.chat_models import ChatOpenAI
+     from langchain.agents import load_tools, initialize_agent, AgentType
+     llm = ChatOpenAI(
+        model_name="Qwen",
+        openai_api_base="http://localhost:8000/v1",
+        openai_api_key="EMPTY",
+        streaming=False,
+     )
+     tools = load_tools(
+        ["arxiv"],
+     )
+     agent_chain = initialize_agent(
+        tools,
+        llm,
+        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+        verbose=True,
+     )
+     agent_chain.run("question")
+   ```
      
 Now your environment is set up, and the API is configured. You are ready to run the application!
 Feel free to let me know if you have any specific preferences or additional details you'd like to include!
