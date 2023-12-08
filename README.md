@@ -31,7 +31,6 @@ Certainly! It looks like you are providing instructions for setting up an enviro
    pip install -r requirements.txt
    ```
    **Note:** If you encounter any issues, ensure that you have the correct dependencies installed.
-   
   ⚠️ Before running `RainbowGPT_Agent_V2.2.py`, ensure to relocate the `3rd_modify/langchain_vectorstores_chroma.py` file to your Langchain module. This step is crucial for proper execution. 🌈✨
 
 ### API Configuration
@@ -39,23 +38,19 @@ Before using the application, follow these steps to configure API-related inform
 1. **OpenAI API Key:**
    - Create an account on [OpenAI](https://platform.openai.com/) and obtain your API key.
    - Open the `.env` file and set your API key:
-
      ```plaintext
      OPENAI_API_KEY=YOUR_OPENAI_API_KEY
      ```
-
      Replace `YOUR_OPENAI_API_KEY` with the actual API key you obtained from OpenAI. Ensure accuracy to prevent authentication issues.
 
 2. **Local API URL:**
    - To start a Qwen server with OpenAI-like capabilities, use the following commands:
-
      ```bash
      pip install fastapi uvicorn openai pydantic sse_starlette
      python get_local_openai_api.py
      ```
-     
      After starting the server, configure the `api_base` and `api_key` in your client. Ensure that the configuration follows the specified format.
-
+     
 Now your environment is set up, and the API is configured. You are ready to run the application!
 Feel free to let me know if you have any specific preferences or additional details you'd like to include!
 
