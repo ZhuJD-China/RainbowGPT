@@ -29,8 +29,7 @@
 4. [BM25 Retrievers](#-bm25-retrievers)
 5. [EnsembleRetriever](#-ensembleretriever)
 6. [Common Usage Pattern](#common-usage-pattern)
-7. [Stock Analysis Module](#-stock-analysis-module)
-8. [RainbowGPT Overview](#-rainbowgpt-overview) 
+7. [RainbowGPT Overview](#-rainbowgpt-overview) 
 
 ## ✨ Getting Started
 ### Environment Setup
