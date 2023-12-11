@@ -135,7 +135,7 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 
 
 🤗 **Rainbow Agent UI**
-![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/exp.png)
+![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/exp1.png)
 
 📊 **StockGPT Analysis**
 ![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock.png)
