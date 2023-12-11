@@ -40,7 +40,7 @@
    ```
    **Note:** If you encounter any issues, ensure that you have the correct dependencies installed.
    
-⚠️Before running `RainbowGPT_Agent_V2.2.py`, ensure you move the modified `3rd_modify/langchain/vectorstores/chroma.py` file to the Langchain module's library folder and rename it to match the library file. This step is crucial for proper execution. 🌈
+⚠️Before running `RainbowGPT_Agent_ui.py`, ensure you move the modified `3rd_modify/langchain/vectorstores/chroma.py` file to the Langchain module's library folder and rename it to match the library file. This step is crucial for proper execution. 🌈
 
 ### API Configuration
 Before using the application, follow these steps to configure API-related information in the `.env` file:
