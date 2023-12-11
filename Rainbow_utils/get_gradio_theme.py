@@ -8,21 +8,17 @@ class Seafoam(Base):
             self,
             *,
             primary_hue: colors.Color | str = colors.emerald,
-            secondary_hue: colors.Color | str = colors.blue,
+            secondary_hue: colors.Color | str = colors.teal,  # Changed secondary hue to teal
             neutral_hue: colors.Color | str = colors.gray,
             spacing_size: sizes.Size | str = sizes.spacing_md,
             radius_size: sizes.Size | str = sizes.radius_md,
-            text_size: sizes.Size | str = sizes.text_lg,
-            font: fonts.Font
-                  | str
-                  | Iterable[fonts.Font | str] = (
+            text_size: sizes.Size | str = sizes.text_md,  # Slightly reduced text size
+            font: fonts.Font | str | Iterable[fonts.Font | str] = (
                     fonts.GoogleFont("Quicksand"),
                     "ui-sans-serif",
                     "sans-serif",
             ),
-            font_mono: fonts.Font
-                       | str
-                       | Iterable[fonts.Font | str] = (
+            font_mono: fonts.Font | str | Iterable[fonts.Font | str] = (
                     fonts.GoogleFont("IBM Plex Mono"),
                     "ui-monospace",
                     "monospace",

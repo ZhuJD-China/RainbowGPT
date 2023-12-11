@@ -35,7 +35,8 @@ load_dotenv()
 
 seafoam = Seafoam()
 
-logfile = "RainbowGPT_Agent_V2.2.log"
+script_name = os.path.basename(__file__)
+logfile = script_name
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
@@ -360,7 +361,9 @@ Google_Search_tool = Tool(
 def echo(message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
          new_collection_name,
          temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select,
-         input_chunk_size, local_data_embedding_token_max, Google_proxy, local_private_llm_api, local_private_llm_key,
+         input_chunk_size, local_data_embedding_token_max, Google_proxy,
+         local_private_llm_api,
+         local_private_llm_key,
          local_private_llm_name):
     global docsearch_db
     global llm
@@ -605,80 +608,78 @@ def update_collection_name(collection_option):
 
 with gr.Blocks(theme=seafoam) as RainbowGPT:
     with gr.Row():
-        with gr.Column():
-            # 创建一个包含选项的多选框组
-            llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
-                           "gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo", "Private-LLM-Model"]
-            llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
-                                                     value=llm_options[0])
+        with gr.Column(scale=3):
+            # 左侧列: 所有控件
+            with gr.Row():
+                with gr.Group():
+                    gr.Markdown("### Language Model Selection")
+                    llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview", "gpt-4", "gpt-3.5-turbo-16k",
+                                   "gpt-3.5-turbo", "Private-LLM-Model"]
+                    llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
+                                                             value=llm_options[0])
+                    local_private_llm_name = gr.Textbox(value="Qwen-7B-Chat", label="Private llm name")
 
-            local_private_llm_name = gr.Textbox(value="Qwen-7B-Chat", label="Private llm name")
-            local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1", label="Private llm openai-api base")
-            local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
+                with gr.Group():
+                    gr.Markdown("### Private LLM Settings")
+                    local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1",
+                                                       label="Private llm openai-api base")
+                    local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
 
-        with gr.Column():
-            Google_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
+            with gr.Row():
+                with gr.Group():
+                    gr.Markdown("### Additional Tools")
+                    Google_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
+                    tool_options = ["Google Search", "Local Knowledge Search"]
+                    tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
 
-            tool_options = ["Google Search", "Local Knowledge Search"]
-            tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
+                    temperature_num = gr.Slider(0, 1, label="Temperature")
+                    print_speed_step = gr.Slider(10, 20, label="Print Speed Step", step=1)
 
-            # 创建一个包含Local Knowledge Collection Select Options的Radio组件
-            collection_options = ["None", "Read Existing Collection", "Create New Collection"]
-            collection_checkbox_group = gr.Radio(collection_options, label="Local Knowledge Collection Select Options",
-                                                 value=collection_options[0])
+                with gr.Group():
+                    gr.Markdown("### Knowledge Collection Settings")
+                    collection_options = ["None", "Read Existing Collection", "Create New Collection"]
+                    collection_checkbox_group = gr.Radio(collection_options,
+                                                         label="Local Knowledge Collection Select Options",
+                                                         value=collection_options[0])
+                    collection_name_select = gr.Dropdown(["..."], label="Select existed Collection", value="...")
+                    collection_checkbox_group.change(fn=update_collection_name, inputs=collection_checkbox_group,
+                                                     outputs=collection_name_select)
+                    input_chunk_size = gr.Textbox(value="512", label="Create Chunk Size")
 
-        with gr.Column():
-            # 创建一个包含Select existed Collection的Dropdown组件
-            collection_name_select = gr.Dropdown(["..."], label="Select existed Collection",
-                                                 value="...")
+            with gr.Row():
+                with gr.Group():
+                    gr.Markdown("### Embedding Data Settings")
+                    Embedding_Model_select = gr.Radio(["Openai Embedding", "HuggingFace Embedding"],
+                                                      label="Embedding Model Select Options", value="Openai Embedding")
+                    local_data_embedding_token_max = gr.Slider(1024, 12288, step=2, label="Embeddings Data Max Tokens",
+                                                               value=2048)
 
-            # 为Local Knowledge Collection Select Options的Radio组件添加一个change事件，当它的值改变时，
-            # 调用update_collection_name函数，并将Select existed Collection的Dropdown组件作为输出
-            collection_checkbox_group.change(fn=update_collection_name, inputs=collection_checkbox_group,
-                                             outputs=collection_name_select)
+            with gr.Row():
+                with gr.Group():
+                    gr.Markdown("### Create Collection Settings")
+                    new_collection_name = gr.Textbox("", label="New Collection Name")
+                    uploaded_files = gr.File(file_count="multiple", label="Upload Files")
 
-            collection_options = ["Openai Embedding", "HuggingFace Embedding"]
-            Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options",
-                                              value=collection_options[0])
-            local_data_embedding_token_max = gr.Slider(1024, 12288, step=2,
-                                                       label="Embeddings Data Max Tokens", value=2048)
-
-        with gr.Column():
-            input_chunk_size = gr.Textbox(value="512", label="Create Chunk Size")
-            new_collection_name = gr.Textbox("", label="New Collection Name")
-            uploaded_files = gr.File(file_count="multiple", label="Upload Files")
-
-    temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
-    print_speed_step = gr.Slider(10, 20, render=False, label="Print Speed Step", step=1)
-
-    custom_title = """
-    <h1 style='text-align: center; margin-bottom: 1rem; font-family: "Courier New", monospace; 
+        with gr.Column(scale=5):
+            # 右侧列: Chat Interface
+            gr.ChatInterface(
+                echo, additional_inputs=[llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
+                                         new_collection_name,
+                                         temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
+                                         Embedding_Model_select, input_chunk_size, local_data_embedding_token_max,
+                                         Google_proxy, local_private_llm_api, local_private_llm_key,
+                                         local_private_llm_name],
+                title="""
+    <h1 style='text-align: center; margin-bottom: 1rem; font-family: "Courier New", monospace;
                background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
                -webkit-background-clip: text;
                color: transparent;'>
         RainbowGPT-Agent
     </h1>
-    """
+    """,
+                description="<div style='font-size: 14px; ...'>How to reach me: <a href='mailto:zhujiadongvip@163.com'>zhujiadongvip@163.com</a></div>",
+                # css=".gradio-container {background-color: #f0f0f0;}"  # Add your desired background color here
+            )
 
-    custom_description = """
-    <div style='font-size: 14px; font-family: Arial, sans-serif; text-align: right; 
-                background: linear-gradient(135deg, #ff4e50, #fc913a, #fed766, #4f98ca, #4f98ca, #fc913a, #ff4e50);
-                -webkit-background-clip: text;
-                color: transparent;'>
-        <p>How to reach me: <a href='mailto:zhujiadongvip@163.com'>zhujiadongvip@163.com</a></p>
-    </div>
-    """
-
-    gr.ChatInterface(
-        echo, additional_inputs=[llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
-                                 new_collection_name,
-                                 temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
-                                 Embedding_Model_select, input_chunk_size, local_data_embedding_token_max,
-                                 Google_proxy, local_private_llm_api, local_private_llm_key, local_private_llm_name],
-        title=custom_title,
-        description=custom_description,
-        # css=".gradio-container {background-color: #f0f0f0;}",  # Add your desired background color here
-    )
-
-# RainbowGPT.queue().launch(share=True)
 RainbowGPT.queue().launch()
+# RainbowGPT.queue().launch(share=True)

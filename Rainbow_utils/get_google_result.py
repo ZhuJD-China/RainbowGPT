@@ -81,6 +81,40 @@ def knowledge_graph_search(query, api_key):
     return results
 
 
+def extract_google_answer(driver, query):
+    """
+    Extracts information from Google's answer box using a given query.
+
+    Parameters:
+    - driver (webdriver): The Selenium WebDriver instance.
+    - query (str): The search query.
+
+    Returns:
+    - str: The extracted information from the Google answer box.
+    """
+    try:
+        formatted_query = query.replace(' ', '+')
+        driver.get(f'http://www.google.com/search?q={formatted_query}')
+        answers = []
+        max_answers = 3
+
+        for y in range(200, 300, 40):
+            script = "return document.elementFromPoint(arguments[0], arguments[1]);"
+            element = driver.execute_script(script, 350, y)
+
+            if element and element.text:
+                answers.append(element.text)
+                if len(answers) >= max_answers:
+                    break
+
+        result = '\n'.join(answers)
+        result = result[:150] if len(result) > 150 else result
+        return result
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        return ""
+
+
 def selenium_google_answer_box(query, chrome_driver_path):
     """
     Use Selenium to extract information from the Google answer box.
@@ -108,27 +142,8 @@ def selenium_google_answer_box(query, chrome_driver_path):
     service = Service(chrome_driver_path)
     driver = webdriver.Chrome(service=service, options=options)
 
-    def ask_google_internal(query):
-        query = query.replace(' ', '+')
-        driver.get('http://www.google.com/search?q=' + query)
-        count = 0
-        answers = []
-        for y in range(200, 300, 40):
-            answer = driver.execute_script(
-                "return document.elementFromPoint(arguments[0], arguments[1]);",
-                350, y).text
-            if answer:
-                answers.append(answer)
-                count += 1
-            if count == 3:
-                break
-        # 将列表中的文本连接成一个字符串，使用换行符分隔
-        result = '\n'.join(answers)
-        # 仅保留前100个字符，如果结果长度小于100，则返回整个结果
-        result = result[:150] if len(result) > 150 else result
-        return result
+    results = extract_google_answer(driver, query)
 
-    results = ask_google_internal(query)
     driver.quit()
     return results
 
@@ -179,5 +194,5 @@ for link in google_search_results['Link']:
     if website_content:
         print("Website Content:")
         print(website_content)
-
 """
+
