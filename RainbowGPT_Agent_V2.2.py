@@ -1,6 +1,5 @@
 import chromadb
 import openai
-import tiktoken
 import datetime
 import time
 import os
@@ -28,7 +27,8 @@ from langchain.retrievers import (
 )
 # Rainbow_utils
 from Rainbow_utils.get_gradio_theme import Seafoam
-from Rainbow_utils.get_zh_en_langid import filter_chinese_english_punctuation
+from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \
+    truncate_string_to_max_tokens
 from Rainbow_utils import get_google_result
 
 load_dotenv()
@@ -109,13 +109,6 @@ agent_kwargs = {
     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
 }
 memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
-
-
-def num_tokens_from_string(string: str, encoding_name: str) -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
-    num_tokens = len(encoding.encode(string))
-    return num_tokens
 
 
 def ask_local_vector_db(question):
@@ -266,35 +259,6 @@ Local_Search_tool = Tool(
 )
 
 
-def truncate_string_to_max_tokens(input_string, max_tokens, tokenizer_name, step_size=5):
-    """
-    Truncate the input string to a maximum number of tokens with caching and a step size.
-
-    Parameters:
-    - input_string: The input string to truncate.
-    - max_tokens: The maximum number of tokens allowed.
-    - tokenizer_name: The name of the tokenizer.
-    - step_size: The step size for increasing truncation length.
-
-    Returns:
-    - Truncated string.
-    """
-
-    # 从步长开始，逐渐增加截断长度，确保不超过最大令牌数
-    for truncation_length in range(1, len(input_string) + 1, step_size):
-        truncated_string = input_string[:truncation_length]
-
-        # 计算当前截断字符串的令牌数量（使用带缓存的计算函数）
-        current_tokens = num_tokens_from_string(truncated_string, tokenizer_name)
-
-        # 如果当前令牌数超过最大令牌数，返回上一个截断字符串
-        if current_tokens > max_tokens:
-            return input_string[:truncation_length - step_size]
-
-    # 如果整个字符串都符合要求，返回原始字符串
-    return input_string
-
-
 def Google_Search_run(question):
     global llm
     global embeddings
@@ -434,7 +398,7 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         embeddings.request_timeout = 20
         Embedding_Model_select_global = 0
     elif Embedding_Model_select == "HuggingFace Embedding":
-        embeddings = HuggingFaceEmbeddings()
+        embeddings = HuggingFaceEmbeddings(cache_folder="models")
         Embedding_Model_select_global = 1
 
     if llm_name_global == "Private-LLM-Model":
@@ -450,9 +414,10 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
                          model=llm_name_global)
 
     tools = []  # 重置工具列表
-    llm_math_tool = load_tools(["arxiv"], llm=ChatOpenAI(model="gpt-3.5-turbo-16k",
-                                                         openai_api_key=os.getenv('OPENAI_API_KEY'),
-                                                         ))
+    llm_math_tool = load_tools(["arxiv"],
+                               llm=ChatOpenAI(model="gpt-3.5-turbo-16k",
+                                              openai_api_key=os.getenv('OPENAI_API_KEY'),
+                                              ))
     tools.append(llm_math_tool[0])
 
     flag_get_Local_Search_tool = False
@@ -654,7 +619,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         with gr.Column():
             Google_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
 
-            tool_options = ["Google Search", "Local Knowledge Base Search"]
+            tool_options = ["Google Search", "Local Knowledge Search"]
             tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
 
             # 创建一个包含Local Knowledge Collection Select Options的Radio组件
@@ -675,13 +640,12 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
             collection_options = ["Openai Embedding", "HuggingFace Embedding"]
             Embedding_Model_select = gr.Radio(collection_options, label="Embedding Model Select Options",
                                               value=collection_options[0])
-
-            input_chunk_size = gr.Textbox(value="512", label="Input Chunk Size")
             local_data_embedding_token_max = gr.Slider(1024, 12288, step=2,
                                                        label="Embeddings Data Max Tokens", value=2048)
 
         with gr.Column():
-            new_collection_name = gr.Textbox("", label="Input New Collection Name")
+            input_chunk_size = gr.Textbox(value="512", label="Create Chunk Size")
+            new_collection_name = gr.Textbox("", label="New Collection Name")
             uploaded_files = gr.File(file_count="multiple", label="Upload Files")
 
     temperature_num = gr.Slider(0, 1, render=False, label="Temperature")
@@ -697,7 +661,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
     """
 
     custom_description = """
-    <div style='font-size: 12px; font-family: Arial, sans-serif; text-align: right; 
+    <div style='font-size: 14px; font-family: Arial, sans-serif; text-align: right; 
                 background: linear-gradient(135deg, #ff4e50, #fc913a, #fed766, #4f98ca, #4f98ca, #fc913a, #ff4e50);
                 -webkit-background-clip: text;
                 color: transparent;'>
@@ -716,4 +680,5 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
         # css=".gradio-container {background-color: #f0f0f0;}",  # Add your desired background color here
     )
 
-RainbowGPT.queue().launch(share=True)
+# RainbowGPT.queue().launch(share=True)
+RainbowGPT.queue().launch()
