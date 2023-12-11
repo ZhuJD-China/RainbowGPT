@@ -431,9 +431,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
 
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
-        elif tg == "Local Knowledge Base Search" and Local_Search_tool not in tools:
+        elif tg == "Local Knowledge Search" and Local_Search_tool not in tools:
             tools.append(Local_Search_tool)
-            response = "Local Knowledge Base Search 工具加入 回答中..........."
+            response = "Local Knowledge Search 工具加入 回答中..........."
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
             if Local_Search_tool in tools:
