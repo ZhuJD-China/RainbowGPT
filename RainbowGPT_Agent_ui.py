@@ -36,7 +36,7 @@ load_dotenv()
 seafoam = Seafoam()
 
 script_name = os.path.basename(__file__)
-logfile = script_name
+logfile = script_name + ".log"
 logger.add(logfile, colorize=True, enqueue=True)
 handler = FileCallbackHandler(logfile)
 
