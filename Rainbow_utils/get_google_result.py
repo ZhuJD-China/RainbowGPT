@@ -126,7 +126,7 @@ def selenium_google_answer_box(query, chrome_driver_path):
     Returns:
     - list: Extracted information from the Google answer box.
     """
-    print("selenium_google_answer_box......")
+    print("selenium_google_answer_box......", os.environ['http_proxy'])
     options = webdriver.ChromeOptions()
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_argument('--ignore-certificate-errors')
@@ -195,4 +195,3 @@ for link in google_search_results['Link']:
         print("Website Content:")
         print(website_content)
 """
-
