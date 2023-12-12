@@ -43,7 +43,7 @@ Specify areas for further discussion or features of interest! 🚀✨ Succinct a
 6. [Common Usage Pattern](#common-usage-pattern)
 7. [RainbowGPT Overview](#rainbowgpt-overview)
 
-## Getting Started   ✨
+## Getting Started
 ### Environment Setup
 1. **Install Required Packages:**
    Make sure your environment is set up, and install the necessary packages using the following command:
@@ -84,8 +84,8 @@ Before using the application, follow these steps to configure API-related inform
 Now your environment is set up, and the API is configured. You are ready to run the application!
 Feel free to let me know if you have any specific preferences or additional details you'd like to include!
 
-## 🌐 Free Use of GPT API
-We are committed to expanding capacity based on usage and providing the API for free as long as we are not officially sanctioned. If you find this project helpful, please consider giving us a ⭐.
+## Free Use of GPT API
+🌐 We are committed to expanding capacity based on usage and providing the API for free as long as we are not officially sanctioned. If you find this project helpful, please consider giving us a ⭐.
 
 This API Key is used for forwarding API requests. Change the Host to `api.chatanywhere.com.cn` (preferred for domestic usage) or `api.chatanywhere.cn` (for international usage, domestic users need a global proxy).
 
@@ -116,11 +116,11 @@ API_URL_REDIRECT = {"https://api.openai.com/v1/chat/completions": "https://api.c
 
 The free API Key has a limit of 60 requests per hour per IP address and Key. If you use multiple keys under the same IP, the total hourly request limit for all keys cannot exceed 60. Similarly, if you use a single key across multiple IPs, the hourly request limit for that key cannot exceed 60.
 
-## 🧠 Knowledge Base QA Search Algorithm
-The knowledge base QA search algorithm optimizes document retrieval through context compression. Leveraging the query context, it strategically reduces document content using a document compressor, enhancing retrieval efficiency by returning only information relevant to the query. The ensemble of retrievers combines diverse results, creating a synergy that elevates overall performance.
+## Knowledge Base QA Search Algorithm
+🧠 The knowledge base QA search algorithm optimizes document retrieval through context compression. Leveraging the query context, it strategically reduces document content using a document compressor, enhancing retrieval efficiency by returning only information relevant to the query. The ensemble of retrievers combines diverse results, creating a synergy that elevates overall performance.
 
-## 🎯 BM25 Retrievers
-- **BM25-based Retriever:** Specialized in efficiently locating relevant documents based on keywords, making it particularly effective for sparse retrieval.
+## BM25 Retrievers
+🎯- **BM25-based Retriever:** Specialized in efficiently locating relevant documents based on keywords, making it particularly effective for sparse retrieval.
 - **Embedding Similarity Retriever:** Utilizes embedding vectors for document and query embedding, excelling in identifying relevant documents through semantic similarity. This retriever is well-suited for dense retrieval scenarios.
 
 ## EnsembleRetriever
