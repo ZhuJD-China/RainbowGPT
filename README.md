@@ -7,7 +7,7 @@
   </p>
 </div>
 
-🌈✨RainbowAgent Integration Summary:
+## 🌈RainbowAgent Integration Summary:
 
 🎨 **Simplified MySQL Management:**
 Mysql Agent UI module offers a powerful, user-friendly interface for seamless database navigation, catering to all skill levels.
