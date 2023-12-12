@@ -151,7 +151,10 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 📊 **StockGPT Analysis**
 ![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock.png)
 
+⚡ **SQL_Agent UI**
+![SQL_Agent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQL_Agent.png)
+
 [![Star History Chart](https://api.star-history.com/svg?repos=ZhuJD-China/RainbowGPT&type=Timeline)](https://star-history.com/#ZhuJD-China/RainbowGPT&Timeline)
 
-🚀⚡ Explore the diverse capabilities of RainbowGPT and leverage its powerful modules for your projects! 🌈✨
+🚀 Explore the diverse capabilities of RainbowGPT and leverage its powerful modules for your projects! 🌈✨
 
