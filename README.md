@@ -11,13 +11,10 @@
 
 🎨 **Simplified MySQL Management:**
 Mysql Agent UI module offers a powerful, user-friendly interface for seamless database navigation, catering to all skill levels.
-
 📉 **Comprehensive Stock Insights:**
 RainbowGPT's Stock Analysis module utilizes advanced tech for a holistic view of market trends, risk assessments, and predictive analytics, empowering users with detailed reports and personalized recommendations.
-
 ⚙️ **Technological Synergy:**
 Integration of AI Agent proxy, GPT-4, GPT3.5, ChatGlm3, Qwen, Local base-API LLM, ChromaDB vector database, Langchain knowledge base, and Google search engine ensures a cohesive fusion, enhancing adaptability and information flow.
-
 🚀 **Innovation Roadmap:**
 RainbowGPT commits to continuous expansion, refining features, and integrating emerging technologies, ensuring users stay at the forefront of AI advancements.
 
