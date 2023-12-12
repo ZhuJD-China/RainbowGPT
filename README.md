@@ -43,7 +43,7 @@ Specify areas for further discussion or features of interest! 🚀✨ Succinct a
 6. [Common Usage Pattern](#common-usage-pattern)
 7. [RainbowGPT Overview](#rainbowgpt-overview)
 
-## ✨ Getting Started
+## Getting Started   ✨
 ### Environment Setup
 1. **Install Required Packages:**
    Make sure your environment is set up, and install the necessary packages using the following command:
