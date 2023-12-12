@@ -14,7 +14,7 @@ import re
 from urllib.parse import quote
 
 
-def stock_news_em(symbol: str = "601628") -> pd.DataFrame:
+def stock_news_em(symbol: str = "601628", pageSize: int = 10) -> pd.DataFrame:
     """
     东方财富-个股新闻-最近 100 条新闻
     https://so.eastmoney.com/news/s?keyword=%E4%B8%AD%E5%9B%BD%E4%BA%BA%E5%AF%BF&pageindex=1&searchrange=8192&sortfiled=4
@@ -30,7 +30,7 @@ def stock_news_em(symbol: str = "601628") -> pd.DataFrame:
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-extensions')
-    # options.add_argument('headless')
+    options.add_argument('headless')
     # 当前文件夹里chromedriver路径
     chrome_driver_path = f"./chromedriver-120.0.6099.56.0.exe"
     # 将chromedriver路径传入selenium，此处selenium库版本>=3.8.0
@@ -50,7 +50,7 @@ def stock_news_em(symbol: str = "601628") -> pd.DataFrame:
                 "searchScope": "default",
                 "sort": "default",
                 "pageIndex": 1,
-                "pageSize": 10,
+                "pageSize": pageSize,
                 "preTag": "<em>",
                 "postTag": "</em>"
             }
@@ -68,10 +68,10 @@ def stock_news_em(symbol: str = "601628") -> pd.DataFrame:
 
     driver.get(url)
     data_text = driver.page_source
-    print(data_text)
+    # print(data_text)
     pattern = re.compile(r'"bizCode"(.*?)\)</pre>', re.DOTALL)
     data_re_list = pattern.findall(data_text)
-    print(data_re_list)
+    # print(data_re_list)
     data_json = json.loads(
         '{"bizCode"' + data_re_list[0]
     )
@@ -136,6 +136,7 @@ def save_to_excel(df: pd.DataFrame, symbol: str):
     filename_with_timestamp = f"{symbol}_{timestamp_str}.xlsx"
     df.to_excel(filename_with_timestamp, index=False)
     print(f"数据已保存至 {filename_with_timestamp}")
+
 
 if __name__ == "__main__":
     symbol = "首航高科"

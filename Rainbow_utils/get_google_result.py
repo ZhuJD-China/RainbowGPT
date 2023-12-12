@@ -25,6 +25,17 @@ def set_global_proxy(proxy_url):
     os.environ['https_proxy'] = proxy_url
 
 
+def get_published_date(item):
+    # 获取结果项的发布时间，这里以'pagemap'中的'metatags'为例
+    if 'pagemap' in item and 'metatags' in item['pagemap']:
+        metatags = item['pagemap']['metatags']
+        if metatags and 'og:article:published_time' in metatags:
+            return metatags['og:article:published_time']
+
+    # 如果没有找到时间信息，返回一个较早的日期
+    return '1970-01-01T00:00:00Z'
+
+
 def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=GOOGLE_CSE_ID):
     """
     Perform a Google Custom Search.
@@ -41,6 +52,8 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
     print("http_proxy:", os.environ['http_proxy'])
     service = build("customsearch", "v1", developerKey=api_key)
     results = service.cse().list(q=query, cx=custom_search_engine_id).execute()
+    print(results)
+
     # 提取标题、链接和摘要信息
     link_data = []
     data_without_link = []
@@ -173,7 +186,6 @@ def get_website_content(url):
         return None
 
 
-# set_global_proxy("http://localhost:7890")
 """
 google_search_results = google_custom_search("2023年12月7日新闻", GOOGLE_API_KEY, GOOGLE_CSE_ID)
 print(google_search_results.to_string(index_names=False))
@@ -195,3 +207,8 @@ for link in google_search_results['Link']:
         print("Website Content:")
         print(website_content)
 """
+# set_global_proxy("http://localhost:7890")
+# google_search_results = google_custom_search(
+#     "2023年12月12日左右时间的有关空冷系统、空冷配件、余热发电、光热发电系统、光热发电产品类型的新闻动态", GOOGLE_API_KEY,
+#     GOOGLE_CSE_ID)
+# print(google_search_results)
