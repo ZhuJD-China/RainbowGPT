@@ -14,6 +14,14 @@ print(dashscope.api_key)
 
 def slow_echo(message, history, llm_options_checkbox_group):
     response = ""
+
+    if message == "":
+        response = "哎呀！好像有点小尴尬，您似乎忘记提出问题了。别着急，随时输入您的问题，我将尽力为您提供帮助！"
+        print(response)
+        for i in range(0, len(response), int(10)):
+            yield response[: i + int(10)]
+        return
+
     print("User: ", message)
     try:
         messages = [{'role': 'system', 'content': 'You are a helpful assistant.'},
