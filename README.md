@@ -84,7 +84,7 @@ Before using the application, follow these steps to configure API-related inform
 Now your environment is set up, and the API is configured. You are ready to run the application!
 Feel free to let me know if you have any specific preferences or additional details you'd like to include!
 
-### 🌐 Free Use of GPT API
+## 🌐 Free Use of GPT API
 We are committed to expanding capacity based on usage and providing the API for free as long as we are not officially sanctioned. If you find this project helpful, please consider giving us a ⭐.
 
 This API Key is used for forwarding API requests. Change the Host to `api.chatanywhere.com.cn` (preferred for domestic usage) or `api.chatanywhere.cn` (for international usage, domestic users need a global proxy).
@@ -123,12 +123,12 @@ The knowledge base QA search algorithm optimizes document retrieval through cont
 - **BM25-based Retriever:** Specialized in efficiently locating relevant documents based on keywords, making it particularly effective for sparse retrieval.
 - **Embedding Similarity Retriever:** Utilizes embedding vectors for document and query embedding, excelling in identifying relevant documents through semantic similarity. This retriever is well-suited for dense retrieval scenarios.
 
-## 🚀 EnsembleRetriever
-EnsembleRetriever is a powerful retrieval mechanism that combines the strengths of various retrievers. It takes a list of retrievers as input, integrates their results using the `get_relevant_documents()` methods, and reranks the outcomes using the Reciprocal Rank Fusion algorithm.
+## EnsembleRetriever
+🚀EnsembleRetriever is a powerful retrieval mechanism that combines the strengths of various retrievers. It takes a list of retrievers as input, integrates their results using the `get_relevant_documents()` methods, and reranks the outcomes using the Reciprocal Rank Fusion algorithm.
 
 By leveraging the diverse strengths of different algorithms, EnsembleRetriever achieves superior performance compared to individual retrievers.
 
-## Common Usage Pattern
+# Common Usage Pattern
 🔄 The most effective use of the Knowledge Base QA Search involves combining a sparse retriever (e.g., BM25) with a dense retriever (e.g., embedding similarity). This "hybrid search" optimally utilizes the complementary strengths of both retrievers for comprehensive Knowledge.
 
 📊 Explore the Stock Analysis module and unlock valuable insights for your investment decisions! 🚀 #StockAnalysis #RainbowGPT #AIInvesting
