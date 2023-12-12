@@ -31,6 +31,7 @@ Specify areas for further discussion or features of interest! 🚀✨ Succinct a
 </p>
 <p align="center">
 
+
 ## Table of Contents
 1. [Getting Started](#getting-started)
    - [Environment Setup](#environment-setup)
@@ -40,7 +41,7 @@ Specify areas for further discussion or features of interest! 🚀✨ Succinct a
 4. [BM25 Retrievers](#bm25-retrievers)
 5. [EnsembleRetriever](#ensembleretriever)
 6. [Common Usage Pattern](#common-usage-pattern)
-7. [RainbowGPT Overview](#rainbowgpt-overview) 
+7. [RainbowGPT Overview](#rainbowgpt-overview)
 
 ## ✨ Getting Started
 ### Environment Setup
