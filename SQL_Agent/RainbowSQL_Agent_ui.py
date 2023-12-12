@@ -1,21 +1,16 @@
-import chromadb
 import os
 from dotenv import load_dotenv
 import gradio as gr
 # 导入 langchain 模块的相关内容
-from langchain.agents import initialize_agent, AgentType, load_tools
 from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 from langchain.prompts import PromptTemplate, MessagesPlaceholder
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
+from sqlalchemy.dialects.mysql import pymysql
+from sqlalchemy import create_engine
 # Rainbow_utils
 from Rainbow_utils.get_gradio_theme import Seafoam
-from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \
-    truncate_string_to_max_tokens
-from Rainbow_utils import get_google_result
-from Rainbow_utils import get_prompt_templates
 from langchain.utilities import SQLDatabase
-from langchain_experimental.sql import SQLDatabaseChain
 from langchain.agents import create_sql_agent
 from langchain.agents.agent_toolkits import SQLDatabaseToolkit
 from langchain.agents.agent_types import AgentType
@@ -49,12 +44,6 @@ temperature_num_global = 0
 local_data_embedding_token_max_global = None
 human_input_global = None
 
-local_search_template = get_prompt_templates.local_search_template
-google_search_template = get_prompt_templates.google_search_template
-
-# 全局工具列表创建
-tools = []
-
 # memory
 agent_kwargs = {
     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
@@ -64,8 +53,8 @@ memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
 
 def echo(message, history, llm_options_checkbox_group,
          Embedding_Model_select, local_data_embedding_token_max, local_private_llm_api,
-         local_private_llm_key,
-         local_private_llm_name, input_datatable_name):
+         local_private_llm_key, local_private_llm_name, input_datatable_name,
+         input_database_url, input_database_name, input_database_passwd):
     global docsearch_db
     global llm
     global tools
@@ -123,8 +112,8 @@ def echo(message, history, llm_options_checkbox_group,
 
     db_name = input_datatable_name
     # 创建数据库连接
-    db = SQLDatabase.from_uri(f"mysql+pymysql://root:123456@localhost/{db_name}")
-    # db_chain = SQLDatabaseChain.from_llm(llm, db, verbose=True)
+    db = SQLDatabase.from_uri(
+        f"mysql+pymysql://{input_database_name}:{input_database_passwd}@{input_database_url}/{db_name}")
 
     # 创建代理执行器
     agent_executor = create_sql_agent(
@@ -143,6 +132,37 @@ def echo(message, history, llm_options_checkbox_group,
     # return response
 
 
+# 函数：连接数据库并获取所有表格名称
+def get_database_tables(host, username, password):
+    try:
+        # 构建数据库连接字符串
+        connection_string = f"mysql+pymysql://{username}:{password}@{host}/"
+        # 创建数据库引擎
+        engine = create_engine(connection_string)
+        # 获取数据库连接
+        connection = engine.connect()
+        # 查询所有数据库
+        result = connection.execute("SHOW DATABASES")
+        # 获取查询结果
+        databases = [row[0] for row in result]
+        # # 打印数据库列表
+        # print("Databases:")
+        # for db in databases:
+        #     print(db)
+        # 关闭连接
+        connection.close()
+
+        return databases
+    except Exception as e:
+        print(f"Error: {e}")
+        return []
+
+
+# 函数：用于更新下拉列表的表格名称
+def update_tables_list(host, username, password):
+    return gr.Dropdown.update(choices=get_database_tables(host, username, password))
+
+
 with gr.Blocks(theme=seafoam) as RainbowGPT:
     with gr.Row():
         with gr.Column(scale=3):
@@ -154,7 +174,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                                    "gpt-3.5-turbo", "Private-LLM-Model"]
                     llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                              value=llm_options[0])
-                    local_private_llm_name = gr.Textbox(value="Qwen-7B-Chat", label="Private llm name")
+                    local_private_llm_name = gr.Textbox(value="Qwen-72B-Chat", label="Private llm name")
 
                 with gr.Group():
                     gr.Markdown("### Private LLM Settings")
@@ -164,8 +184,19 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
 
             with gr.Row():
                 with gr.Group():
-                    input_datatable_name = gr.Textbox(value="movies_data", label="datatable name")
+                    gr.Markdown("### DataBase Settings")
+                    input_database_url = gr.Textbox(value="localhost", label="database url")
+                    with gr.Row():
+                        input_database_name = gr.Textbox(value="root", label="database name")
+                        input_database_passwd = gr.Textbox(value="", label="database passwd", type="password")
+                    input_datatable_name = gr.Dropdown(["..."], label="Datatable Name", value="...")
+                    update_button = gr.Button("Update Tables List")
+                    update_button.click(fn=update_tables_list,
+                                        inputs=[input_database_url, input_database_name, input_database_passwd],
+                                        outputs=input_datatable_name)
 
+            with gr.Row():
+                with gr.Group():
                     gr.Markdown("### Embedding Data Settings")
                     Embedding_Model_select = gr.Radio(["Openai Embedding", "HuggingFace Embedding"],
                                                       label="Embedding Model Select Options", value="Openai Embedding")
@@ -178,7 +209,8 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                 echo, additional_inputs=[llm_options_checkbox_group,
                                          Embedding_Model_select, local_data_embedding_token_max, local_private_llm_api,
                                          local_private_llm_key,
-                                         local_private_llm_name, input_datatable_name],
+                                         local_private_llm_name, input_datatable_name,
+                                         input_database_url, input_database_name, input_database_passwd],
                 title="""
     <h1 style='text-align: center; margin-bottom: 1rem; font-family: "Courier New", monospace;
                background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
