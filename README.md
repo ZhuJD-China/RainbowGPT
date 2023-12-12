@@ -150,7 +150,7 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 ![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/exp1.png)
 
 📊 **StockGPT Analysis**
-![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock.png)
+![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock1.png)
 
 ⚡ **SQL_Agent UI**
 ![SQL_Agent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQL_Agent.png)
