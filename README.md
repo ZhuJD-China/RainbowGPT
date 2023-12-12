@@ -32,15 +32,15 @@ Specify areas for further discussion or features of interest! 🚀✨ Succinct a
 <p align="center">
 
 ## Table of Contents
-1. [Getting Started](#-getting-started)
+1. [Getting Started](#getting-started)
    - [Environment Setup](#environment-setup)
    - [API Configuration](#api-configuration)
-2. [Free Use of GPT API](#-free-use-of-gpt-api)
-3. [Knowledge Base QA Search Algorithm](#-knowledge-base-qa-search-algorithm)
-4. [BM25 Retrievers](#-bm25-retrievers)
-5. [EnsembleRetriever](#-ensembleretriever)
+2. [Free Use of GPT API](#free-use-of-gpt-api)
+3. [Knowledge Base QA Search Algorithm](#knowledge-base-qa-search-algorithm)
+4. [BM25 Retrievers](#bm25-retrievers)
+5. [EnsembleRetriever](#ensembleretriever)
 6. [Common Usage Pattern](#common-usage-pattern)
-7. [RainbowGPT Overview](#-rainbowgpt-overview) 
+7. [RainbowGPT Overview](#rainbowgpt-overview) 
 
 ## ✨ Getting Started
 ### Environment Setup
