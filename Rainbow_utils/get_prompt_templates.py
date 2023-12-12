@@ -23,13 +23,21 @@ common_text_after = """
 # local Search Prompt模版
 local_search_template = common_text_before + """
 以下双引号内是所搜索到的知识库数据：
+
 “{combined_text}”
+
 """ + common_text_after
 
 # google Search Prompt模版
 google_search_template = common_text_before + """
-答案框数据类型包括特色片段、知识卡和实时结果，请你仔细分析答案框内容与我的问题的相关性后决定是否利用这个数据准确回答。
+答案框数据包含搜索问题关键字的对应的知识总结或者包含对应的时间和价格一些的实时结果，
+请你仔细分析答案框内容与我的问题的相关性?
+如果就是问题需要的答案就直接利用这个数据回答。
+如果和问题相关性不高，就继续参考下面的知识库进行回答
 
-以下双引号内是所搜索到的知识库数据：
+以下双引号内是所搜索到各个部分的知识库数据：
+
 “{combined_text}”
+
 """ + common_text_after
+

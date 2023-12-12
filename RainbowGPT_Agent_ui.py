@@ -586,7 +586,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                                    "gpt-3.5-turbo", "Private-LLM-Model"]
                     llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                              value=llm_options[0])
-                    local_private_llm_name = gr.Textbox(value="Qwen-7B-Chat", label="Private llm name")
+                    local_private_llm_name = gr.Textbox(value="Qwen-72B-Chat", label="Private llm name")
 
                 with gr.Group():
                     gr.Markdown("### Private LLM Settings")
