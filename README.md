@@ -87,6 +87,8 @@ Feel free to let me know if you have any specific preferences or additional deta
 ## Free Use of GPT API
 🌐 We are committed to expanding capacity based on usage and providing the API for free as long as we are not officially sanctioned. If you find this project helpful, please consider giving us a ⭐.
 
+⚠️Due to frequent malicious requests, we no longer offer public free keys directly. Now, you need to use your GitHub account to claim your own free key.
+
 This API Key is used for forwarding API requests. Change the Host to `api.chatanywhere.com.cn` (preferred for domestic usage) or `api.chatanywhere.cn` (for international usage, domestic users need a global proxy).
 
 - 🚀 [Apply for a Free API Key in Beta](https://api.chatanywhere.org/v1/oauth/free/github/render)
