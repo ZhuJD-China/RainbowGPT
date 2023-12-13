@@ -407,18 +407,17 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     temperature_num_global = float(temperature_num)
     llm_name_global = str(llm_options_checkbox_group)
 
+    response = (llm_name_global + " & " + Embedding_Model_select + " 模型加载中....." + "temperature="
+                + str(temperature_num_global))
+    for i in range(0, len(response), int(print_speed_step)):
+        yield response[: i + int(print_speed_step)]
+
     if Embedding_Model_select == "Openai Embedding" or Embedding_Model_select == "" or Embedding_Model_select == None:
-        response = "Openai Embedding 模型加载中..........."
-        for i in range(0, len(response), int(print_speed_step)):
-            yield response[: i + int(print_speed_step)]
         embeddings = OpenAIEmbeddings()
         embeddings.show_progress_bar = True
         embeddings.request_timeout = 20
         Embedding_Model_select_global = 0
     elif Embedding_Model_select == "HuggingFace Embedding":
-        response = "HuggingFace Embedding 模型加载中..........."
-        for i in range(0, len(response), int(print_speed_step)):
-            yield response[: i + int(print_speed_step)]
         embeddings = HuggingFaceEmbeddings(cache_folder="models")
         Embedding_Model_select_global = 1
 
