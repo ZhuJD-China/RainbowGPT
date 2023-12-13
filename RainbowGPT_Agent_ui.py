@@ -408,6 +408,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     llm_name_global = str(llm_options_checkbox_group)
 
     if Embedding_Model_select == "Openai Embedding" or Embedding_Model_select == "" or Embedding_Model_select == None:
+        response = "Openai Embedding 模型加载中..........."
+        for i in range(0, len(response), int(print_speed_step)):
+            yield response[: i + int(print_speed_step)]
         embeddings = OpenAIEmbeddings()
         embeddings.show_progress_bar = True
         embeddings.request_timeout = 20
@@ -432,7 +435,7 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
                          model=llm_name_global)
 
     tools = []  # 重置工具列表
-    tools = load_tools(["llm-math", "arxiv"], llm=llm)
+    tools = load_tools(["wolfram-alpha", "arxiv"], llm=llm)
 
     flag_get_Local_Search_tool = False
     for tg in tool_checkbox_group:
@@ -640,8 +643,10 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                 with gr.Group():
                     gr.Markdown("### Additional Tools")
                     Google_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
+
                     tool_options = ["Google Search", "Local Knowledge Search"]
                     tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
+                    gr.Markdown("Note: 'wolfram-alpha' and 'arxiv' are enabled by default.")
 
                     temperature_num = gr.Slider(0, 1, label="Temperature")
                     print_speed_step = gr.Slider(10, 20, label="Print Speed Step", step=1)
