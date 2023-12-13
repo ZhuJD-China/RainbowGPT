@@ -413,6 +413,9 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         embeddings.request_timeout = 20
         Embedding_Model_select_global = 0
     elif Embedding_Model_select == "HuggingFace Embedding":
+        response = "HuggingFace Embedding 模型加载中..........."
+        for i in range(0, len(response), int(print_speed_step)):
+            yield response[: i + int(print_speed_step)]
         embeddings = HuggingFaceEmbeddings(cache_folder="models")
         Embedding_Model_select_global = 1
 
@@ -551,24 +554,23 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
             # Collection exists, load it
             if collection_name_select:
                 print(f"{collection_name_select}", " Collection exists, load it")
-                response = f"{collection_name_select}" + "知识库已经创建, 正在加载中...请耐心等待我的回答...."
+                response = f"{collection_name_select}" + "知识库加载中，请等待我的回答......."
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[: i + int(print_speed_step)]
                 docsearch_db = Chroma(client=client, embedding_function=embeddings,
                                       collection_name=collection_name_select)
-
             else:
-                response = "没有选中任何知识库，请至少选择一个知识库，回答中止！"
+                response = "未选择知识库，回答中止。"
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[: i + int(print_speed_step)]
                 return
         elif collection_checkbox_group == None:
-            response = "打开知识库搜索工具但是没有打开读取知识库开关！"
+            response = "打开搜索工具但未启用读取知识库。"
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
             return
     if not flag_get_Local_Search_tool and collection_checkbox_group == "Read Existing Collection":
-        response = "读取知识库但是没有打开知识库搜索工具！失去本地知识库搜索能力！使用模型本身记忆或者其他工具回答！"
+        response = "没有打开本地知识库搜索工具，使用模型记忆或其他工具回答。"
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
 
