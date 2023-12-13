@@ -625,7 +625,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                     llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                              value=llm_options[0])
                     local_private_llm_name = gr.Textbox(value="Qwen-72B-Chat", label="Private llm name")
-                    llm_Agent = ["openai-functions", "zero-shot-react-description"]
+                    llm_Agent = ["chat-zero-shot-react-description", "openai-functions", "zero-shot-react-description"]
                     llm_Agent_checkbox_group = gr.Dropdown(llm_Agent, label="LLM Agent Type Options",
                                                            value=llm_Agent[0])
 
