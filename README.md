@@ -161,3 +161,5 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 
 🚀 Explore the diverse capabilities of RainbowGPT and leverage its powerful modules for your projects! 🌈✨
 
+## 🌟 Contributors
+[![langchain contributors](https://contrib.rocks/image?repo=ZhuJD-China/RainbowGPT&max=2000)](https://github.com/ZhuJD-China/RainbowGPT/graphs/contributors)
