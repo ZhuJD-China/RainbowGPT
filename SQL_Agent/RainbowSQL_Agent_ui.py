@@ -121,6 +121,9 @@ def echo(message, history, llm_options_checkbox_group,
         toolkit=SQLDatabaseToolkit(db=db, llm=llm),
         verbose=True,
         agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+        handle_parsing_errors=True,
+        agent_kwargs=agent_kwargs,
+        memory=memory,
     )
 
     try:
@@ -185,11 +188,11 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
             with gr.Row():
                 with gr.Group():
                     gr.Markdown("### DataBase Settings")
-                    input_database_url = gr.Textbox(value="localhost", label="database url")
+                    input_database_url = gr.Textbox(value="localhost", label="MySql Database url")
                     with gr.Row():
-                        input_database_name = gr.Textbox(value="root", label="database name")
-                        input_database_passwd = gr.Textbox(value="", label="database passwd", type="password")
-                    input_datatable_name = gr.Dropdown(["..."], label="Datatable Name", value="...")
+                        input_database_name = gr.Textbox(value="root", label="database user name")
+                        input_database_passwd = gr.Textbox(value="", label="database user passwd", type="password")
+                    input_datatable_name = gr.Dropdown(["..."], label="Database Select Name", value="...")
                     update_button = gr.Button("Update Tables List")
                     update_button.click(fn=update_tables_list,
                                         inputs=[input_database_url, input_database_name, input_database_passwd],

@@ -1,3 +1,6 @@
+import queue
+import threading
+
 import chromadb
 import openai
 import datetime
@@ -228,6 +231,44 @@ Local_Search_tool = Tool(
 )
 
 
+def get_google_answer(question, result_queue):
+    google_answer_box = get_google_result.selenium_google_answer_box(
+        question, "Stock_Agent/chromedriver-120.0.6099.56.0.exe")
+    # 使用正则表达式保留中文、英文和标点符号
+    google_answer_box = filter_chinese_english_punctuation(google_answer_box)
+    result_queue.put(("google_answer_box", google_answer_box))
+
+
+def process_data_title_summary(data_title_Summary, result_queue):
+    data_title_Summary_str = ''.join(data_title_Summary)
+    result_queue.put(("data_title_Summary_str", data_title_Summary_str))
+
+
+def process_custom_search_link(custom_search_link, result_queue):
+    link_detail_res = []
+    for link in custom_search_link[:1]:
+        website_content = get_google_result.get_website_content(link)
+        if website_content:
+            link_detail_res.append(website_content)
+
+    link_detail_string = '\n'.join(link_detail_res)
+    link_detail_string = filter_chinese_english_punctuation(link_detail_string)
+    result_queue.put(("link_detail_string", link_detail_string))
+
+
+def custom_search_and_fetch_content(question, result_queue):
+    custom_search_link, data_title_Summary = get_google_result.google_custom_search(question)
+
+    # 创建新的线程来处理 data_title_Summary 和 custom_search_link
+    thread3 = threading.Thread(target=process_data_title_summary, args=(data_title_Summary, result_queue))
+    thread4 = threading.Thread(target=process_custom_search_link, args=(custom_search_link, result_queue))
+
+    thread3.start()
+    thread4.start()
+    thread3.join()
+    thread4.join()
+
+
 def Google_Search_run(question):
     global llm
     global embeddings
@@ -267,29 +308,32 @@ def Google_Search_run(question):
         return_final_only=True,  # 指示是否仅返回最终解析的结果
     )
 
-    google_answer_box = (get_google_result.selenium_google_answer_box
-                         (question, "Stock_Agent/chromedriver-120.0.6099.56.0.exe"))
+    # 创建一个队列来存储线程结果
+    results_queue = queue.Queue()
 
-    # 使用正则表达式保留中文、英文和标点符号
-    google_answer_box = filter_chinese_english_punctuation(google_answer_box)
+    # 创建并启动线程
+    thread1 = threading.Thread(target=get_google_answer, args=(question, results_queue))
+    thread2 = threading.Thread(target=custom_search_and_fetch_content, args=(question, results_queue))
 
-    # Google_Search = GoogleSearchAPIWrapper()
-    # GoogleSearchAPI_data = Google_Search.run(question)
-    custom_search_link, data_title_Summary = get_google_result.google_custom_search(question)
+    thread1.start()
+    thread2.start()
+    thread1.join()
+    thread2.join()
 
-    # 使用 join 方法将字符串列表连接成一个字符串
-    data_title_Summary_str = ''.join(data_title_Summary)
+    # 初始化变量
+    google_answer_box = ""
+    data_title_Summary_str = ""
+    link_detail_string = ""
 
-    link_datial_res = []
-    for link in custom_search_link[:1]:
-        website_content = get_google_result.get_website_content(link)
-        if website_content:
-            link_datial_res.append(website_content)
-    # Concatenate the strings in the list into a single string
-    link_datial_string = '\n'.join(link_datial_res)
-
-    # 使用正则表达式保留中文、英文和标点符号
-    link_datial_string = filter_chinese_english_punctuation(link_datial_string)
+    # 提取并分配结果
+    while not results_queue.empty():
+        result_type, result = results_queue.get()
+        if result_type == "google_answer_box":
+            google_answer_box = result
+        elif result_type == "data_title_Summary_str":
+            data_title_Summary_str = result
+        elif result_type == "link_detail_string":
+            link_detail_string = result
 
     finally_combined_text = f"""
     当前关键字搜索的答案框数据：
@@ -299,7 +343,7 @@ def Google_Search_run(question):
     {data_title_Summary_str}
     
     搜索结果相似度TOP1的网站的详细内容数据:
-    {link_datial_string}
+    {link_detail_string}
     
     """
 
@@ -351,7 +395,6 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global local_private_llm_key_global
     global local_private_llm_name_global
 
-
     local_private_llm_name_global = str(local_private_llm_name)
     local_private_llm_api_global = str(local_private_llm_api)
     local_private_llm_key_global = str(local_private_llm_key)
@@ -386,11 +429,7 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
                          model=llm_name_global)
 
     tools = []  # 重置工具列表
-    llm_math_tool = load_tools(["arxiv"],
-                               llm=ChatOpenAI(model="gpt-3.5-turbo-16k",
-                                              openai_api_key=os.getenv('OPENAI_API_KEY'),
-                                              ))
-    tools.append(llm_math_tool[0])
+    tools = load_tools(["llm-math", "arxiv"], llm=llm)
 
     flag_get_Local_Search_tool = False
     for tg in tool_checkbox_group:
@@ -555,6 +594,7 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
         response = f"发生错误：{str(e)}"
     for i in range(0, len(response), int(print_speed_step)):
         yield response[: i + int(print_speed_step)]
+    # response = agent_open_functions.run(message)
     # return response
 
 

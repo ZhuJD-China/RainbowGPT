@@ -52,7 +52,7 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
     print("http_proxy:", os.environ['http_proxy'])
     service = build("customsearch", "v1", developerKey=api_key)
     results = service.cse().list(q=query, cx=custom_search_engine_id).execute()
-    print(results)
+    # print(results)
 
     # 提取标题、链接和摘要信息
     link_data = []
@@ -125,7 +125,7 @@ def extract_google_answer(driver, query):
         return result
     except Exception as e:
         print(f"Error occurred: {e}")
-        return ""
+        return "None"
 
 
 def selenium_google_answer_box(query, chrome_driver_path):
@@ -154,11 +154,13 @@ def selenium_google_answer_box(query, chrome_driver_path):
 
     service = Service(chrome_driver_path)
     driver = webdriver.Chrome(service=service, options=options)
-
     results = extract_google_answer(driver, query)
-
     driver.quit()
-    return results
+
+    if results == None or results == "":
+        return "None"
+    else:
+        return results
 
 
 def get_website_content(url):
@@ -183,7 +185,7 @@ def get_website_content(url):
         return cleaned_context
     else:
         print(f"Failed to retrieve content. Status code: {response.status_code}")
-        return None
+        return "None"
 
 
 """
