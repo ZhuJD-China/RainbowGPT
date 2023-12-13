@@ -126,7 +126,7 @@ def ask_local_vector_db(question):
     local_chain = LLMChain(
         llm=llm, prompt=local_search_prompt,
         verbose=True,
-        return_final_only=True,  # 指示是否仅返回最终解析的结果
+        # return_final_only=True,  # 指示是否仅返回最终解析的结果
     )
 
     docs = []
@@ -305,7 +305,7 @@ def Google_Search_run(question):
     local_chain = LLMChain(
         llm=llm, prompt=local_search_prompt,
         verbose=True,
-        return_final_only=True,  # 指示是否仅返回最终解析的结果
+        # return_final_only=True,  # 指示是否仅返回最终解析的结果
     )
 
     # 创建一个队列来存储线程结果
@@ -374,9 +374,8 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
          new_collection_name,
          temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select,
          input_chunk_size, local_data_embedding_token_max, Google_proxy,
-         local_private_llm_api,
-         local_private_llm_key,
-         local_private_llm_name):
+         local_private_llm_api, local_private_llm_key,
+         local_private_llm_name, llm_Agent_checkbox_group):
     global docsearch_db
     global llm
     global tools
@@ -580,26 +579,21 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     agent_open_functions = initialize_agent(
         tools=tools,
         llm=llm,
-        agent=AgentType.OPENAI_FUNCTIONS,
+        agent=llm_Agent_checkbox_group,
         verbose=True,
         agent_kwargs=agent_kwargs,
         memory=memory,
         max_iterations=10,
         early_stopping_method="generate",
         handle_parsing_errors=True,  # 初始化代理并处理解析错误
-        # handle_parsing_errors="Check your output and make sure it conforms!",
         callbacks=[handler],
-        # return_intermediate_steps=True,
     )
-
     try:
         response = agent_open_functions.run(message)
     except Exception as e:
         response = f"发生错误：{str(e)}"
     for i in range(0, len(response), int(print_speed_step)):
         yield response[: i + int(print_speed_step)]
-    # response = agent_open_functions.run(message)
-    # return response
 
 
 # 定义一个函数，根据Local Knowledge Collection Select Options的值来返回Select existed Collection的选项
@@ -631,17 +625,20 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                     llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                              value=llm_options[0])
                     local_private_llm_name = gr.Textbox(value="Qwen-72B-Chat", label="Private llm name")
+                    llm_Agent = ["openai-functions", "zero-shot-react-description"]
+                    llm_Agent_checkbox_group = gr.Dropdown(llm_Agent, label="LLM Agent Type Options",
+                                                           value=llm_Agent[0])
 
                 with gr.Group():
                     gr.Markdown("### Private LLM Settings")
                     local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1",
                                                        label="Private llm openai-api base")
                     local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
+                    Google_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
 
             with gr.Row():
                 with gr.Group():
                     gr.Markdown("### Additional Tools")
-                    Google_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
 
                     tool_options = ["Google Search", "Local Knowledge Search"]
                     tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
@@ -683,7 +680,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                                          temperature_num, print_speed_step, tool_checkbox_group, uploaded_files,
                                          Embedding_Model_select, input_chunk_size, local_data_embedding_token_max,
                                          Google_proxy, local_private_llm_api, local_private_llm_key,
-                                         local_private_llm_name],
+                                         local_private_llm_name, llm_Agent_checkbox_group],
                 title="""
     <h1 style='text-align: center; margin-bottom: 1rem; font-family: "Courier New", monospace;
                background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
