@@ -5,8 +5,6 @@
     <a align="center" href="https://github.com/ZhuJD-China/RainbowGPT" target="_blank">
       <img width="20%" height="150"  src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/logo.jpg"></a>
   </p>
-    <p>
-</p>
 </div>
 
 ## 🌈RainbowAgent Integration Summary:
