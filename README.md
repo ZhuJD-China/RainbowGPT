@@ -54,8 +54,8 @@ Specify areas for further discussion or features of interest! 🚀✨ Succinct a
    
 ⚠️Before running `RainbowGPT_Launchpad_UI.py`, make sure to relocate the modified `3rd_modify/langchain/vectorstores/chroma.py` file to the Langchain module's library folder and rename it to match the library file. This step is crucial for proper execution. 🌈 
 
-<span style="background-color:yellow;">To launch the entire project, you only need to execute RainbowGPT_Launchpad_UI.py.</span>
-
+> ⚠️Tips：
+> To launch the entire project, you only need to execute RainbowGPT_Launchpad_UI.py
 
 ### API Configuration
 Before using the application, follow these steps to configure API-related information in the `.env` file:
