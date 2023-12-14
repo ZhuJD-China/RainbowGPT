@@ -394,32 +394,20 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
     global local_private_llm_key_global
     global local_private_llm_name_global
 
+    human_input_global = message
     local_private_llm_name_global = str(local_private_llm_name)
     local_private_llm_api_global = str(local_private_llm_api)
     local_private_llm_key_global = str(local_private_llm_key)
-
     collection_name_select_global = str(collection_name_select)
-
-    human_input_global = message
     local_data_embedding_token_max_global = int(local_data_embedding_token_max)
     input_chunk_size_global = int(input_chunk_size)
     temperature_num_global = float(temperature_num)
     llm_name_global = str(llm_options_checkbox_group)
 
-    response = (llm_name_global + " & " + Embedding_Model_select + " 模型加载中....." + "temperature="
+    response = (llm_name_global + " 模型加载中....." + "temperature="
                 + str(temperature_num_global))
     for i in range(0, len(response), int(print_speed_step)):
         yield response[: i + int(print_speed_step)]
-
-    if Embedding_Model_select == "Openai Embedding" or Embedding_Model_select == "" or Embedding_Model_select == None:
-        embeddings = OpenAIEmbeddings()
-        embeddings.show_progress_bar = True
-        embeddings.request_timeout = 20
-        Embedding_Model_select_global = 0
-    elif Embedding_Model_select == "HuggingFace Embedding":
-        embeddings = HuggingFaceEmbeddings(cache_folder="models")
-        Embedding_Model_select_global = 1
-
     if llm_name_global == "Private-LLM-Model":
         llm = ChatOpenAI(
             model_name=local_private_llm_name_global,
@@ -433,26 +421,47 @@ def echo(message, history, llm_options_checkbox_group, collection_name_select, c
                          model=llm_name_global)
 
     tools = []  # 重置工具列表
-    tools = load_tools(["wolfram-alpha", "arxiv"], llm=llm)
+    # Check if 'wolfram-alpha' is in the selected tools
+    if "wolfram-alpha" in tool_checkbox_group:
+        # Load both 'wolfram-alpha' and 'arxiv' tools
+        tools = load_tools(["wolfram-alpha", "arxiv"], llm=llm)
+    else:
+        # Load only the 'arxiv' tool
+        tools = load_tools(["arxiv"], llm=llm)
 
+    # Initialize flags for additional tools
     flag_get_Local_Search_tool = False
+    # Check for additional tools and append them if not already in the list
     for tg in tool_checkbox_group:
         if tg == "Google Search" and Google_Search_tool not in tools:
-            tools.append(Google_Search_tool)
             response = "Google Search 工具加入 回答中..........."
-
-            # 设置代理（替换为你的代理地址和端口）
-            proxy_url_global = str(Google_proxy)
-
             for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
+                yield response[:i + int(print_speed_step)]
+
+            tools.append(Google_Search_tool)
+            proxy_url_global = str(Google_proxy)  # Set proxy
+
         elif tg == "Local Knowledge Search" and Local_Search_tool not in tools:
-            tools.append(Local_Search_tool)
             response = "Local Knowledge Search 工具加入 回答中..........."
             for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
-            if Local_Search_tool in tools:
-                flag_get_Local_Search_tool = True
+                yield response[:i + int(print_speed_step)]
+            tools.append(Local_Search_tool)
+
+            response = (f"{llm_name_global} & {Embedding_Model_select} 模型加载中.....temperature="
+                        + str(temperature_num_global))
+            for i in range(0, len(response), int(print_speed_step)):
+                yield response[:i + int(print_speed_step)]
+
+            if Embedding_Model_select in ["Openai Embedding", "", None]:
+                embeddings = OpenAIEmbeddings()
+                embeddings.show_progress_bar = True
+                embeddings.request_timeout = 20
+                Embedding_Model_select_global = 0
+            elif Embedding_Model_select == "HuggingFace Embedding":
+                embeddings = HuggingFaceEmbeddings(cache_folder="models")
+                Embedding_Model_select_global = 1
+
+            flag_get_Local_Search_tool = True
 
     if message == "" and (
             (collection_checkbox_group == "Read Existing Collection") or (collection_checkbox_group == None)
@@ -640,9 +649,9 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                 with gr.Group():
                     gr.Markdown("### Additional Tools")
 
-                    tool_options = ["Google Search", "Local Knowledge Search"]
-                    tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select Options")
-                    gr.Markdown("Note: 'wolfram-alpha' and 'arxiv' are enabled by default.")
+                    tool_options = ["Google Search", "Local Knowledge Search", "wolfram-alpha"]
+                    tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select")
+                    gr.Markdown("Note: 'arxiv' Tools are enabled by default.")
 
                     temperature_num = gr.Slider(0, 1, label="Temperature")
                     print_speed_step = gr.Slider(10, 20, label="Print Speed Step", step=1)
@@ -651,7 +660,7 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                     gr.Markdown("### Knowledge Collection Settings")
                     collection_options = ["None", "Read Existing Collection", "Create New Collection"]
                     collection_checkbox_group = gr.Radio(collection_options,
-                                                         label="Local Knowledge Collection Select Options",
+                                                         label="Local Knowledge Collection Select",
                                                          value=collection_options[0])
                     collection_name_select = gr.Dropdown(["..."], label="Select existed Collection", value="...")
                     collection_checkbox_group.change(fn=update_collection_name, inputs=collection_checkbox_group,
@@ -662,8 +671,8 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                 with gr.Group():
                     gr.Markdown("### Embedding Data Settings")
                     Embedding_Model_select = gr.Radio(["Openai Embedding", "HuggingFace Embedding"],
-                                                      label="Embedding Model Select Options", value="Openai Embedding")
-                    local_data_embedding_token_max = gr.Slider(1024, 12288, step=2, label="Embeddings Data Max Tokens",
+                                                      label="Embedding Model Select", value="HuggingFace Embedding")
+                    local_data_embedding_token_max = gr.Slider(1024, 15360, step=2, label="Embeddings Data Max Tokens",
                                                                value=2048)
 
             with gr.Row():
