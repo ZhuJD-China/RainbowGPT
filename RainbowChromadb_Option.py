@@ -12,7 +12,8 @@ class ChromaDBGradioUI:
         with gr.Blocks() as self.interface:
             # 下拉列表
             self.collections_combo = gr.Dropdown(choices=[collection.name for collection in self.collections],
-                                                 label="选择要操作的 collection name")
+                                                 label="选择要操作的 collection name",
+                                                 value="...")
             # 功能按钮
             delete_button = gr.Button("删除集合")
             # 集合信息显示
@@ -44,9 +45,28 @@ class ChromaDBGradioUI:
         return updated_info, gr.Dropdown.update(choices=[collection.name for collection in self.collections])
 
     def delete_collection(self, collection_name):
-        # 删除指定的集合
-        self.client.delete_collection(str(collection_name))
-        updated_info, log_message = self.update_collections()
+        try:
+            # Ensure a valid collection name is selected
+            if collection_name == "...":
+                raise ValueError("Please select a valid collection name.")
+
+            # Delete the specified collection
+            self.client.delete_collection(str(collection_name))
+
+            # Update the collections and log message
+            updated_info, log_message = self.update_collections()
+            log_message = f"Collection {collection_name} deleted successfully."
+
+        except ValueError as e:
+            # Handle specific known errors
+            log_message = f"Error: {str(e)}"
+            updated_info = self.show_all_collections()
+
+        except Exception as e:
+            # Handle any other exceptions
+            log_message = f"Unexpected error: {str(e)}"
+            updated_info = self.show_all_collections()
+
         return updated_info, log_message, gr.Dropdown.update(
             choices=[collection.name for collection in self.collections])
 
