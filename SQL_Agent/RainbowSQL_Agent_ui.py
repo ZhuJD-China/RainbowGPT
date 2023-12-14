@@ -166,7 +166,7 @@ def update_tables_list(host, username, password):
     return gr.Dropdown.update(choices=get_database_tables(host, username, password))
 
 
-with gr.Blocks(theme=seafoam) as RainbowGPT:
+with gr.Blocks(theme=seafoam) as RainbowSQL_Agent:
     with gr.Row():
         with gr.Column(scale=3):
             # 左侧列: 所有控件
@@ -226,5 +226,4 @@ with gr.Blocks(theme=seafoam) as RainbowGPT:
                 # css=".gradio-container {background-color: #f0f0f0;}"  # Add your desired background color here
             )
 
-RainbowGPT.queue().launch()
-# RainbowGPT.queue().launch(share=True)
+RainbowSQL_Agent.queue().launch()

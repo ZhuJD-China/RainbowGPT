@@ -403,41 +403,53 @@ def get_stock_data(llm_options_checkbox_group, llm_options_checkbox_group_qwen,
     return gpt_response, qwen_response
 
 
-# Define Gradio interface for the main application
-with gr.Row():
-    with gr.Column():
-        llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview",
-                       "gpt-4", "gpt-3.5-turbo-16k"]
-        llm_options_checkbox_group = gr.Dropdown(llm_options, label="GPT Model Select Options",
-                                                 value=llm_options[0])
-        llm_options_qwen = ["qwen-72b-chat"]
-        llm_options_checkbox_group_qwen = gr.Dropdown(llm_options_qwen, label="Qwen Model Select Options",
-                                                      value=llm_options_qwen[0])
-        http_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
-        market = gr.Textbox(lines=1, placeholder="请输入股票市场（sz或sh，示例：sz）", value="sz")
-        symbol = gr.Textbox(lines=1, placeholder="请输入股票代码(示例股票代码:002665)", value="002665")
-        stock_name = gr.Textbox(lines=1, placeholder="请输入股票名称(示例股票名称:首航高科): ", value="首航高科")
-        start_date = gr.Textbox(lines=1, placeholder="请输入K线历史数据查询起始日期（YYYYMMDD，示例：20230805）: ",
-                                value="20230805")
-        end_date = gr.Textbox(lines=1, placeholder="请输入K线历史数据结束日期（YYYYMMDD，示例：20231206）: ",
-                              value="20231212")
-        concept = gr.Textbox(lines=1, placeholder="请输入当前股票所属概念板块名称(示例：光热发电): ", value="光热发电")
-    with gr.Column():
-        gpt_response = gr.Textbox(label="GPT Response")
-        qwen_response = gr.Textbox(label="QWEN Response")
+# 定义 Gradio 界面
+with gr.Blocks() as stockgpt_interface:
+    gr.Markdown("## StockGPT Analysis")
+    with gr.Row():
+        with gr.Column():
+            # 左侧列: 输入控件，两两排列
+            with gr.Row():
+                llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview", "gpt-4", "gpt-3.5-turbo-16k"]
+                llm_options_checkbox_group = gr.Dropdown(llm_options, label="GPT Model Select Options",
+                                                         value=llm_options[0])
+                llm_options_qwen = ["qwen-72b-chat"]
+                llm_options_checkbox_group_qwen = gr.Dropdown(llm_options_qwen, label="Qwen Model Select Options",
+                                                              value=llm_options_qwen[0])
 
-custom_title = "StockGPT Analysis"
-custom_description = """
-<p>How to reach me: <a href='mailto:zhujiadongvip@163.com'>zhujiadongvip@163.com</a></p>
-"""
-# Define Gradio interface for the main application
-iface = gr.Interface(
-    fn=get_stock_data,
-    inputs=[llm_options_checkbox_group, llm_options_checkbox_group_qwen, market, symbol, stock_name,
-            start_date,
-            end_date, concept, http_proxy],
-    outputs=[gpt_response, qwen_response],
-    title=custom_title,
-    description=custom_description
-)
-iface.queue().launch()
+            with gr.Row():
+                http_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
+                market = gr.Textbox(lines=1, placeholder="请输入股票市场（sz或sh，示例：sz）", label="Market", value="sz")
+
+            with gr.Row():
+                symbol = gr.Textbox(lines=1, placeholder="请输入股票代码(示例股票代码:002665)", label="Symbol",
+                                    value="002665")
+                stock_name = gr.Textbox(lines=1, placeholder="请输入股票名称(示例股票名称:首航高科): ",
+                                        label="Stock Name", value="首航高科")
+
+            with gr.Row():
+                start_date = gr.Textbox(lines=1, placeholder="请输入K线历史数据查询起始日期（YYYYMMDD，示例：20230805）: ",
+                                        label="Start Date", value="20230805")
+                end_date = gr.Textbox(lines=1, placeholder="请输入K线历史数据结束日期（YYYYMMDD，示例：20231206）: ",
+                                      label="End Date", value="20231212")
+
+            with gr.Row():
+                concept = gr.Textbox(lines=1, placeholder="请输入当前股票所属概念板块名称(示例：光热发电): ",
+                                     label="Concept", value="光热发电")
+
+        with gr.Column():
+            # 右侧列: 输出控件
+            gpt_response = gr.Textbox(label="GPT Response")
+            qwen_response = gr.Textbox(label="QWEN Response")
+
+    # 提交按钮
+    submit_button = gr.Button("Submit")
+    submit_button.click(
+        fn=get_stock_data,
+        inputs=[llm_options_checkbox_group, llm_options_checkbox_group_qwen, market, symbol, stock_name, start_date,
+                end_date, concept, http_proxy],
+        outputs=[gpt_response, qwen_response]
+    )
+
+# 启动 Gradio 界面
+stockgpt_interface.queue().launch()
