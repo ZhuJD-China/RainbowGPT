@@ -14,7 +14,7 @@ import re
 from urllib.parse import quote
 
 
-def stock_news_em(symbol: str = "601628", pageSize: int = 10) -> pd.DataFrame:
+def stock_news_em(symbol: str = "601628", pageSize: int = 10, chrome_driver_path="") -> pd.DataFrame:
     """
     东方财富-个股新闻-最近 100 条新闻
     https://so.eastmoney.com/news/s?keyword=%E4%B8%AD%E5%9B%BD%E4%BA%BA%E5%AF%BF&pageindex=1&searchrange=8192&sortfiled=4
@@ -32,8 +32,7 @@ def stock_news_em(symbol: str = "601628", pageSize: int = 10) -> pd.DataFrame:
     options.add_argument('--disable-extensions')
     options.add_argument('headless')
     # 当前文件夹里chromedriver路径
-    chrome_driver_path = f"./chromedriver-120.0.6099.56.0.exe"
-    # 将chromedriver路径传入selenium，此处selenium库版本>=3.8.0
+
     service = Service(chrome_driver_path)
     driver = webdriver.Chrome(service=service, options=options)
 
