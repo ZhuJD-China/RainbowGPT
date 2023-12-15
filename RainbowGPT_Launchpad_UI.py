@@ -15,10 +15,12 @@ ChromaDBGradioUI = RainbowChromadb_Option.ChromaDBGradioUI().launch()
 CSVToMySQLUploader = CSVToMySQLUploader().launch()
 
 RainbowGPT_TabbedInterface = gr.TabbedInterface(
-    [RainbowKnowledge_Agent, RainbowSQL_Agent,
-     RainbowStock_Analysis, ChromaDBGradioUI, CSVToMySQLUploader],
-    ["Rainbow-Knowledge-Agent", "Rainbow-SQL-Agent", "Rainbow-Stock-Analysis"
-        , "Knowledge-ChromaDB-Option", "CSV-2-MySQL-Uploader"]
+    [RainbowKnowledge_Agent, ChromaDBGradioUI,
+     RainbowSQL_Agent, CSVToMySQLUploader,
+     RainbowStock_Analysis],
+    ["Rainbow-Knowledge-Agent", "Knowledge-ChromaDB-Option",
+     "Rainbow-SQL-Agent", "CSV-2-MySQL-Uploader",
+     "Rainbow-Stock-Analysis"]
     , theme=seafoam)
 
 if __name__ == "__main__":

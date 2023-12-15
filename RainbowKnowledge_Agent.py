@@ -306,11 +306,11 @@ class RainbowKnowledge_Agent:
 
         return answer
 
-    def echo(self, message, history, llm_options_checkbox_group, collection_name_select, collection_checkbox_group,
-             new_collection_name,
-             temperature_num, print_speed_step, tool_checkbox_group, uploaded_files, Embedding_Model_select,
-             input_chunk_size, local_data_embedding_token_max, Google_proxy,
-             local_private_llm_api, local_private_llm_key,
+    def echo(self, message, history, llm_options_checkbox_group, collection_name_select,
+             temperature_num, print_speed_step, tool_checkbox_group,
+             Embedding_Model_select,
+             local_data_embedding_token_max,
+             Google_proxy, local_private_llm_api, local_private_llm_key,
              local_private_llm_name, llm_Agent_checkbox_group):
         self.human_input_global = message
         self.local_private_llm_name_global = str(local_private_llm_name)
@@ -318,7 +318,6 @@ class RainbowKnowledge_Agent:
         self.local_private_llm_key_global = str(local_private_llm_key)
         self.collection_name_select_global = str(collection_name_select)
         self.local_data_embedding_token_max_global = int(local_data_embedding_token_max)
-        self.input_chunk_size_global = int(input_chunk_size)
         self.temperature_num_global = float(temperature_num)
         self.llm_name_global = str(llm_options_checkbox_group)
         self.llm_Agent_checkbox_group = llm_Agent_checkbox_group
@@ -405,137 +404,26 @@ class RainbowKnowledge_Agent:
 
                 flag_get_Local_Search_tool = True
 
-        if message == "" and (
-                (collection_checkbox_group == "Read Existing Collection") or (collection_checkbox_group == None)
-                or collection_checkbox_group == "None"):
+        if message == "":
             response = "哎呀！好像有点小尴尬，您似乎忘记提出问题了。别着急，随时输入您的问题，我将尽力为您提供帮助！"
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
             return
 
-        if collection_checkbox_group == "Create New Collection":
-            response = (f"{self.llm_name_global} & {Embedding_Model_select} 模型加载中.....temperature="
-                        + str(self.temperature_num_global))
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[:i + int(print_speed_step)]
-
-            if Embedding_Model_select in ["Openai Embedding", "", None]:
-                self.embeddings = OpenAIEmbeddings()
-                self.embeddings.show_progress_bar = True
-                self.embeddings.request_timeout = 20
-                self.Embedding_Model_select_global = 0
-            elif Embedding_Model_select == "HuggingFace Embedding":
-                self.embeddings = HuggingFaceEmbeddings(cache_folder="models")
-                self.Embedding_Model_select_global = 1
-
-            if new_collection_name == None or new_collection_name == "":
-                response = "新知识库的名字没有写，创建中止！"
-                for i in range(0, len(response), int(print_speed_step)):
-                    yield response[: i + int(print_speed_step)]
-                return
-
-            # 获取当前脚本所在文件夹的绝对路径
-            current_script_folder = os.path.abspath(os.path.dirname(__file__))
-            # 获取当前时间并格式化为字符串
-            current_time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            base_folder = "\\data\\" + str(new_collection_name)
-            # 根据时间创建唯一的文件夹名
-            save_folder = current_script_folder + f"{base_folder}_{current_time}"
-
-            try:
-                os.makedirs(save_folder, exist_ok=True)
-            except Exception as e:
-                print(f"创建文件夹失败：{e}")
-
-            # 保存每个文件到指定文件夹
-            try:
-                for file in uploaded_files:
-                    # 将文件指针重置到文件的开头
-                    source_file_path = str(file.orig_name)
-                    # 读取文件内容
-                    with open(source_file_path, 'rb') as source_file:
-                        file_data = source_file.read()
-                    # 使用原始文件名构建保存文件的路径
-                    save_path = os.path.join(save_folder, os.path.basename(file.orig_name))
-                    # 保存文件
-                    # 保存文件到目标文件夹
-                    with open(save_path, 'wb') as target_file:
-                        target_file.write(file_data)
-            except Exception as e:
-                print(f"保存文件时发生异常：{e}")
-
-            # 设置向量存储相关配置
-            response = "开始转换文件夹中的所有数据成知识库........"
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
-
-            loader = DirectoryLoader(str(save_folder), show_progress=True,
-                                     use_multithreading=True,
-                                     silent_errors=True)
-
-            documents = loader.load()
-            if documents == None:
-                response = "文件读取失败！" + str(save_folder)
-                for i in range(0, len(response), int(print_speed_step)):
-                    yield response[: i + int(print_speed_step)]
-                return
-
-            response = str(documents)
-            for i in range(0, len(response), len(response) // 3):
-                yield response[: i + (len(response) // 3)]
-
-            print("documents len= ", documents.__len__())
-            response = "文档数据长度为： " + str(documents.__len__())
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
-
-            intput_chunk_overlap = 24
-            text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
-                                                  chunk_overlap=int(intput_chunk_overlap))
-
-            texts = text_splitter.split_documents(documents)
-            print(texts)
-            response = str(texts)
-            for i in range(0, len(response), len(response) // 3):
-                yield response[: i + (len(response) // 3)]
-            print("after split documents len= ", texts.__len__())
-            response = "切分之后文档数据长度为：" + str(texts.__len__()) + " 数据开始写入词向量库....."
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
-
-            # Collection does not exist, create it
-            self.docsearch_db = Chroma.from_documents(documents=texts, embedding=self.embeddings,
-                                                      collection_name=str(new_collection_name + "_" + current_time),
-                                                      persist_directory=self.persist_directory,
-                                                      Embedding_Model_select=self.Embedding_Model_select_global)
-
-            response = "知识库建立完毕！请去打开读取知识库按钮并输入宁的问题！"
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
-
-            return
-
         if flag_get_Local_Search_tool:
-            if collection_checkbox_group == "Read Existing Collection":
-                # Collection exists, load it
-                if collection_name_select:
-                    print(f"{collection_name_select}", " Collection exists, load it")
-                    response = f"{collection_name_select}" + "知识库加载中，请等待我的回答......."
-                    for i in range(0, len(response), int(print_speed_step)):
-                        yield response[: i + int(print_speed_step)]
-                    self.docsearch_db = Chroma(client=self.client, embedding_function=self.embeddings,
-                                               collection_name=collection_name_select)
-                else:
-                    response = "未选择知识库，回答中止。"
-                    for i in range(0, len(response), int(print_speed_step)):
-                        yield response[: i + int(print_speed_step)]
-                    return
-            elif collection_checkbox_group == None:
-                response = "打开搜索工具但未启用读取知识库。"
+            if collection_name_select and collection_name_select != "...":
+                print(f"{collection_name_select}", " Collection exists, load it")
+                response = f"{collection_name_select}" + "知识库加载中，请等待我的回答......."
+                for i in range(0, len(response), int(print_speed_step)):
+                    yield response[: i + int(print_speed_step)]
+                self.docsearch_db = Chroma(client=self.client, embedding_function=self.embeddings,
+                                           collection_name=collection_name_select)
+            else:
+                response = "未选择知识库，回答中止。"
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[: i + int(print_speed_step)]
                 return
-        if not flag_get_Local_Search_tool and collection_checkbox_group == "Read Existing Collection":
+        if not flag_get_Local_Search_tool:
             response = "没有打开本地知识库搜索工具，使用模型记忆或其他工具回答。"
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
@@ -562,18 +450,13 @@ class RainbowKnowledge_Agent:
         # response = agent_open_functions.run(message)
         # return response
 
-    def update_collection_name(self, collection_option):
-        if collection_option == "None":
-            collection_name_choices = ["..."]
-        elif collection_option == "Read Existing Collection":
-            # 获取已存在的collection的名称列表
-            collections = self.client.list_collections()
-            collection_name_choices = []
-            for collection in collections:
-                collection_name = collection.name
-                collection_name_choices.append(collection_name)
-        elif collection_option == "Create New Collection":
-            collection_name_choices = ["..."]
+    def update_collection_name(self):
+        # 获取已存在的collection的名称列表
+        collections = self.client.list_collections()
+        collection_name_choices = []
+        for collection in collections:
+            collection_name = collection.name
+            collection_name_choices.append(collection_name)
         # 调用gr.Dropdown.update方法，传入新的选项列表
         return gr.Dropdown.update(choices=collection_name_choices)
 
@@ -610,47 +493,30 @@ class RainbowKnowledge_Agent:
                             tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select")
                             gr.Markdown("Note: 'arxiv' Tools are enabled by default.")
 
+                        with gr.Group():
+                            gr.Markdown("### Knowledge Collection Settings")
+                            collection_name_select = gr.Dropdown(["..."], label="Select existed Collection",
+                                                                 value="...")
+                            Refresh_button = gr.Button("Refresh Collection", variant="secondary")
+                            Refresh_button.click(fn=self.update_collection_name, outputs=collection_name_select)
+
                             temperature_num = gr.Slider(0, 1, label="Temperature")
                             print_speed_step = gr.Slider(10, 20, label="Print Speed Step", step=1)
 
-                        with gr.Group():
-                            gr.Markdown("### Knowledge Collection Settings")
-                            collection_options = ["None", "Read Existing Collection", "Create New Collection"]
-                            collection_checkbox_group = gr.Radio(collection_options,
-                                                                 label="Local Knowledge Collection Select",
-                                                                 value=collection_options[0])
-                            collection_name_select = gr.Dropdown(["..."], label="Select existed Collection",
-                                                                 value="...")
-                            collection_checkbox_group.change(fn=self.update_collection_name,
-                                                             inputs=collection_checkbox_group,
-                                                             outputs=collection_name_select)
-                            input_chunk_size = gr.Textbox(value="512", label="Create Chunk Size")
-
-                    with gr.Row():
-                        with gr.Group():
-                            gr.Markdown("### Embedding Data Settings")
-                            Embedding_Model_select = gr.Radio(["Openai Embedding", "HuggingFace Embedding"],
-                                                              label="Embedding Model Select",
-                                                              value="HuggingFace Embedding")
-                            local_data_embedding_token_max = gr.Slider(1024, 15360, step=2,
-                                                                       label="Embeddings Data Max Tokens",
-                                                                       value=2048)
-
-                    with gr.Row():
-                        with gr.Group():
-                            gr.Markdown("### Create Collection Settings")
-                            new_collection_name = gr.Textbox("", label="New Collection Name")
-                            uploaded_files = gr.File(file_count="multiple", label="Upload Files")
-
+                    with gr.Group():
+                        gr.Markdown("### Embedding Data Settings")
+                        Embedding_Model_select = gr.Radio(["Openai Embedding", "HuggingFace Embedding"],
+                                                          label="Embedding Model Select",
+                                                          value="HuggingFace Embedding")
+                        local_data_embedding_token_max = gr.Slider(1024, 15360, step=2,
+                                                                   label="Embeddings Data Max Tokens",
+                                                                   value=2048)
                 with gr.Column(scale=5):
                     # 右侧列: Chat Interface
                     gr.ChatInterface(
                         self.echo, additional_inputs=[llm_options_checkbox_group, collection_name_select,
-                                                      collection_checkbox_group,
-                                                      new_collection_name,
                                                       temperature_num, print_speed_step, tool_checkbox_group,
-                                                      uploaded_files,
-                                                      Embedding_Model_select, input_chunk_size,
+                                                      Embedding_Model_select,
                                                       local_data_embedding_token_max,
                                                       Google_proxy, local_private_llm_api, local_private_llm_key,
                                                       local_private_llm_name, llm_Agent_checkbox_group],
