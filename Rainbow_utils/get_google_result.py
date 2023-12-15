@@ -210,8 +210,3 @@ for link in google_search_results['Link']:
         print("Website Content:")
         print(website_content)
 """
-# set_global_proxy("http://localhost:7890")
-# google_search_results = google_custom_search(
-#     "2023年12月12日左右时间的有关空冷系统、空冷配件、余热发电、光热发电系统、光热发电产品类型的新闻动态", GOOGLE_API_KEY,
-#     GOOGLE_CSE_ID)
-# print(google_search_results)

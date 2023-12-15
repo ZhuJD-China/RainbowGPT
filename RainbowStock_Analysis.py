@@ -307,7 +307,7 @@ class RainbowStock_Analysis:
 
         # 个股新闻
         stock_news_em_df = get_news_stock.stock_news_em(symbol=symbol, pageSize=10,
-                                                        chrome_driver_path="Rainbow_utils/chromedriver-120.0.6099.56.0.exe")
+                                                        chrome_driver_path="Rainbow_utils/chromedriver.exe")
         # 删除指定列
         stock_news_em_df = stock_news_em_df.drop(["文章来源", "新闻链接"], axis=1)
         stock_news_em_df = stock_news_em_df.to_string(index=False)

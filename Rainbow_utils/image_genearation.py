@@ -87,6 +87,7 @@ class ImageGen:
         if proxy_user is None:
             proxy_user = {"http_user": "http", "https_user": "https"}
         self.session: requests.Session = requests.Session()
+        print("proxy", proxy)
         self.proxy: str = get_proxy(proxy)
         if self.proxy is not None:
             self.session.proxies.update({
