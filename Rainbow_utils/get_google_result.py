@@ -1,3 +1,4 @@
+import httplib2
 import pandas as pd
 from googleapiclient.discovery import build
 import json
@@ -5,6 +6,7 @@ import urllib.parse
 import urllib.request
 import requests
 from bs4 import BeautifulSoup
+import winreg
 
 from langchain.utilities.google_search import GoogleSearchAPIWrapper
 from selenium import webdriver
@@ -20,9 +22,29 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID')
 
 
-# def set_global_proxy(proxy_url):
-#     os.environ['http_proxy'] = proxy_url
-#     os.environ['https_proxy'] = proxy_url
+def get_windows_proxy():
+    proxy_settings = {"http": None, "https": None}
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                            r"Software\Microsoft\Windows\CurrentVersion\Internet Settings") as key:
+            proxy_enable = winreg.QueryValueEx(key, "ProxyEnable")[0]
+            proxy_server = winreg.QueryValueEx(key, "ProxyServer")[0]
+
+            if proxy_enable:
+                # 处理可能的多个代理设置
+                if ';' in proxy_server:
+                    for proxy in proxy_server.split(';'):
+                        if proxy.startswith("http="):
+                            proxy_settings["http"] = proxy.split('=')[1]
+                        elif proxy.startswith("https="):
+                            proxy_settings["https"] = proxy.split('=')[1]
+                else:
+                    proxy_settings["http"] = proxy_settings["https"] = proxy_server
+
+    except Exception as e:
+        print(f"Error retrieving proxy settings: {e}")
+
+    return proxy_settings
 
 
 def get_published_date(item):
@@ -46,15 +68,30 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
     - custom_search_engine_id (str): Google custom search engine ID.
 
     Returns:
-    - dict: Results of the Google Custom Search API.
+    - tuple: Tuple containing two lists, the first with the links and the second with the merged titles and snippets.
     """
     print("google_custom_search......")
-    # print("http_proxy:", os.environ['http_proxy'])
-    service = build("customsearch", "v1", developerKey=api_key)
-    results = service.cse().list(q=query, cx=custom_search_engine_id).execute()
-    # print(results)
 
-    # 提取标题、链接和摘要信息
+    # Automatically detect and set system proxy
+    proxies = get_windows_proxy()
+    http_proxy = proxies.get('http')
+    https_proxy = proxies.get('https')
+
+    # Create an Http object with proxy support
+    proxy_info = httplib2.ProxyInfo(
+        httplib2.socks.PROXY_TYPE_HTTP,
+        http_proxy.split(':')[0],
+        int(http_proxy.split(':')[1]),
+        proxy_rdns=True
+    ) if http_proxy else None
+
+    http = httplib2.Http(proxy_info=proxy_info) if proxy_info else httplib2.Http()
+
+    # Setup Google Custom Search API service
+    service = build("customsearch", "v1", developerKey=api_key, http=http)
+    results = service.cse().list(q=query, cx=custom_search_engine_id).execute()
+
+    # Extract titles, links, and snippets
     link_data = []
     data_without_link = []
     search_results = results.get('items', [])
@@ -66,7 +103,7 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
         link_data.append(link)
         merged_content = title + ' ' + snippet
         data_without_link.append(merged_content)
-    # 创建DataFrame
+
     return link_data, data_without_link
 
 
@@ -166,7 +203,7 @@ def selenium_google_answer_box(query, chrome_driver_path):
 
 def get_website_content(url):
     """
-    Get the main content of a website.
+    Get the main content of a website using system proxy settings.
 
     Parameters:
     - url (str): The URL of the website.
@@ -175,38 +212,51 @@ def get_website_content(url):
     - str: The main content of the website, or None if the request fails.
     """
     print("get_website_content.....")
-    response = requests.get(url)
-    if response.status_code == 200:
-        html_content = response.text
-        soup = BeautifulSoup(html_content, 'html.parser')
-        # Extract text content from HTML
-        text_content = soup.get_text(separator=' ')
-        cleaned_context = text_content.replace('\n', ' ').strip()
 
-        return cleaned_context
-    else:
-        print(f"Failed to retrieve content. Status code: {response.status_code}")
-        return "None"
+    # Get system proxy settings
+    proxies = get_windows_proxy()
+
+    try:
+        response = requests.get(url, proxies=proxies)
+        if response.status_code == 200:
+            html_content = response.text
+            soup = BeautifulSoup(html_content, 'html.parser')
+            # Extract text content from HTML
+            text_content = soup.get_text(separator=' ')
+            cleaned_context = text_content.replace('\n', ' ').strip()
+
+            return cleaned_context
+        else:
+            print(f"Failed to retrieve content. Status code: {response.status_code}")
+            return None
+    except requests.RequestException as e:
+        print(f"Request failed: {e}")
+        return None
 
 
-"""
-google_search_results = google_custom_search("2023年12月7日新闻", GOOGLE_API_KEY, GOOGLE_CSE_ID)
-print(google_search_results.to_string(index_names=False))
+print(get_windows_proxy())
+if __name__ == "__main__":
+    # print(get_windows_proxy())
 
-Google_Search = GoogleSearchAPIWrapper()
-data = Google_Search.run("2023年12月7日新闻")
-print(data)
+    google_search_results, google_search_results2 = google_custom_search("2023年12月7日新闻", GOOGLE_API_KEY,
+                                                                         GOOGLE_CSE_ID)
+    # print(google_search_results.to_string(index_names=False))
+    print(google_search_results, google_search_results2)
 
-kg_search_results = knowledge_graph_search('Taylor Swift', GOOGLE_API_KEY)
-print("Knowledge Graph Search Results:", kg_search_results)
+    for link in google_search_results:
+        website_content = get_website_content(link)
+        if website_content:
+            print("Website Content:")
+            print(website_content)
 
-selenium_results = selenium_google_answer_box("以太坊的价格",
-                                              "Stock_Agent/chromedriver-120.0.6099.56.0.exe")
-print("Selenium Google Search Results:", selenium_results)
-
-for link in google_search_results['Link']:
-    website_content = get_website_content(link)
-    if website_content:
-        print("Website Content:")
-        print(website_content)
-"""
+    # Google_Search = GoogleSearchAPIWrapper()
+    # data = Google_Search.run("2023年12月7日新闻")
+    # print(data)
+    #
+    # kg_search_results = knowledge_graph_search('Taylor Swift', GOOGLE_API_KEY)
+    # print("Knowledge Graph Search Results:", kg_search_results)
+    #
+    # selenium_results = selenium_google_answer_box("以太坊的价格",
+    #                                               "Stock_Agent/chromedriver-120.0.6099.56.0.exe")
+    # print("Selenium Google Search Results:", selenium_results)
+    #
