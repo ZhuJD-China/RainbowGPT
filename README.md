@@ -138,7 +138,6 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 
 # RainbowGPT Overview
 
-
 | 👋 **Retrieval Search** | 📚 **SQL Agent** |
 | --- | --- |
 | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Retrieval_Search.png" width="400"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/SQLAgent.png" width="400"/> |
@@ -147,10 +146,8 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 | --- | --- |
 | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Summarization.png" width="400"/> | <img src="https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/Chatbots.png" width="400"/> |
 
-
-
 🤗 **Rainbow Agent UI**
-![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/ui_total.png)
+![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/create_img.png)
 
 ⚡ **SQL_Agent UI**
 ![SQL_Agent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/ui_total2.png)
