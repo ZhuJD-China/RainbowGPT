@@ -351,10 +351,11 @@ class RainbowKnowledge_Agent:
             name="Google_Search",
             func=self.Google_Search_run,
             description="""
-            如果本地知识库中无答案或问题需要网络搜索可用这个互联网搜索工具进行搜索问答。
-            1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索,可以选择英语或者中文搜索
-            2.同时增加一些搜索提示词包括(使用引号，时间范围，关键字和符号)
-            3.如果问题比较复杂，你可以一步一步的思考去搜索和回答
+                这个一个如果本地知识库中无答案或问题需要网络搜索的Google网络搜索工具。
+                1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索,可以选择英语或者中文搜索
+                2.同时增加一些搜索提示词包括(使用引号，时间范围，关键字和符号)
+                3.如果问题比较复杂，你可以一步一步的思考去搜索和回答
+                4.确保每个回答都不仅基于数据，而且深入、完整，充分反映你对问题的全面理解。
             """
         )
         self.Local_Search_tool = Tool(
@@ -365,7 +366,8 @@ class RainbowKnowledge_Agent:
                 1.你先根据我的问题提取出最适合embedding模型向量匹配的关键字进行搜索。
                 2.注意你需要提出非常有针对性准确的问题和回答。
                 3.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考。
-                """
+                4.确保每个回答都不仅基于数据，而且深入、完整，充分反映你对问题的全面理解。
+            """
         )
 
         # Initialize flags for additional tools
@@ -423,10 +425,6 @@ class RainbowKnowledge_Agent:
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[: i + int(print_speed_step)]
                 return
-        if not flag_get_Local_Search_tool:
-            response = "没有打开本地知识库搜索工具，使用模型记忆或其他工具回答。"
-            for i in range(0, len(response), int(print_speed_step)):
-                yield response[: i + int(print_speed_step)]
 
         # 初始化agent代理
         agent_open_functions = initialize_agent(
@@ -436,7 +434,7 @@ class RainbowKnowledge_Agent:
             verbose=True,
             agent_kwargs=self.agent_kwargs,
             memory=self.memory,
-            max_iterations=10,
+            max_iterations=5,
             early_stopping_method="generate",
             handle_parsing_errors=True,  # 初始化代理并处理解析错误
             callbacks=[self.handler],

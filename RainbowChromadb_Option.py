@@ -1,5 +1,7 @@
 import datetime
+import io
 import os
+import sys
 
 import gradio as gr
 import chromadb
@@ -38,7 +40,7 @@ class ChromaDBGradioUI:
                     gr.Markdown("### Delete Collection Settings")
                     # 下拉列表
                     self.collections_combo = gr.Dropdown(choices=[collection.name for collection in self.collections],
-                                                         label="选择要操作的 collection name",
+                                                         label="Select collection name",
                                                          value="...")
                     # 功能按钮
                     delete_button = gr.Button("Delete Collection")
@@ -46,20 +48,22 @@ class ChromaDBGradioUI:
                 with gr.Column():
                     gr.Markdown("### Refresh and Display Settings")
                     # 集合信息显示
-                    self.collection_info_text = gr.Textbox(label="Collection 信息", interactive=False)
+                    self.collection_info_text = gr.Textbox(label="Collection INFO", interactive=False)
                     # 新增刷新按钮
                     refresh_button = gr.Button("Refresh and Display All Collections")
                     refresh_button.click(fn=self.refresh_collections, inputs=None,
                                          outputs=[self.collection_info_text, self.collections_combo])
                     # 日志信息
-                    self.log_text = gr.Textbox(label="操作日志", interactive=False)
+                    self.log_text = gr.Textbox(label="Options Logs ..", interactive=False)
 
             # 功能绑定
             delete_button.click(fn=self.delete_collection, inputs=self.collections_combo,
                                 outputs=[self.collection_info_text, self.log_text, self.collections_combo])
             Create_button.click(fn=self.create_new_collection,
                                 inputs=[self.new_collection_name, self.Embedding_Model_select,
-                                        self.input_chunk_size, self.uploaded_files, self.intput_chunk_overlap])
+                                        self.input_chunk_size, self.uploaded_files, self.intput_chunk_overlap],
+                                outputs=[self.log_text]
+                                )
 
         # 初始显示集合信息
         self.update_collection_info()
@@ -68,6 +72,8 @@ class ChromaDBGradioUI:
                               intput_chunk_overlap):
         response = f"{Embedding_Model_select} 模型加载中....."
         print(response)
+        for i in range(0, len(response), int(3)):
+            yield response[: i + int(3)]
 
         if Embedding_Model_select in ["Openai Embedding", "", None]:
             self.embeddings = OpenAIEmbeddings()
@@ -81,6 +87,8 @@ class ChromaDBGradioUI:
         if new_collection_name == None or new_collection_name == "":
             response = "新知识库的名字没有写，创建中止！"
             print(response)
+            for i in range(0, len(response), int(3)):
+                yield response[: i + int(3)]
             return
 
         # 获取当前脚本所在文件夹的绝对路径
@@ -94,6 +102,9 @@ class ChromaDBGradioUI:
         try:
             os.makedirs(save_folder, exist_ok=True)
         except Exception as e:
+            response = str(e)
+            for i in range(0, len(response), int(3)):
+                yield response[: i + int(3)]
             print(f"创建文件夹失败：{e}")
 
         # 保存每个文件到指定文件夹
@@ -111,6 +122,9 @@ class ChromaDBGradioUI:
                 with open(save_path, 'wb') as target_file:
                     target_file.write(file_data)
         except Exception as e:
+            response = str(e)
+            for i in range(0, len(response), int(3)):
+                yield response[: i + int(3)]
             print(f"保存文件时发生异常：{e}")
 
         # 设置向量存储相关配置
@@ -124,16 +138,22 @@ class ChromaDBGradioUI:
         documents = loader.load()
         if documents == None:
             response = "文件读取失败！" + str(save_folder)
+            for i in range(0, len(response), int(3)):
+                yield response[: i + int(3)]
             print(response)
             return
 
         response = str(documents)
-        for i in range(0, len(response), len(response) // 3):
-            yield response[: i + (len(response) // 3)]
-
-        print("documents len= ", documents.__len__())
-        response = "文档数据长度为： " + str(documents.__len__())
-        print(response)
+        if len(response) == 0:
+            response = "文件读取失败！" + str(save_folder)
+            for i in range(0, len(response), int(3)):
+                yield response[: i + int(3)]
+            return
+        else:
+            response = "文档数据长度为： " + str(documents.__len__()) + response
+            for i in range(0, len(response), len(response) // 5):
+                yield response[: i + (len(response) // 5)]
+            print(response)
 
         text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
                                               chunk_overlap=int(intput_chunk_overlap))
@@ -141,10 +161,12 @@ class ChromaDBGradioUI:
         texts = text_splitter.split_documents(documents)
         print(texts)
         response = str(texts)
-        for i in range(0, len(response), len(response) // 3):
-            yield response[: i + (len(response) // 3)]
+        for i in range(0, len(response), len(response) // 5):
+            yield response[: i + (len(response) // 5)]
         print("after split documents len= ", texts.__len__())
         response = "切分之后文档数据长度为：" + str(texts.__len__()) + " 数据开始写入词向量库....."
+        for i in range(0, len(response), int(3)):
+            yield response[: i + int(3)]
         print(response)
 
         # Collection does not exist, create it
@@ -153,7 +175,9 @@ class ChromaDBGradioUI:
                                                   persist_directory=self.persist_directory,
                                                   Embedding_Model_select=self.Embedding_Model_select_global)
 
-        response = "知识库建立完毕！请去打开读取知识库按钮并输入宁的问题！"
+        response = "知识库建立完毕！！"
+        for i in range(0, len(response), int(3)):
+            yield response[: i + int(3)]
         print(response)
 
     def show_all_collections(self):
