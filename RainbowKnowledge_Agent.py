@@ -323,8 +323,7 @@ class RainbowKnowledge_Agent:
     def echo(self, message, history, llm_options_checkbox_group, collection_name_select,
              temperature_num, print_speed_step, tool_checkbox_group,
              Embedding_Model_select,
-             local_data_embedding_token_max,
-             Google_proxy, local_private_llm_api, local_private_llm_key,
+             local_data_embedding_token_max, local_private_llm_api, local_private_llm_key,
              local_private_llm_name, llm_Agent_checkbox_group):
         self.human_input_global = message
         self.local_private_llm_name_global = str(local_private_llm_name)
@@ -398,6 +397,7 @@ class RainbowKnowledge_Agent:
 
         # 默认开启
         self.tools.append(self.Create_Image_tool)
+
         # Initialize flags for additional tools
         flag_get_Local_Search_tool = False
         # Check for additional tools and append them if not already in the list
@@ -408,9 +408,6 @@ class RainbowKnowledge_Agent:
                     yield response[:i + int(print_speed_step)]
 
                 self.tools.append(self.Google_Search_tool)
-                # self.proxy_url_global = str(Google_proxy)  # Set proxy
-                # os.environ['http_proxy'] = self.proxy_url_global
-                # os.environ['https_proxy'] = self.proxy_url_global
 
             elif tg == "Local Knowledge Search" and self.Local_Search_tool not in self.tools:
                 response = "Local Knowledge Search 工具加入 回答中..........."
@@ -498,18 +495,19 @@ class RainbowKnowledge_Agent:
                                            "gpt-3.5-turbo", "Private-LLM-Model"]
                             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                                      value=llm_options[0])
-                            local_private_llm_name = gr.Textbox(value="Qwen-*B-Chat", label="Private llm name")
+                            gr.Markdown("Note: When Select Private-LLM-Model,you should take Private LLM Settings.")
+
                             llm_Agent = ["chat-zero-shot-react-description", "openai-functions",
                                          "zero-shot-react-description"]
                             llm_Agent_checkbox_group = gr.Dropdown(llm_Agent, label="LLM Agent Type Options",
-                                                                   value=llm_Agent[1])
+                                                                   value=llm_Agent[0])
 
                         with gr.Group():
                             gr.Markdown("### Private LLM Settings")
+                            local_private_llm_name = gr.Textbox(value="Qwen-*B-Chat", label="Private llm name")
                             local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1",
                                                                label="Private llm openai-api base")
                             local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
-                            Google_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
 
                     with gr.Row():
                         with gr.Group():
@@ -517,7 +515,7 @@ class RainbowKnowledge_Agent:
 
                             tool_options = ["Google Search", "Local Knowledge Search", "wolfram-alpha"]
                             tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select")
-                            gr.Markdown("Note: 'arxiv' Tools are enabled by default.")
+                            gr.Markdown("Note: 'Create Image','arxiv' Tools are enabled by default.")
 
                         with gr.Group():
                             gr.Markdown("### Knowledge Collection Settings")
@@ -543,8 +541,8 @@ class RainbowKnowledge_Agent:
                         self.echo, additional_inputs=[llm_options_checkbox_group, collection_name_select,
                                                       temperature_num, print_speed_step, tool_checkbox_group,
                                                       Embedding_Model_select,
-                                                      local_data_embedding_token_max,
-                                                      Google_proxy, local_private_llm_api, local_private_llm_key,
+                                                      local_data_embedding_token_max, local_private_llm_api,
+                                                      local_private_llm_key,
                                                       local_private_llm_name, llm_Agent_checkbox_group],
                         title="""
             <h1 style='text-align: center; margin-bottom: 1rem; font-family: "Courier New", monospace;

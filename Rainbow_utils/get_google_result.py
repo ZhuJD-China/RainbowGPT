@@ -7,8 +7,6 @@ import urllib.request
 import requests
 from bs4 import BeautifulSoup
 import winreg
-
-from langchain.utilities.google_search import GoogleSearchAPIWrapper
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from dotenv import load_dotenv
