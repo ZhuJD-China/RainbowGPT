@@ -18,7 +18,7 @@ RainbowGPT_TabbedInterface = gr.TabbedInterface(
     [RainbowKnowledge_Agent, RainbowSQL_Agent,
      RainbowStock_Analysis, ChromaDBGradioUI, CSVToMySQLUploader],
     ["Rainbow-Knowledge-Agent", "Rainbow-SQL-Agent", "Rainbow-Stock-Analysis"
-        , "ChromaDB-Option", "CSV-2-MySQL-Uploader"]
+        , "Knowledge-ChromaDB-Option", "CSV-2-MySQL-Uploader"]
     , theme=seafoam)
 
 if __name__ == "__main__":
