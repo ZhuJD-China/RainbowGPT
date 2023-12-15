@@ -15,7 +15,7 @@ import httpx
 import regex
 import requests
 
-from re_edge_gpt.proxy import get_proxy
+from Rainbow_utils.proxy import get_proxy
 
 take_ip_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 take_ip_socket.connect(("8.8.8.8", 80))

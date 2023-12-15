@@ -20,9 +20,9 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID')
 
 
-def set_global_proxy(proxy_url):
-    os.environ['http_proxy'] = proxy_url
-    os.environ['https_proxy'] = proxy_url
+# def set_global_proxy(proxy_url):
+#     os.environ['http_proxy'] = proxy_url
+#     os.environ['https_proxy'] = proxy_url
 
 
 def get_published_date(item):
@@ -49,7 +49,7 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
     - dict: Results of the Google Custom Search API.
     """
     print("google_custom_search......")
-    print("http_proxy:", os.environ['http_proxy'])
+    # print("http_proxy:", os.environ['http_proxy'])
     service = build("customsearch", "v1", developerKey=api_key)
     results = service.cse().list(q=query, cx=custom_search_engine_id).execute()
     # print(results)
@@ -139,7 +139,8 @@ def selenium_google_answer_box(query, chrome_driver_path):
     Returns:
     - list: Extracted information from the Google answer box.
     """
-    print("selenium_google_answer_box......", os.environ['http_proxy'])
+    # print("selenium_google_answer_box......", os.environ['http_proxy'])
+    print("selenium_google_answer_box......")
     options = webdriver.ChromeOptions()
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_argument('--ignore-certificate-errors')

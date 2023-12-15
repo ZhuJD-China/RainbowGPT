@@ -249,7 +249,7 @@ class RainbowKnowledge_Agent:
         thread4.join()
 
     def Google_Search_run(self, question):
-        get_google_result.set_global_proxy(self.proxy_url_global)
+        # get_google_result.set_global_proxy(self.proxy_url_global)
 
         if self.llm_name_global == "Private-LLM-Model":
             self.llm = ChatOpenAI(
@@ -408,9 +408,9 @@ class RainbowKnowledge_Agent:
                     yield response[:i + int(print_speed_step)]
 
                 self.tools.append(self.Google_Search_tool)
-                self.proxy_url_global = str(Google_proxy)  # Set proxy
-                os.environ['http_proxy'] = self.proxy_url_global
-                os.environ['https_proxy'] = self.proxy_url_global
+                # self.proxy_url_global = str(Google_proxy)  # Set proxy
+                # os.environ['http_proxy'] = self.proxy_url_global
+                # os.environ['https_proxy'] = self.proxy_url_global
 
             elif tg == "Local Knowledge Search" and self.Local_Search_tool not in self.tools:
                 response = "Local Knowledge Search 工具加入 回答中..........."
