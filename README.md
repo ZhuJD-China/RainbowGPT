@@ -7,7 +7,7 @@
   </p>
 </div>
 
-## 🌈RainbowAgent Integration Summary:
+## RainbowAgent Integration Summary:
 
 🌈 **Dalle3 Artistic Image Generation Unveiled 🎨**
 
