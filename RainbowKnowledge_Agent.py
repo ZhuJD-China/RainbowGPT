@@ -32,6 +32,7 @@ from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuati
     truncate_string_to_max_tokens
 from Rainbow_utils import get_google_result
 from Rainbow_utils import get_prompt_templates
+from Rainbow_utils.image_genearation import ImageGen
 
 
 class RainbowKnowledge_Agent:
@@ -199,6 +200,19 @@ class RainbowKnowledge_Agent:
         answer = local_chain.predict(combined_text=combined_text, human_input=question,
                                      human_input_first=self.human_input_global)
         return answer
+
+    def createImageByBing(self,input):
+        auth_cooker = "_IDET=MIExp=0; ipv6=hit=1702373308373&t=4; MUID=10648260268A616E003191AF27C56003; MUIDB=10648260268A616E003191AF27C56003; _EDGE_V=1; SRCHD=AF=NOFORM; SRCHUID=V=2&GUID=C5B39C165E044DA2B4BF9239D9C2A632&dmnchg=1; _UR=cdxcls=0&QS=0&TQS=0; MicrosoftApplicationsTelemetryDeviceId=ba566366-220c-4659-a5cb-071d80e7a999; PPLState=1; SnrOvr=X=rebateson; MMCASM=ID=CB2ED8CDE4594CE79337F56F567CA9BF; MSCCSC=1; BCP=AD=1&AL=1&SM=1; ANON=A=DD1208FB49DD920898E3E968FFFFFFFF&E=1d23&W=1; NAP=V=1.9&E=1cc9&C=h9v0nY_oxh2iCzz9WRmsSUoQmojpK7s1FeCqska8xP_wTIRZBeeSvg&W=1; EDGSRCHHPGUSR=CIBV=1.1381.6&udstone=Creative&udstoneopts=h3imaginative,gencontentv3,fluxv1,flxegctxv3,egctxcplt,fluxv14l; _Rwho=u=d; SRCHS=PC=U531; USRLOC=HS=1&ELOC=LAT=30.23148536682129|LON=119.70948791503906|N=%E4%B8%B4%E5%AE%89%E5%8C%BA%EF%BC%8C%E6%B5%99%E6%B1%9F%E7%9C%81|ELT=4|&CLOC=LAT=30.2323|LON=119.7174|A=8116|TS=231211200954|SRC=I; ipv6=hit=1702365893520&t=4; _HPVN=CS=eyJQbiI6eyJDbiI6MiwiU3QiOjAsIlFzIjowLCJQcm9kIjoiUCJ9LCJTYyI6eyJDbiI6MiwiU3QiOjAsIlFzIjowLCJQcm9kIjoiSCJ9LCJReiI6eyJDbiI6MiwiU3QiOjAsIlFzIjowLCJQcm9kIjoiVCJ9LCJBcCI6dHJ1ZSwiTXV0ZSI6dHJ1ZSwiTGFkIjoiMjAyMy0xMi0xMlQwMDowMDowMFoiLCJJb3RkIjowLCJHd2IiOjAsIlRucyI6MCwiRGZ0IjpudWxsLCJNdnMiOjAsIkZsdCI6MCwiSW1wIjo4LCJUb2JicyI6MH0=; SRCHHPGUSR=CW=723&CH=966&SCW=708&SCH=966&BRW=NOTP&BRH=M&SRCHLANG=zh-Hans&PV=10.0.0&HV=1702362299&BZA=0&PRVCW=1278&PRVCH=966&DPR=1.0&UTC=480&DM=0&EXLTT=1&WTS=63837959089&IG=CE2CB999A8EF40C2A6C8199931FD89CD; ai_session=9TXXKexi1yLp0N4E7jqDuP|1702369684940|1702369684940; CSRFCookie=62d1da8c-1afd-435a-9128-001034b3a8c6; _EDGE_S=SID=0D913A7E2C056D64305B299B2D956C8D; KievRPSSecAuth=FABCBBRaTOJILtFsMkpLVWSG6AN6C/svRwNmAAAEgAAACJKHqoGXhERjAATjE4qzwElh7BczRIO6RQc+0of7ICFWbKn244NEl3HfOXYoxL8eLOARdD0i/Bbc6qHtuUpWu8x3sEr6unCt1HbHdMWSVzHknf/DQIpk3dcoJkMtYBh4gMnI0Fqfi3+2nKw5t4SdOOrkoF0ENKaEGNmAHKKkHoSTgJ9hglrmvO5ou3ltJcLL7mS4W06tYpsj8iKiyWpwdqn0D6y2KeY/goT1ibU4PjqBJ2C2Sm2Q8S0osSE7uaLesPdUaA9sHgOR/vG2Ucs2kxz9NuDESrR3EvW3ZgAWhbsdBA3ZbZKrtTVXdOhliGDD8jrgthz85m/DIAtFXQ2qQWAWjVUVWwxv/HiYnsmO3q8hTkCOXUTaRne3gLWnIFWDaMeub6xy0nXaiF9EQx4IlaudAel1UZHHHsc1bkzv/PaKSzHV+G2pkQS3ii+K51q/D2S6LfKaknX0kliXg2UEg60OoP3h35T0Ut2B3JqYQ1HQ0KU0WVmgru+IqiwEOF/YylL72H+5en1VNcFwgNoLq3h5W92b1G4yTPRga/IPXKWyb1B0UwTHDYN9j71oDUTKbJsQ/vnCUVKRhD9gcj2bmIeIauczLuj53Kl371ntH1DhzLYL45oNdKojJeI9lo/fEWiYthDXT/OWESbaxpM84KXngcqJ7Hwfis2m/oj7OlJ1Y66/sOorweX0Ny1aiKAwFdViEvnKz6nHZdshQQPEfE1iId9Cbi7VE4rH1oQsnOAHJV3bVxb2vUCNhdaOkCZ7wFhGBca3rnNY1HT4D0+oyP/SzOArEi4UTdI3Efn7pE3X4lHWFKTwV3rapncvvJZJCwcIROYmHm1ACK/dvwqQRVVqIX4k/hkIPGIgZUpa/AqB/TcYYpHLCmccjbR+katCzCTzqcxxSSyvLAiCUBnEWHnYSWdVXyLnSrJ84TnXGOuzqtoVsecGHF6aqh/cD1lj3cUKfGg9v4rvi5wsuUZyNhRpz/kavM1Tyl+641GPJA4v0mlJGNd9TQZHWDctBzUmdE3jIkujoTkdb2BQM+ygpsvQ0LJEzZiK423mK5qcua0EldAc5iJ62b5tC8H14DWVBhwHOWuyjPegFSKIBIfo1HX/ZBbK4isavWTKHSySAttmwuiETq9MoyjdXrtdJ8qNS3Rp8VTA+DkpEeVI9c4ox4fliGBeKftcLhGL56dC9va0uAapjPWZF8T90ATzAxJtyH5rDQQ0c8UHmfk+RmGovS8HXqMFi4OmMjXBmFiQN9Bozv4I8YorerxkWOorCChfQMEnP7FTuQPoSKfx6+MpKbb90FdSSlIVdu5yETdXr8Bs90wSyVBvX94ung99Do5tdDVghZS22++U0BAbg+NpIkyPOLkHZCIEizKGFACyeQpnEIjbrSh4/1dTjioyZfAVmg==; _U=1pWIFlkH5E72bC9U4gr_k29r6Pw2OobSjItX9ll3jCdJk-uq9SyIZMSHCyMVnZFU9TcWp0VmZ_6O0WLoUpwrL3BfSpG5_b7ue9IDkyx-XHqzaOl5Kp8IyBA5DlzrwM88PKDBf2GEkBvlzu8x6snhfPZlVBvsTOupk94UfCLhB2T9hFFtGfWsV2VVHGDAySfySZoPGfTO1e0aMXsHBOcoR3g; WLS=C=1740f8db0673bb65&N=; WLID=06PcLWNVQnxXk1KzGUtZjN/ZnCRUznLvRx0NFOsWrpRlygAWXXbB9OoZEe35+NZvlEx+SI1kVn62XIMLb798+9dp779DmGo2qO8VfW0GaD8=; SRCHUSR=DOB=20231120&T=1702369709000; _SS=SID=0B43890E7BA4602936459AEB7A5E61ED&R=14&RB=14&GB=0&RG=0&RP=5&PC=U531; _RwBf=W=1&r=1&ilt=2&ihpd=2&ispd=0&rc=14&rb=14&gb=0&rg=0&pc=5&mtu=0&rbb=0.0&g=0&cid=&clo=0&v=3&l=2023-12-12T08:00:00.0000000Z&lft=0001-01-01T00:00:00.0000000&aof=0&o=0&p=BINGCOPILOTWAITLIST&c=MY00IA&t=6891&s=2023-03-23T07:14:38.2733307+00:00&ts=2023-12-12T08:28:58.6778390+00:00&rwred=0&wls=2&wlb=0&lka=0&lkt=0&aad=0&TH=&mta=0&e=80DuGMy-G35l2r6pbllDzkQJiABuT83p7QRZ8vc7z5MMo1KP_tpT5zAA9mn03K_XOyrzCZcsFCgQ100DyipCBQ&A=DD1208FB49DD920898E3E968FFFFFFFF&ccp=0&wle=0; GC=T13aSA2CLeKvdQdLL_7H7G22sxNpmC1zm-nzVUoXW78a6C8vHD_fLdp6YmC4sAHY0QGDjywEY6r1U0s-F3LnPw; GI_FRE_COOKIE=gi_prompt=4&gi_fre=1&gi_sc=3"
+        sync_gen = ImageGen(auth_cookie=auth_cooker)
+        image_list = sync_gen.get_images(input)
+        response = []
+        if image_list is None:
+            return "我无法为您生成对应的图片，请重试或者补充您的描述"
+        else:
+            for url in image_list:
+                if not url.endswith(".svg"):
+                    response.append(url)
+            return image_list
 
     def get_google_answer(self, question, result_queue):
         google_answer_box = get_google_result.selenium_google_answer_box(
@@ -368,6 +382,20 @@ class RainbowKnowledge_Agent:
                 """
         )
 
+        self.Create_Image_tool = Tool(
+            name="Create_Image",
+            func=self.createImageByBing,
+            description="""
+                        这是一个图片生成工具，你可以使用该工具并生成图片。
+                        1。当你回答关于需要使用bing来生成什么、画图、照片时时很有用，先提取生成图片的提示词，然后调用该工具。
+                        2.并严格按照Markdown语法: [![图片描述](图片链接)](图片链接)。
+                        3.如果生成的图片链接数量大于1，将其全部严格按照Markdown语法: [![图片描述](图片链接)](图片链接)。
+                        4.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考。
+                        """
+        )
+
+        #默认开启
+        self.tools.append(self.Create_Image_tool)
         # Initialize flags for additional tools
         flag_get_Local_Search_tool = False
         # Check for additional tools and append them if not already in the list
