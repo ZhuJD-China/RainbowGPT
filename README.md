@@ -55,7 +55,13 @@ Experience simplicity, insight, and creativity with RainbowGPT's powerful featur
    
 > [!TIP]
 > **To launch the entire project, you only need to execute `RainbowGPT_Launchpad_UI.py`**. 
-> Before running `RainbowGPT_Launchpad_UI.py`, make sure to relocate the modified `3rd_modify/langchain/vectorstores/chroma.py` file to the Langchain module's library folder and rename it to match the library file. This step is crucial for proper execution. 🌈 
+> running `RainbowGPT_Launchpad_UI.py`
+>
+> make sure to relocate the modified `3rd_modify/langchain/vectorstores/chroma.py` file to the Langchain module's library folder and rename it to match the library file when use `Local Search tool`.
+>
+> Make sure to select the right Rainbow_utils/chromedriver.exe to match your Chrome version when use  `Google Search tool`
+> 
+>  This step is crucial for proper execution. 🌈
 
 ### API Configuration
 Before using the application, follow these steps to configure API-related information in the `.env` file:
