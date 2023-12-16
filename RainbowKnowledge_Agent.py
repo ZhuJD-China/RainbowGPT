@@ -588,7 +588,7 @@ class RainbowKnowledge_Agent:
                             Refresh_button.click(fn=self.update_collection_name, outputs=collection_name_select)
 
                             temperature_num = gr.Slider(0, 1, label="Temperature")
-                            print_speed_step = gr.Slider(10, 20, label="Print Speed Step", step=1)
+                            print_speed_step = gr.Slider(6, 20, label="Print Speed Step", step=1)
 
                     with gr.Group():
                         gr.Markdown("### Embedding Data Settings")
