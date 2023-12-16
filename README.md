@@ -58,7 +58,7 @@ Experience simplicity, insight, and creativity with RainbowGPT's powerful featur
 >
 > make sure to relocate the modified `3rd_modify/langchain/vectorstores/chroma.py` file to the Langchain module's library folder and rename it to match the library file when use **Local Search tool**.
 >
-> Make sure to select the right Rainbow_utils/chromedriver.exe to match your Chrome version when use  **Google Search tool**
+> Make sure to select the right `Rainbow_utils/chromedriver.exe` to match your Chrome version when use  **Google Search tool**
 > 
 >  This step is crucial for proper execution. 🌈
 
