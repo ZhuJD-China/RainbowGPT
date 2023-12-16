@@ -1,6 +1,8 @@
 import re
 import langid
 import tiktoken
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 def detect_language(text):
@@ -78,3 +80,28 @@ def truncate_string_to_max_tokens(input_string, max_tokens, tokenizer_name, step
 
     # If the entire string meets the requirements, return the original string
     return input_string
+
+
+def cosine_sim(str1, str2):
+    vectorizer = TfidfVectorizer().fit([str1, str2])
+    tfidf = vectorizer.transform([str1, str2])
+    return cosine_similarity(tfidf)[0, 1]
+
+
+def concatenate_if_dissimilar(str1, str2, threshold):
+    """
+    使用余弦相似度来优化长文本比较。
+    """
+    if not str1:
+        return str2
+    if not str2:
+        return str1
+
+    # 使用余弦相似度
+    similarity = cosine_sim(str1, str2)
+    print("cosine_similarity:", similarity)
+
+    if similarity < threshold:
+        return str1 + "\n\n" + "总结:" + str2
+    else:
+        return str1
