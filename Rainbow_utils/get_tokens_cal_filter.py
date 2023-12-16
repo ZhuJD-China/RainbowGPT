@@ -104,4 +104,4 @@ def concatenate_if_dissimilar(str1, str2, threshold):
     if similarity < threshold:
         return str1 + "\n\n" + "总结:" + str2
     else:
-        return str1
+        return str2

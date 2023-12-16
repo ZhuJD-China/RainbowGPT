@@ -2,7 +2,6 @@ import queue
 import threading
 import chromadb
 import openai
-import datetime
 import time
 import os
 from dotenv import load_dotenv
@@ -10,29 +9,31 @@ import gradio as gr
 from loguru import logger
 # 导入 langchain 模块的相关内容
 from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
-from langchain.agents import initialize_agent, AgentType, load_tools
+from langchain.agents import load_tools
 from langchain.callbacks import FileCallbackHandler
 from langchain.chains import LLMChain
-from langchain.document_loaders import DirectoryLoader
 from langchain.document_transformers import EmbeddingsRedundantFilter
 from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
-from langchain.prompts import PromptTemplate, MessagesPlaceholder, ChatPromptTemplate
+from langchain.prompts import PromptTemplate
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.tools import Tool
 from langchain.vectorstores import Chroma
-from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.retrievers import (
     ContextualCompressionRetriever,
     BM25Retriever,
     EnsembleRetriever
 )
-from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.tools.render import format_tool_to_openai_function
 from langchain.agents.format_scratchpad import format_to_openai_function_messages
 from langchain.agents.output_parsers import OpenAIFunctionsAgentOutputParser
+from langchain import hub
+from langchain.agents.format_scratchpad import format_log_to_str
+from langchain.agents.output_parsers import ReActJsonSingleInputOutputParser
+from langchain.tools.render import render_text_description
 from langchain.agents import AgentExecutor
+from langchain.chat_models import ChatOpenAI
 # Rainbow_utils
 from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \
     truncate_string_to_max_tokens, concatenate_if_dissimilar
@@ -396,7 +397,7 @@ class RainbowKnowledge_Agent:
             func=self.createImageByBing,
             description="""
                 这是一个图片生成工具，当我的问题中明确需要画图，你就可以使用该工具并生成图片。
-                1。当你回答关于需要使用bing来生成什么、画图、照片时时很有用，先提取生成图片的提示词，然后调用该工具。
+                1。当你回答关于需要使用bing来生成什么、画图、照片时很有用，先提取生成图片的提示词，然后调用该工具。
                 2.并严格按照Markdown语法: [![图片描述](图片链接)](图片链接)。
                 3.如果生成的图片链接数量大于1，将其全部严格按照Markdown语法: [![图片描述](图片链接)](图片链接)。
                 4.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考。
@@ -459,81 +460,98 @@ class RainbowKnowledge_Agent:
                     yield response[: i + int(print_speed_step)]
                 return
 
-        # 使用LCEL创建代理
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", "You are a helpful assistant"),
-                ("user", "{input}"),
-                MessagesPlaceholder(variable_name="agent_scratchpad"),
-            ]
-        )
-        llm_with_tools = self.llm.bind(functions=[format_tool_to_openai_function(t) for t in self.tools])
-        agent = (
-                {
-                    "input": lambda x: x["input"],
-                    "agent_scratchpad": lambda x: format_to_openai_function_messages(
-                        x["intermediate_steps"]
-                    ),
-                }
-                | prompt
-                | llm_with_tools
-                | OpenAIFunctionsAgentOutputParser()
-        )
-        # 创建AgentExecutor并调用
-        agent_executor = AgentExecutor(agent=agent,
-                                       tools=self.tools,
-                                       verbose=True,
-                                       return_intermediate_steps=True,
-                                       )
-        try:
-            response = agent_executor.invoke(
-                {
-                    "input": message
-                }
+        if llm_Agent_checkbox_group == "chat-zero-shot-react-description":
+            prompt = hub.pull("hwchase17/react-json")
+            prompt = prompt.partial(
+                tools=render_text_description(self.tools),
+                tool_names=", ".join([t.name for t in self.tools]),
             )
-            if response["intermediate_steps"]:
-                intermediate_steps_string = str(response["intermediate_steps"][-1][1])  # 获取列表的最后一个元素，然后访问第一个位置的字符串
-            else:
-                intermediate_steps_string = ""
-            self.intermediate_steps_log = intermediate_steps_string
-            response_output = str(response['output'])
-            response_output = concatenate_if_dissimilar(intermediate_steps_string, response_output, 0.75)
-            for i in range(0, len(response_output), int(print_speed_step)):
-                yield response_output[: i + int(print_speed_step)]
-        except Exception as e:
-            response_output = f"发生错误：{str(e)}"
-            for i in range(0, len(response_output), int(print_speed_step)):
-                yield response_output[: i + int(print_speed_step)]
-
-        # 在 echo 函数中，生成 intermediate_steps_string 后
-        # yield response_output, intermediate_steps_string
-
-        # agent_executor = initialize_agent(
-        #     tools=self.tools,
-        #     llm=self.llm,
-        #     agent=self.llm_Agent_checkbox_group,
-        #     verbose=True,
-        #     agent_kwargs=self.agent_kwargs,
-        #     memory=self.memory,
-        #     max_iterations=3,
-        #     # early_stopping_method="generate",
-        #     handle_parsing_errors=True,  # 初始化代理并处理解析错误
-        #     callbacks=[self.handler],
-        #     # return_intermediate_steps=True,
-        # )
-        # try:
-        #     response = agent_executor.invoke(
-        #         {
-        #             "input": message
-        #         }
-        #     )
-        #     # response = agent_open_functions.run(message)
-        # except Exception as e:
-        #     response = f"发生错误：{str(e)}"
-        # # for i in range(0, len(response), int(print_speed_step)):
-        # #     yield response[: i + int(print_speed_step)]
-        # # response = agent_open_functions.run(message)
-        # return response
+            chat_model_with_stop = self.llm.bind(stop=["\nObservation"])
+            agent = (
+                    {
+                        "input": lambda x: x["input"],
+                        "agent_scratchpad": lambda x: format_log_to_str(x["intermediate_steps"]),
+                    }
+                    | prompt
+                    | chat_model_with_stop
+                    | ReActJsonSingleInputOutputParser()
+            )
+            agent_executor = AgentExecutor(agent=agent,
+                                           tools=self.tools,
+                                           verbose=True,
+                                           return_intermediate_steps=True,
+                                           handle_parsing_errors=True
+                                           )
+            try:
+                response = agent_executor.invoke(
+                    {
+                        "input": message
+                    }
+                )
+                if response["intermediate_steps"]:
+                    intermediate_steps_string = str(response["intermediate_steps"][-1][1])
+                else:
+                    intermediate_steps_string = ""
+                self.intermediate_steps_log = intermediate_steps_string
+                response_output = str(response['output'])
+                response_output = concatenate_if_dissimilar(intermediate_steps_string, response_output, 0.5)
+                for i in range(0, len(response_output), int(print_speed_step)):
+                    yield response_output[: i + int(print_speed_step)]
+            except Exception as e:
+                response_output = f"发生错误：{str(e)}"
+                for i in range(0, len(response_output), int(print_speed_step)):
+                    yield response_output[: i + int(print_speed_step)]
+            logger.info(response)
+        elif llm_Agent_checkbox_group == "openai-functions":
+            # 使用LCEL创建代理
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    ("system", "You are a helpful assistant"),
+                    ("user", "{input}"),
+                    MessagesPlaceholder(variable_name="agent_scratchpad"),
+                ]
+            )
+            llm_with_tools = self.llm.bind(functions=[format_tool_to_openai_function(t) for t in self.tools])
+            agent = (
+                    {
+                        "input": lambda x: x["input"],
+                        "agent_scratchpad": lambda x: format_to_openai_function_messages(
+                            x["intermediate_steps"]
+                        ),
+                    }
+                    | prompt
+                    | llm_with_tools
+                    | OpenAIFunctionsAgentOutputParser()
+            )
+            # 创建AgentExecutor并调用
+            agent_executor = AgentExecutor(agent=agent,
+                                           tools=self.tools,
+                                           verbose=True,
+                                           return_intermediate_steps=True,
+                                           handle_parsing_errors=True,
+                                           # agent_kwargs=self.agent_kwargs,
+                                           # memory=self.memory,
+                                           )
+            try:
+                response = agent_executor.invoke(
+                    {
+                        "input": message
+                    }
+                )
+                if response["intermediate_steps"]:
+                    intermediate_steps_string = str(response["intermediate_steps"][-1][1])  # 获取列表的最后一个元素，然后访问第一个位置的字符串
+                else:
+                    intermediate_steps_string = ""
+                self.intermediate_steps_log = intermediate_steps_string
+                response_output = str(response['output'])
+                response_output = concatenate_if_dissimilar(intermediate_steps_string, response_output, 0.5)
+                for i in range(0, len(response_output), int(print_speed_step)):
+                    yield response_output[: i + int(print_speed_step)]
+            except Exception as e:
+                response_output = f"发生错误：{str(e)}"
+                for i in range(0, len(response_output), int(print_speed_step)):
+                    yield response_output[: i + int(print_speed_step)]
+            logger.info(response)
 
     def update_collection_name(self):
         # 获取已存在的collection的名称列表
@@ -560,10 +578,9 @@ class RainbowKnowledge_Agent:
                             gr.Markdown(
                                 "Note: When selecting a Private LLM Model, ensure that you consider the Private LLM Settings.")
 
-                            llm_Agent = ["chat-zero-shot-react-description", "openai-functions",
-                                         "zero-shot-react-description"]
+                            llm_Agent = ["openai-functions", "chat-zero-shot-react-description"]
                             llm_Agent_checkbox_group = gr.Dropdown(llm_Agent, label="LLM Agent Type Options",
-                                                                   value=llm_Agent[1])
+                                                                   value=llm_Agent[0])
 
                         with gr.Group():
                             gr.Markdown("### Private LLM Settings")
@@ -588,7 +605,7 @@ class RainbowKnowledge_Agent:
                             Refresh_button.click(fn=self.update_collection_name, outputs=collection_name_select)
 
                             temperature_num = gr.Slider(0, 1, label="Temperature")
-                            print_speed_step = gr.Slider(6, 20, label="Print Speed Step", step=1)
+                            print_speed_step = gr.Slider(5, 10, label="Print Speed Step", step=1)
 
                     with gr.Group():
                         gr.Markdown("### Embedding Data Settings")

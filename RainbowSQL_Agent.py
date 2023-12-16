@@ -127,7 +127,7 @@ class RainbowSQLAgent:
             response = f"发生错误：{str(e)}"
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
-        # return response
+        logger.info(response)
 
     def create_interface(self):
         with gr.Blocks() as self.interface:
