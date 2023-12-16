@@ -54,8 +54,7 @@ Experience simplicity, insight, and creativity with RainbowGPT's powerful featur
    **Note:** If you encounter any issues, ensure that you have the correct dependencies installed.
    
 > [!TIP]
-> **To launch the entire project, you only need to execute `RainbowGPT_Launchpad_UI.py`**. 
-> running `RainbowGPT_Launchpad_UI.py`
+> **To launch the entire project, you only need to execute `RainbowGPT_Launchpad_UI.py`**
 >
 > make sure to relocate the modified `3rd_modify/langchain/vectorstores/chroma.py` file to the Langchain module's library folder and rename it to match the library file when use **Local Search tool**.
 >
