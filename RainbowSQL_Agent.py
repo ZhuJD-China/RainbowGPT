@@ -117,7 +117,6 @@ class RainbowSQLAgent:
             agent_kwargs=self.agent_kwargs,
             memory=self.memory,
             max_iterations=3,
-            early_stopping_method="generate",
             callbacks=[self.handler],
         )
 

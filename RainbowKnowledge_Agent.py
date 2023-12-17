@@ -9,7 +9,7 @@ import gradio as gr
 from loguru import logger
 # 导入 langchain 模块的相关内容
 from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
-from langchain.agents import load_tools
+from langchain.agents import load_tools, ZeroShotAgent
 from langchain.callbacks import FileCallbackHandler
 from langchain.chains import LLMChain
 from langchain.document_transformers import EmbeddingsRedundantFilter
@@ -87,10 +87,12 @@ class RainbowKnowledge_Agent:
         # 全局工具列表创建
         self.tools = []
         # memory
-        self.agent_kwargs = {
-            "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-        }
-        self.memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
+        # self.agent_kwargs = {
+        #     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
+        # }
+        # self.memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
+        self.memory = ConversationBufferMemory(memory_key="chat_history")
+
         self.Google_Search_tool = None
         self.Local_Search_tool = None
         self.llm_Agent_checkbox_group = None
@@ -550,6 +552,35 @@ class RainbowKnowledge_Agent:
                 for i in range(0, len(response_output), int(print_speed_step)):
                     yield response_output[: i + int(print_speed_step)]
             logger.info(response)
+        elif llm_Agent_checkbox_group == "ZeroShotAgent-memory":
+            # Define prompt template with memory
+            prefix = """Have a conversation with a human, answering the following questions as best you can. You have access to the following tools:"""
+            suffix = """Begin!\n\n{chat_history}\nQuestion: {input}\n{agent_scratchpad}"""
+            prompt = ZeroShotAgent.create_prompt(
+                self.tools,
+                prefix=prefix,
+                suffix=suffix,
+                input_variables=["input", "chat_history", "agent_scratchpad"],
+            )
+            # Create the LLMChain and custom agent with memory
+            llm_chain = LLMChain(llm=self.llm, prompt=prompt)
+            agent = ZeroShotAgent(llm_chain=llm_chain, tools=self.tools, verbose=True)
+            agent_chain = AgentExecutor.from_agent_and_tools(
+                agent=agent, tools=self.tools,
+                verbose=True, memory=self.memory,
+                max_iterations=3,
+            )
+            # Execute the agent
+            try:
+                response = agent_chain.run(input=message)
+                response = str(response)
+                for i in range(0, len(response), int(print_speed_step)):
+                    yield response[: i + int(print_speed_step)]
+            except Exception as e:
+                response = f"发生错误：{str(e)}"
+                for i in range(0, len(response), int(print_speed_step)):
+                    yield response[: i + int(print_speed_step)]
+            logger.info(response)
 
     def update_collection_name(self):
         # 获取已存在的collection的名称列表
@@ -576,7 +607,7 @@ class RainbowKnowledge_Agent:
                             gr.Markdown(
                                 "Note: When selecting a Private LLM Model, ensure that you consider the Private LLM Settings.")
 
-                            llm_Agent = ["openai-functions", "chat-zero-shot-react-description"]
+                            llm_Agent = ["openai-functions", "chat-zero-shot-react-description", "ZeroShotAgent-memory"]
                             llm_Agent_checkbox_group = gr.Dropdown(llm_Agent, label="LLM Agent Type Options",
                                                                    value=llm_Agent[0])
 
