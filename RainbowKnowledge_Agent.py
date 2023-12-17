@@ -529,8 +529,6 @@ class RainbowKnowledge_Agent:
                                            verbose=True,
                                            return_intermediate_steps=True,
                                            handle_parsing_errors=True,
-                                           # agent_kwargs=self.agent_kwargs,
-                                           # memory=self.memory,
                                            )
             try:
                 response = agent_executor.invoke(
