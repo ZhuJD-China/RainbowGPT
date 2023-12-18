@@ -539,7 +539,7 @@ class RainbowKnowledge_Agent:
                     }
                 )
                 if response["intermediate_steps"]:
-                    intermediate_steps_string = str(response["intermediate_steps"][-1][1]) 
+                    intermediate_steps_string = str(response["intermediate_steps"][-1][1])
                 else:
                     intermediate_steps_string = ""
                 self.intermediate_steps_log = intermediate_steps_string
