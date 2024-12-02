@@ -24,4 +24,4 @@ RainbowGPT_TabbedInterface = gr.TabbedInterface(
     , theme=seafoam)
 
 if __name__ == "__main__":
-    RainbowGPT_TabbedInterface.queue().launch()
+    RainbowGPT_TabbedInterface.queue().launch(share=True)

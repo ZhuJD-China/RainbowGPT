@@ -34,6 +34,7 @@ class RainbowStock_Analysis:
         self.OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
         self.DASHSCOPE_API_KEY = os.getenv('DASHSCOPE_API_KEY')
         openai.api_key = self.OPENAI_API_KEY
+        openai.base_url = "https://api.chatanywhere.tech"
         dashscope.api_key = self.DASHSCOPE_API_KEY
         self.concept_name = pd.read_csv('./Rainbow_utils/concept_name.csv')
 
@@ -245,7 +246,7 @@ class RainbowStock_Analysis:
         instruction = "你作为A股分析专家,请详细分析市场趋势、行业前景，揭示潜在投资机会,请确保提供充分的数据支持和专业见解。"
 
         # 主营业务介绍-根据主营业务网络搜索相关事件报道
-        get_google_result.set_global_proxy(http_proxy)
+        # get_google_result.set_global_proxy(http_proxy)
 
         stock_zyjs_ths_df = ak.stock_zyjs_ths(symbol=symbol)
         formatted_date = self.format_date(end_date)
@@ -407,35 +408,35 @@ class RainbowStock_Analysis:
                 with gr.Column():
                     # 左侧列: 输入控件，两两排列
                     with gr.Row():
-                        llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview", "gpt-4", "gpt-3.5-turbo-16k"]
+                        llm_options = ["gpt-4o-mini", "gpt-4-1106-preview", "gpt-4o"]
                         llm_options_checkbox_group = gr.Dropdown(llm_options, label="GPT Model Select Options",
                                                                  value=llm_options[0])
-                        llm_options_qwen = ["qwen-72b-chat"]
+                        llm_options_qwen = ["qwen2-72b-instruct"]
                         llm_options_checkbox_group_qwen = gr.Dropdown(llm_options_qwen,
                                                                       label="Qwen Model Select Options",
                                                                       value=llm_options_qwen[0])
                     with gr.Row():
-                        http_proxy = gr.Textbox(value="http://localhost:7890", label="System Http Proxy")
+                        http_proxy = gr.Textbox(value="http://localhost:10809", label="System Http Proxy")
                         market = gr.Textbox(lines=1, placeholder="请输入股票市场（sz或sh，示例：sz）", label="Market",
-                                            value="sz")
+                                            value="sh")
 
                     with gr.Row():
-                        symbol = gr.Textbox(lines=1, placeholder="请输入股票代码(示例股票代码:002665)", label="Symbol",
-                                            value="002665")
+                        symbol = gr.Textbox(lines=1, placeholder="请输入股票代码(示例股票代码:600839)", label="Symbol",
+                                            value="600839")
                         stock_name = gr.Textbox(lines=1, placeholder="请输入股票名称(示例股票名称:首航高科): ",
-                                                label="Stock Name", value="首航高科")
+                                                label="Stock Name", value="四川长虹")
 
                     with gr.Row():
                         start_date = gr.Textbox(lines=1,
-                                                placeholder="请输入K线历史数据查询起始日期（YYYYMMDD，示例：20230805）: ",
-                                                label="Start Date", value="20230805")
+                                                placeholder="请输入K线历史数据查询起始日期（YYYYMMDD，示例：20240805）: ",
+                                                label="Start Date", value="20240805")
                         end_date = gr.Textbox(lines=1,
-                                              placeholder="请输入K线历史数据结束日期（YYYYMMDD，示例：20231206）: ",
-                                              label="End Date", value="20231212")
+                                              placeholder="请输入K线历史数据结束日期（YYYYMMDD，示例：20241202）: ",
+                                              label="End Date", value="20241202")
 
                     with gr.Row():
-                        concept = gr.Textbox(lines=1, placeholder="请输入当前股票所属概念板块名称(示例：光热发电): ",
-                                             label="Concept", value="光热发电")
+                        concept = gr.Textbox(lines=1, placeholder="请输入当前股票所属概念板块名称(示例：机器人概念): ",
+                                             label="Concept", value="机器人概念")
 
                 with gr.Column():
                     # 右侧列: 输出控件

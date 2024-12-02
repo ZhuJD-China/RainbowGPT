@@ -41,8 +41,12 @@ def get_windows_proxy():
 
     except Exception as e:
         print(f"Error retrieving proxy settings: {e}")
-
-    return proxy_settings
+    proxies = {
+        "http": "127.0.0.1:10809",
+        "https": "127.0.0.1:10809"
+    }
+    return proxies
+    # return proxy_settings
 
 
 def get_published_date(item):
