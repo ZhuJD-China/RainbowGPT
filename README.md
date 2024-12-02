@@ -9,6 +9,8 @@
 
 ## RainbowAgent Integration Summary:
 
+😜 **[2024-12-02]RainbowStock_Analysis support gpt-4o-mini, gpt-4，qwen2.5 **
+
 🌈 **[2023-12-15]Dalle3 Artistic Image Generation Unveiled 🎨**
 
 🎨 **[2023-12-10]Simplified MySQL Management:**
