@@ -251,6 +251,8 @@ class RainbowStock_Analysis:
         stock_zyjs_ths_df = ak.stock_zyjs_ths(symbol=symbol)
         formatted_date = self.format_date(end_date)
         IN_Q = str(formatted_date) + "的有关" + stock_zyjs_ths_df['产品类型'].to_string(index=False) + "产品类型的新闻动态"
+        IN_Q = stock_name
+        print("IN_Q:",IN_Q)
         custom_search_link, data_title_Summary = get_google_result.google_custom_search(IN_Q)
 
         # 提取每个文本片段的日期并存储在列表中，同时保留对应的链接
@@ -353,7 +355,7 @@ class RainbowStock_Analysis:
             f"6. 在综合以上分析的基础上，向投资者推荐在未来3天内采取何种具体操作？"
             f"从不同的投资者角度明确给出买入、卖出、持有或补仓或减仓的建议，并说明理由，附上相应的止盈/止损策略。"
             f"记住给出的策略需要精确给我写出止盈位的价格，充分利用利润点，或者精确写出止损位的价格，规避亏损风险。\n\n"
-            f"你可以一步一步的去思考，期待你深刻的分析，将有力指导我的投资决策。"
+            f"你可以一步一步的去思考，期待你对接下来几天的股票走势和价格预测进行深刻的分析，将有力指导我的投资决策。"
         )
 
         print(user_message)
@@ -365,7 +367,9 @@ class RainbowStock_Analysis:
         with open(file_name, 'w', encoding='utf-8') as file:
             file.write(user_message)
         print(f"{stock_name}_已保存到文件: {file_name}")
-
+        
+       
+        
         # 创建一个列表来存储结果
         result = [None, None]
 
