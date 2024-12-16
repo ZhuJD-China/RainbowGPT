@@ -13,6 +13,7 @@ from langchain.agents.agent_toolkits import SQLDatabaseToolkit
 from langchain.agents.agent_types import AgentType
 from loguru import logger
 from langchain.callbacks import FileCallbackHandler
+from urllib.parse import quote_plus
 
 
 class RainbowSQLAgent:
@@ -45,8 +46,11 @@ class RainbowSQLAgent:
 
     def get_database_tables(self, host, username, password):
         try:
+            print(host, username, password)
+            # 对密码进行URL编码
+            encoded_password = quote_plus(password)
             # 构建数据库连接字符串
-            connection_string = f"mysql+pymysql://{username}:{password}@{host}/"
+            connection_string = f"mysql+pymysql://{username}:{encoded_password}@{host}/"
             # 创建数据库引擎
             engine = create_engine(connection_string)
             # 获取数据库连接
@@ -103,25 +107,54 @@ class RainbowSQLAgent:
             return
 
         db_name = input_datatable_name
+        # 对密码进行URL编码
+        encoded_password = quote_plus(input_database_passwd)
         # 创建数据库连接
         db = SQLDatabase.from_uri(
-            f"mysql+pymysql://{input_database_name}:{input_database_passwd}@{input_database_url}/{db_name}")
+            f"mysql+pymysql://{input_database_name}:{encoded_password}@{input_database_url}/{db_name}",
+            # include_tables=['inventory_check', 'inventory_details', 'products'],  # 明确指定表
+            sample_rows_in_table_info=3,
+            view_support=True
+        )
 
         # 创建代理执行器
         agent_executor = create_sql_agent(
             llm=llm,
-            toolkit=SQLDatabaseToolkit(db=db, llm=llm),
+            toolkit=SQLDatabaseToolkit(
+                db=db, 
+                llm=llm, 
+                use_query_checker=False
+            ),
             verbose=True,
-            agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            agent_type=AgentType.OPENAI_FUNCTIONS,
             handle_parsing_errors=True,
-            agent_kwargs=self.agent_kwargs,
+            agent_kwargs={
+                "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
+                "prefix": """你是一个能帮助用户操作SQL数据库的智能助手。
+                            你拥有执行所有SQL命令的完整权限，包括 SELECT、INSERT、UPDATE 和 DELETE。
+                            当被要求修改数据时，你应该：
+                            1. 首先确认数据的当前状态
+                            2. 执行所需的修改操作
+                            3. 验证修改是否成功完成
+                            
+                            重要提示：你被允许且应该在用户要求时执行数据修改操作。""",
+                "format_instructions": """在进行数据修改时，你应该始终以SQL语句系列的形式输出。
+                                       首先说明你计划做什么，然后执行它。"""
+            },
             memory=self.memory,
             max_iterations=5,
             callbacks=[self.handler],
         )
 
         try:
-            response = agent_executor.run(message)
+            response = agent_executor.run(
+                f"""本次交互说明：
+                1. 你有完整的数据库修改权限
+                2. 你应该直接执行用户的请求
+                3. 修改后，验证并报告结果
+                
+                用户请求：{message}"""
+            )
         except Exception as e:
             response = f"发生错误：{str(e)}"
         for i in range(0, len(response), int(print_speed_step)):
