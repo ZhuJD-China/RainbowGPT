@@ -19,6 +19,7 @@ import concurrent.futures
 import requests
 import PyPDF2
 from io import BytesIO
+from openai import OpenAI
 
 
 class RainbowStock_Analysis:
@@ -33,8 +34,10 @@ class RainbowStock_Analysis:
     def initialize_variables(self):
         self.OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
         self.DASHSCOPE_API_KEY = os.getenv('DASHSCOPE_API_KEY')
-        openai.api_key = self.OPENAI_API_KEY
-        openai.base_url = "https://api.chatanywhere.tech"
+        self.openai_client = OpenAI(
+            api_key=self.OPENAI_API_KEY,
+            base_url="https://api.chatanywhere.tech"
+        )
         dashscope.api_key = self.DASHSCOPE_API_KEY
         self.concept_name = pd.read_csv('./Rainbow_utils/concept_name.csv')
 
@@ -44,24 +47,22 @@ class RainbowStock_Analysis:
         gpt_response = ""
         try:
             print("openai_0_28_1_api_call..................")
-            response = openai.ChatCompletion.create(
+            response = self.openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": instruction},
                     {"role": "user", "content": message}
                 ]
             )
-            gpt_response = response['choices'][0]['message']['content']
+            gpt_response = response.choices[0].message.content
             gpt_file_name = f"{stock_name}_gpt_response_{timestamp_str}.txt"
             gpt_file_name = "./logs/" + gpt_file_name
             with open(gpt_file_name, 'w', encoding='utf-8') as gpt_file:
                 gpt_file.write(gpt_response)
             print(f"OpenAI API 响应已保存到文件: {gpt_file_name}")
-            # return gpt_response
-            result[index] = gpt_response  # 将结果存储在结果列表中，使用给定的索引
+            result[index] = gpt_response
         except Exception as e:
             print("发生异常:" + str(gpt_response))
-            # 在这里可以添加适当的异常处理代码，例如记录异常日志或采取其他适当的措施
             result[index] = "发生异常:" + str(gpt_response)
 
     def qwen_api_call(self, model="qwen-72b-chat",
@@ -90,6 +91,62 @@ class RainbowStock_Analysis:
             print("发生异常:" + str(qwen_response))
             # 在这里可以添加适当的异常处理代码，例如记录异常日志或采取其他适当的措施
             result[index] = "发生异常:" + str(qwen_response)
+
+    def openai_async_api_call(self, model="gpt-4o", 
+                            instruction="You are a helpful assistant.",
+                            message="", timestamp_str="", result=None, index=None, stock_name=None):
+        """
+        使用异步方式调用 OpenAI API
+        
+        Args:
+            model: OpenAI 模型名称
+            instruction: 系统指令
+            message: 用户消息
+            timestamp_str: 时间戳字符串
+            result: 结果列表
+            index: 结果索引
+            stock_name: 股票名称
+        """
+        try:
+            print(f"Calling OpenAI API with model {model}...")
+            
+            response = self.openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": instruction},
+                    {"role": "user", "content": message}
+                ]
+            )
+            
+            gpt_response = response.choices[0].message.content
+            
+            gpt_file_name = f"{stock_name}_gpt_response_{timestamp_str}.txt"
+            gpt_file_name = "./logs/" + gpt_file_name
+            with open(gpt_file_name, 'w', encoding='utf-8') as gpt_file:
+                gpt_file.write(gpt_response)
+            print(f"OpenAI API response saved to file: {gpt_file_name}")
+            
+            if result is not None and index is not None:
+                result[index] = gpt_response
+                
+            return gpt_response
+            
+        except Exception as e:
+            error_message = f"OpenAI API call failed: {str(e)}"
+            print(error_message)
+            
+            error_file_name = f"{stock_name}_error_{timestamp_str}.txt"
+            error_file_name = "./logs/" + error_file_name
+            try:
+                with open(error_file_name, 'w', encoding='utf-8') as error_file:
+                    error_file.write(error_message)
+            except Exception as file_error:
+                print(f"Failed to write error log: {str(file_error)}")
+            
+            if result is not None and index is not None:
+                result[index] = error_message
+                
+            return error_message
 
     def calculate_technical_indicators(self, stock_zh_a_hist_df,
                                        ma_window=5, macd_windows=(12, 26, 9),
@@ -136,7 +193,7 @@ class RainbowStock_Analysis:
         prompt_template = """当前股票主营业务和产业的相关的历史动态:
         {stock_zyjs_ths_df}
 
-        当前股票所在的行业资金流数据:
+        当前股票所在的行业资金数据:
         {single_industry_df}
 
         当前股票所在的概念板块的数据:
@@ -221,6 +278,7 @@ class RainbowStock_Analysis:
 
     def process_link(self, link):
         """Function to process each link."""
+        truncated_text = None
         if self.is_pdf_url(link):
             result_text = self.extract_text_from_pdf(link)
             website_content = filter_chinese_english_punctuation(result_text)
@@ -375,7 +433,7 @@ class RainbowStock_Analysis:
 
         # 创建两个线程，分别调用不同的API，并把结果保存在列表中
         gpt_thread = threading.Thread(
-            target=self.openai_0_28_1_api_call,
+            target=self.openai_async_api_call,
             args=(
                 llm_options_checkbox_group, instruction,
                 user_message, timestamp_str, result, 0, stock_name)  # 注意这里多传了两个参数，分别是列表和索引
@@ -435,7 +493,7 @@ class RainbowStock_Analysis:
                                                 placeholder="请输入K线历史数据查询起始日期（YYYYMMDD，示例：20240805）: ",
                                                 label="Start Date", value="20240805")
                         end_date = gr.Textbox(lines=1,
-                                              placeholder="请输入K线历史数据结束日期（YYYYMMDD，示例：20241202）: ",
+                                              placeholder="输入K线历史数据结束日期（YYYYMMDD，示例：20241202）: ",
                                               label="End Date", value="20241202")
 
                     with gr.Row():
