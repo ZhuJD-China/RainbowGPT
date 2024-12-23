@@ -139,7 +139,7 @@ class RainbowKnowledge_Agent:
             bm25_retriever = BM25Retriever.from_texts(the_doc_llist)
             bm25_retriever.k = 30
 
-            # 设置试次数
+            # 设置��次数
             max_retries = 3
             retries = 0
             while retries < max_retries:
@@ -378,7 +378,7 @@ class RainbowKnowledge_Agent:
             name="Google_Search",
             func=self.Google_Search_run,
             description="""
-                这是一个如果本地知识库中无答案或问题需要网络搜索的Google搜索工具。
+                这是一个如果本地知识库���无答案或问题需要网络搜索的Google搜索工具。
                 1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索,可以选择英语或者中文搜索
                 2.同时增加一些搜索提示词包括(引号，时间，关键字)
                 3.如果问题比较复杂，你可以一步一步的思考去搜索和回答
@@ -454,7 +454,7 @@ class RainbowKnowledge_Agent:
         if flag_get_Local_Search_tool:
             if collection_name_select and collection_name_select != "...":
                 print(f"{collection_name_select}", " Collection exists, load it")
-                response = f"{collection_name_select}" + "知识库加载中，请��待我的回答......."
+                response = f"{collection_name_select}" + "知识库加载中，请等待我的回答......."
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[: i + int(print_speed_step)]
                 self.docsearch_db = Chroma(client=self.client, embedding_function=self.embeddings,
@@ -597,8 +597,8 @@ class RainbowKnowledge_Agent:
         )
 
     def create_interface(self):
-        with gr.Blocks() as self.interface:
-            with gr.Row():
+        with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
+            with gr.Row(equal_height=True):  # 设置行等高
                 with gr.Column(scale=3):
                     # 左侧列: 所有控件
                     with gr.Row():
@@ -677,8 +677,15 @@ class RainbowKnowledge_Agent:
                                 text-decoration: underline;
                             }
 
+                            /* 调整聊天界面容器高度 */
                             .gradio-container {
-                                height: 800px !important;
+                                min-height: 95vh !important;
+                            }
+                            
+                            /* 调整聊天记录区域高度 */
+                            .chat-history {
+                                height: calc(95vh - 200px) !important;
+                                overflow-y: auto;
                             }
                             
                             .gradio-header h1 {
@@ -709,7 +716,9 @@ class RainbowKnowledge_Agent:
                                 <p>How to reach us：<a href='mailto:zhujiadongvip@163.com'>zhujiadongvip@163.com</a></p>
                             </div>
                         """,
-                        theme="soft"
+                        theme="soft",
+                        fill_height=True,  # 启用自动填充高度
+                        autoscroll=True    # 启用自动滚动
                     )
 
     def launch(self):

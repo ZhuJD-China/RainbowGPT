@@ -165,8 +165,8 @@ class RainbowSQLAgent:
         logger.info(response)
 
     def create_interface(self):
-        with gr.Blocks() as self.interface:
-            with gr.Row():
+        with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
+            with gr.Row(equal_height=True):
                 with gr.Column(scale=3):
                     # 左侧列: 所有控件
                     with gr.Row():
@@ -204,47 +204,77 @@ class RainbowSQLAgent:
                                                 outputs=input_datatable_name)
                 with gr.Column(scale=5):
                     # 右侧列: Chat Interface
+                    custom_css = """
+                        <style>
+                            .footer-email {
+                                position: fixed;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                text-align: center;
+                                padding: 10px;
+                                background-color: #f8f9fa;
+                                box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+                                font-family: Arial, sans-serif;
+                                font-size: 14px;
+                            }
+                            
+                            .footer-email a {
+                                color: #007bff;
+                                text-decoration: none;
+                            }
+                            
+                            .footer-email a:hover {
+                                text-decoration: underline;
+                            }
+
+                            /* 调整聊天界面容器高度 */
+                            .gradio-container {
+                                min-height: 95vh !important;
+                            }
+                            
+                            /* 调整聊天记录区域高度 */
+                            .chat-history {
+                                height: calc(95vh - 200px) !important;
+                                overflow-y: auto;
+                            }
+                            
+                            /* 标题样式 */
+                            .gradio-header h1 {
+                                text-align: center;
+                                margin-bottom: 1rem;
+                                font-family: "Courier New", monospace;
+                                background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
+                                -webkit-background-clip: text;
+                                -webkit-text-fill-color: transparent;
+                                background-clip: text;
+                                color: transparent;
+                            }
+                        </style>
+                    """
+
                     gr.ChatInterface(
-                        self.echo, additional_inputs=[llm_options_checkbox_group,
-                                                      local_private_llm_api,
-                                                      local_private_llm_key,
-                                                      local_private_llm_name, input_datatable_name,
-                                                      input_database_url, input_database_name, input_database_passwd],
-                        title="""
-            <h1 style='text-align: center; margin-bottom: 1rem; font-family: "Courier New", monospace;
-                       background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
-                       -webkit-background-clip: text;
-                       color: transparent;'>
-                RainbowSQL-Agent
-            </h1>
-            """,
+                        self.echo,
+                        additional_inputs=[llm_options_checkbox_group,
+                                             local_private_llm_api,
+                                             local_private_llm_key,
+                                             local_private_llm_name, input_datatable_name,
+                                             input_database_url, input_database_name, input_database_passwd],
+                        title="RainbowSQL-Agent",
+                        css=custom_css,
                         description="""
-                            <style>
-                                .footer-email {
-                                    position: fixed;
-                                    left: 0;
-                                    right: 0;
-                                    bottom: 0;
-                                    text-align: center;
-                                    padding: 10px;
-                                    background-color: #f8f9fa;
-                                    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-                                    font-family: Arial, sans-serif;
-                                    font-size: 14px;
-                                }
-                                .footer-email a {
-                                    color: #007bff;
-                                    text-decoration: none;
-                                }
-                                .footer-email a:hover {
-                                    text-decoration: underline;
-                                }
-                            </style>
                             <div class='footer-email'>
                                 <p>How to reach us：<a href='mailto:zhujiadongvip@163.com'>zhujiadongvip@163.com</a></p>
                             </div>
-                        """
+                        """,
+                        theme="soft",
+                        fill_height=True,
+                        autoscroll=True
                     )
+
+    # 创建 Gradio 界面的代码
+    def launch(self):
+        return self.interface
 
     # 创建 Gradio 界面的代码
     def launch(self):
