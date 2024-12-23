@@ -6,34 +6,27 @@ import time
 import os
 from dotenv import load_dotenv
 import gradio as gr
-from loguru import logger
-# 导入 langchain 模块的相关内容
-from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
-from langchain.agents import load_tools, ZeroShotAgent
-from langchain.callbacks import FileCallbackHandler
-from langchain.chains import LLMChain
-from langchain.document_transformers import EmbeddingsRedundantFilter
-from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
-from langchain.prompts import PromptTemplate
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.tools import Tool
-from langchain.vectorstores import Chroma
-from langchain.memory import ConversationBufferMemory
-from langchain.retrievers import (
-    ContextualCompressionRetriever,
-    BM25Retriever,
-    EnsembleRetriever
-)
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.tools.render import format_tool_to_openai_function
-from langchain.agents.format_scratchpad import format_to_openai_function_messages
-from langchain.agents.output_parsers import OpenAIFunctionsAgentOutputParser
 from langchain import hub
-from langchain.agents.format_scratchpad import format_log_to_str
-from langchain.agents.output_parsers import ReActJsonSingleInputOutputParser
-from langchain.tools.render import render_text_description
-from langchain.agents import AgentExecutor
-from langchain.chat_models import ChatOpenAI
+from langchain.agents import AgentExecutor, ZeroShotAgent
+from langchain.agents.format_scratchpad import format_log_to_str, format_to_openai_function_messages
+from langchain.agents.output_parsers import ReActJsonSingleInputOutputParser, OpenAIFunctionsAgentOutputParser
+from langchain.chains.llm import LLMChain
+from langchain.memory import ConversationBufferMemory
+from langchain.retrievers import ContextualCompressionRetriever, EnsembleRetriever
+from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
+from langchain_community.chat_models import ChatOpenAI
+from langchain_community.document_transformers import EmbeddingsRedundantFilter
+from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
+from langchain_community.retrievers import BM25Retriever
+from langchain_community.utilities import WolframAlphaAPIWrapper, ArxivAPIWrapper
+from langchain_community.vectorstores import Chroma
+from langchain_core.callbacks import FileCallbackHandler
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.tools import Tool, render_text_description
+from langchain_core.utils.function_calling import format_tool_to_openai_function
+from langchain_text_splitters import CharacterTextSplitter
+from loguru import logger
+
 # Rainbow_utils
 from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \
     truncate_string_to_max_tokens, concatenate_if_dissimilar
@@ -129,7 +122,7 @@ class RainbowKnowledge_Agent:
             # 将稀疏检索器（如 BM25）与密集检索器（如嵌入相似性）相结合
             chroma_retriever = self.docsearch_db.as_retriever(search_kwargs={"k": 30})
 
-            # 将压缩器和文档转换器串在一起
+            # 将缩器和文档转换器串在一起
             splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=0, separator=". ")
             redundant_filter = EmbeddingsRedundantFilter(embeddings=self.embeddings)
             relevant_filter = EmbeddingsFilter(embeddings=self.embeddings, similarity_threshold=0.76)
@@ -146,7 +139,7 @@ class RainbowKnowledge_Agent:
             bm25_retriever = BM25Retriever.from_texts(the_doc_llist)
             bm25_retriever.k = 30
 
-            # 设置最大尝试次数
+            # 设置试次数
             max_retries = 3
             retries = 0
             while retries < max_retries:
@@ -227,7 +220,7 @@ class RainbowKnowledge_Agent:
     def get_google_answer(self, question, result_queue):
         google_answer_box = get_google_result.selenium_google_answer_box(
             question, "Rainbow_utils/chromedriver.exe")
-        # 使用正则表达式保留中文、英文和标点符号
+        # 使用正则表达式留中文、英文和标点符号
         google_answer_box = filter_chinese_english_punctuation(google_answer_box)
         result_queue.put(("google_answer_box", google_answer_box))
 
@@ -285,7 +278,7 @@ class RainbowKnowledge_Agent:
 
         # 创建一个队列来存储线程结果
         results_queue = queue.Queue()
-        # 创建并启动线程
+        # 创建并启线程
         thread1 = threading.Thread(target=self.get_google_answer, args=(question, results_queue))
         thread2 = threading.Thread(target=self.custom_search_and_fetch_content, args=(question, results_queue))
         thread1.start()
@@ -309,7 +302,7 @@ class RainbowKnowledge_Agent:
                 link_detail_string = result
 
         finally_combined_text = f"""
-        当前关键字搜索的答案框数据：
+        当前关键字搜索的答案框据：
         {google_answer_box}
 
         搜索结果相似度TOP10的网站的标题和摘要数据：
@@ -364,12 +357,22 @@ class RainbowKnowledge_Agent:
         self.tools = []  # 重置工具列表
         # Check if 'wolfram-alpha' is in the selected tools
         if "wolfram-alpha" in tool_checkbox_group:
-            temp = load_tools(["wolfram-alpha"], llm=self.llm)
-            self.tools.append(temp[0])
-        elif "arxiv" in tool_checkbox_group:
-            # Load only the 'arxiv' tool
-            temp = load_tools(["arxiv"], llm=self.llm)
-            self.tools.append(temp[0])
+            wolfram = WolframAlphaAPIWrapper()
+            wolfram_tool = Tool(
+                name="Wolfram Alpha",
+                func=wolfram.run,
+                description="Useful for when you need to answer questions about Math, Science, Technology, Culture, Society and Everyday Life"
+            )
+            self.tools.append(wolfram_tool)
+
+        if "arxiv" in tool_checkbox_group:
+            arxiv = ArxivAPIWrapper()
+            arxiv_tool = Tool(
+                name="Arxiv",
+                func=arxiv.run,
+                description="Useful for when you need to get information about scientific papers from arxiv.org. Input should be a search query."
+            )
+            self.tools.append(arxiv_tool)
 
         self.Google_Search_tool = Tool(
             name="Google_Search",
@@ -386,8 +389,8 @@ class RainbowKnowledge_Agent:
             name="Local_Search",
             func=self.ask_local_vector_db,
             description="""
-                这是一个本地知识库搜索工具，你可以优先使用本地搜索并总结回答。
-                1.你先根据我的问题提取出最适合embedding模型向量匹配的关键字进行搜索。
+                这是一个本地知识库搜索工具，你可以优使用本地搜索并总结回答。
+                1.你先根我的问题提取出最适合embedding模型向量匹配的关键字进行搜索。
                 2.注意你需要提出非常有针对性准确的问题和回答。
                 3.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考。
                 4.确保每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
@@ -451,7 +454,7 @@ class RainbowKnowledge_Agent:
         if flag_get_Local_Search_tool:
             if collection_name_select and collection_name_select != "...":
                 print(f"{collection_name_select}", " Collection exists, load it")
-                response = f"{collection_name_select}" + "知识库加载中，请等待我的回答......."
+                response = f"{collection_name_select}" + "知识库加载中，请��待我的回答......."
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[: i + int(print_speed_step)]
                 self.docsearch_db = Chroma(client=self.client, embedding_function=self.embeddings,
@@ -505,7 +508,7 @@ class RainbowKnowledge_Agent:
                     yield response_output[: i + int(print_speed_step)]
             logger.info(response)
         elif llm_Agent_checkbox_group == "openai-functions":
-            # 使用LCEL创建代理
+            # 用LCEL创建代理
             prompt = ChatPromptTemplate.from_messages(
                 [
                     ("system", "You are a helpful assistant"),
@@ -586,12 +589,12 @@ class RainbowKnowledge_Agent:
     def update_collection_name(self):
         # 获取已存在的collection的名称列表
         collections = self.client.list_collections()
-        collection_name_choices = []
-        for collection in collections:
-            collection_name = collection.name
-            collection_name_choices.append(collection_name)
-        # 调用gr.Dropdown.update方法，传入新的选项列表
-        return gr.Dropdown.update(choices=collection_name_choices)
+        collection_name_choices = [collection.name for collection in collections]
+        # 返回新的下拉列表组件
+        return gr.Dropdown(
+            choices=collection_name_choices,
+            value=collection_name_choices[0] if collection_name_choices else None
+        )
 
     def create_interface(self):
         with gr.Blocks() as self.interface:
@@ -629,8 +632,11 @@ class RainbowKnowledge_Agent:
 
                         with gr.Group():
                             gr.Markdown("### Knowledge Collection Settings")
-                            collection_name_select = gr.Dropdown(["..."], label="Select existed Collection",
-                                                                 value="...")
+                            collection_name_select = gr.Dropdown(
+                                choices=[],  # 初始为空列表
+                                label="Select existed Collection",
+                                value=None  # 初始值为 None
+                            )
                             Refresh_button = gr.Button("Refresh Collection", variant="secondary")
                             Refresh_button.click(fn=self.update_collection_name, outputs=collection_name_select)
 
@@ -647,47 +653,63 @@ class RainbowKnowledge_Agent:
                                                                    value=2048)
                 with gr.Column(scale=5):
                     # 右侧列: Chat Interface
-                    gr.ChatInterface(
-                        self.echo, additional_inputs=[llm_options_checkbox_group, collection_name_select,
-                                                      temperature_num, print_speed_step, tool_checkbox_group,
-                                                      Embedding_Model_select,
-                                                      local_data_embedding_token_max, local_private_llm_api,
-                                                      local_private_llm_key,
-                                                      local_private_llm_name, llm_Agent_checkbox_group],
-                        title="""
-            <h1 style='text-align: center; margin-bottom: 1rem; font-family: "Courier New", monospace;
-                       background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
-                       -webkit-background-clip: text;
-                       color: transparent;'>
-                RainbowGPT-Agent
-            </h1>
-            """,
+                    custom_css = """
+                        <style>
+                            .footer-email {
+                                position: fixed;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                text-align: center;
+                                padding: 10px;
+                                background-color: #f8f9fa;
+                                box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+                                font-family: Arial, sans-serif;
+                                font-size: 14px;
+                            }
+                            
+                            .footer-email a {
+                                color: #007bff;
+                                text-decoration: none;
+                            }
+                            
+                            .footer-email a:hover {
+                                text-decoration: underline;
+                            }
+
+                            .gradio-container {
+                                height: 800px !important;
+                            }
+                            
+                            .gradio-header h1 {
+                                text-align: center;
+                                margin-bottom: 1rem;
+                                font-family: "Courier New", monospace;
+                                background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
+                                -webkit-background-clip: text;
+                                -webkit-text-fill-color: transparent;
+                                background-clip: text;
+                                color: transparent;
+                            }
+                        </style>
+                    """
+
+                    chatbot = gr.ChatInterface(
+                        self.echo,
+                        additional_inputs=[llm_options_checkbox_group, collection_name_select,
+                                          temperature_num, print_speed_step, tool_checkbox_group,
+                                          Embedding_Model_select,
+                                          local_data_embedding_token_max, local_private_llm_api,
+                                          local_private_llm_key,
+                                          local_private_llm_name, llm_Agent_checkbox_group],
+                        title="RainbowGPT-Agent",
+                        css=custom_css,
                         description="""
-                            <style>
-                                .footer-email {
-                                    position: fixed;
-                                    left: 0;
-                                    right: 0;
-                                    bottom: 0;
-                                    text-align: center;
-                                    padding: 10px;
-                                    background-color: #f8f9fa;
-                                    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-                                    font-family: Arial, sans-serif;
-                                    font-size: 14px;
-                                }
-                                .footer-email a {
-                                    color: #007bff;
-                                    text-decoration: none;
-                                }
-                                .footer-email a:hover {
-                                    text-decoration: underline;
-                                }
-                            </style>
                             <div class='footer-email'>
                                 <p>How to reach us：<a href='mailto:zhujiadongvip@163.com'>zhujiadongvip@163.com</a></p>
                             </div>
-                        """
+                        """,
+                        theme="soft"
                     )
 
     def launch(self):

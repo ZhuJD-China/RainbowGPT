@@ -5,10 +5,10 @@ import sys
 
 import gradio as gr
 import chromadb
-from langchain.document_loaders import DirectoryLoader
-from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores.chroma import Chroma
+from langchain_community.document_loaders import DirectoryLoader
+from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import CharacterTextSplitter
 
 
 class ChromaDBGradioUI:
@@ -38,10 +38,13 @@ class ChromaDBGradioUI:
                     Create_button = gr.Button("Create Collection")
 
                     gr.Markdown("### Delete Collection Settings")
-                    # 下拉列表
-                    self.collections_combo = gr.Dropdown(choices=[collection.name for collection in self.collections],
-                                                         label="Select collection name",
-                                                         value="...")
+                    # 初始化下拉列表
+                    collection_names = [collection.name for collection in self.collections]
+                    self.collections_combo = gr.Dropdown(
+                        choices=collection_names,
+                        label="Select collection name",
+                        value=collection_names[0] if collection_names else None
+                    )
                     # 功能按钮
                     delete_button = gr.Button("Delete Collection")
 
@@ -188,34 +191,50 @@ class ChromaDBGradioUI:
     def refresh_collections(self):
         # 刷新集合列表
         self.collections = self.client.list_collections()
-        updated_info = "\n".join([collection.name for collection in self.collections])
-        return updated_info, gr.Dropdown.update(choices=[collection.name for collection in self.collections])
+        collection_names = [collection.name for collection in self.collections]
+        updated_info = "\n".join(collection_names)
+        # 返回新的 Dropdown 组件
+        return (
+            updated_info, 
+            gr.Dropdown(
+                choices=collection_names,
+                value=collection_names[0] if collection_names else None
+            )
+        )
 
     def delete_collection(self, collection_name):
         try:
-            # Ensure a valid collection name is selected
-            if collection_name == "...":
+            if not collection_name:
                 raise ValueError("Please select a valid collection name.")
 
-            # Delete the specified collection
             self.client.delete_collection(str(collection_name))
-
-            # Update the collections and log message
-            updated_info, log_message = self.update_collections()
+            
+            # 更新集合列表
+            self.collections = self.client.list_collections()
+            collection_names = [collection.name for collection in self.collections]
+            updated_info = "\n".join(collection_names)
             log_message = f"Collection {collection_name} deleted successfully."
-
-        except ValueError as e:
-            # Handle specific known errors
-            log_message = f"Error: {str(e)}"
-            updated_info = self.show_all_collections()
-
+            
+            # 返回新的 Dropdown 组件
+            return (
+                updated_info, 
+                log_message, 
+                gr.Dropdown(
+                    choices=collection_names,
+                    value=collection_names[0] if collection_names else None
+                )
+            )
         except Exception as e:
-            # Handle any other exceptions
-            log_message = f"Unexpected error: {str(e)}"
-            updated_info = self.show_all_collections()
-
-        return updated_info, log_message, gr.Dropdown.update(
-            choices=[collection.name for collection in self.collections])
+            log_message = f"Error: {str(e)}"
+            collection_names = [collection.name for collection in self.collections]
+            return (
+                self.show_all_collections(),
+                log_message,
+                gr.Dropdown(
+                    choices=collection_names,
+                    value=collection_names[0] if collection_names else None
+                )
+            )
 
     def update_collections(self):
         # 更新集合列表
@@ -227,7 +246,7 @@ class ChromaDBGradioUI:
     def update_collection_info(self):
         # 更新显示的集合信息
         all_collections_info = "\n".join([str(collection) for collection in self.collections])
-        self.collection_info_text.update(value=all_collections_info)
+        return all_collections_info
 
     def show_all_collections(self):
         # 显示所有集合

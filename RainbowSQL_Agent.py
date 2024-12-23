@@ -1,18 +1,17 @@
 import os
 from dotenv import load_dotenv
 import gradio as gr
-# 导入 langchain 模块的相关内容
-from langchain.prompts import PromptTemplate, MessagesPlaceholder
-from langchain.chat_models import ChatOpenAI
+from langchain.agents import AgentType
 from langchain.memory import ConversationBufferMemory
+from langchain_community.agent_toolkits import create_sql_agent, SQLDatabaseToolkit
+from langchain_community.chat_models import ChatOpenAI
+from langchain_community.utilities import SQLDatabase
+from langchain_core.callbacks import FileCallbackHandler
+from langchain_core.prompts import MessagesPlaceholder
+# 导入 langchain 模块的相关内容
 from sqlalchemy import create_engine
 # Rainbow_utils
-from langchain.utilities import SQLDatabase
-from langchain.agents import create_sql_agent
-from langchain.agents.agent_toolkits import SQLDatabaseToolkit
-from langchain.agents.agent_types import AgentType
 from loguru import logger
-from langchain.callbacks import FileCallbackHandler
 from urllib.parse import quote_plus
 
 
@@ -73,7 +72,11 @@ class RainbowSQLAgent:
 
     # 函数：用于更新下拉列表的表格名称
     def update_tables_list(self, host, username, password):
-        return gr.Dropdown.update(choices=self.get_database_tables(host, username, password))
+        databases = self.get_database_tables(host, username, password)
+        return gr.Dropdown(
+            choices=databases,
+            value=databases[0] if databases else None
+        )
 
     def echo(self, message, history, llm_options_checkbox_group,
              local_private_llm_api,
@@ -101,7 +104,7 @@ class RainbowSQLAgent:
                              model=self.llm_name_global)
 
         if message == "":
-            response = "哎呀！好像有点小尴尬，您似乎忘记提出问题了。别着急，随时输入您的问题，我将尽力为您提供帮助！"
+            response = "哎呀！好像有点小尴，您似乎忘记提出问题了。别着急，随时输入您的问题，我将尽力为您提供帮助！"
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
             return
@@ -148,7 +151,7 @@ class RainbowSQLAgent:
 
         try:
             response = agent_executor.run(
-                f"""本次交互说明：
+                f"""本次交��说明：
                 1. 你有完整的数据库修改权限
                 2. 你应该直接执行用户的请求
                 3. 修改后，验证并报告结果,特别的你需要指出数据库变化的地方查询展示。
@@ -189,7 +192,11 @@ class RainbowSQLAgent:
                                 input_database_name = gr.Textbox(value="root", label="database user name")
                                 input_database_passwd = gr.Textbox(value="", label="database user passwd",
                                                                    type="password")
-                            input_datatable_name = gr.Dropdown(["..."], label="Database Select Name", value="...")
+                            input_datatable_name = gr.Dropdown(
+                                choices=[],  # 初始为空列表
+                                label="Database Select Name",
+                                value=None  # 初始值为 None
+                            )
                             update_button = gr.Button("Update Tables List")
                             update_button.click(fn=self.update_tables_list,
                                                 inputs=[input_database_url, input_database_name,
