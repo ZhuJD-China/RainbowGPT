@@ -48,7 +48,12 @@ class RainbowKnowledge_Agent:
         self.docsearch_db = None
         self.script_name = os.path.basename(__file__)
         self.logfile = "./logs/" + self.script_name + ".log"
-        logger.add(self.logfile, colorize=True, enqueue=True)
+        logger.add(self.logfile, 
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+            level="DEBUG",
+            rotation="1 MB",
+            compression="zip"
+        )
         self.handler = FileCallbackHandler(self.logfile)
         self.persist_directory = ".chromadb/"
         self.client = chromadb.PersistentClient(path=self.persist_directory)
@@ -139,7 +144,7 @@ class RainbowKnowledge_Agent:
             bm25_retriever = BM25Retriever.from_texts(the_doc_llist)
             bm25_retriever.k = 30
 
-            # 设置��次数
+            # 设置次数
             max_retries = 3
             retries = 0
             while retries < max_retries:
@@ -218,11 +223,16 @@ class RainbowKnowledge_Agent:
             return response
 
     def get_google_answer(self, question, result_queue):
-        google_answer_box = get_google_result.selenium_google_answer_box(
-            question, "Rainbow_utils/chromedriver.exe")
-        # 使用正则表达式留中文、英文和标点符号
-        google_answer_box = filter_chinese_english_punctuation(google_answer_box)
-        result_queue.put(("google_answer_box", google_answer_box))
+        try:
+            logger.debug("Starting get_google_answer")
+            google_answer_box = get_google_result.selenium_google_answer_box(
+                question, "Rainbow_utils/chromedriver.exe")
+            google_answer_box = filter_chinese_english_punctuation(google_answer_box)
+            result_queue.put(("google_answer_box", google_answer_box))
+            logger.debug("Completed get_google_answer successfully")
+        except Exception as e:
+            logger.exception(f"Error in get_google_answer: {str(e)}")
+            result_queue.put(("google_answer_box", f"获取Google答案时出错: {str(e)}"))
 
     def process_data_title_summary(self, data_title_Summary, result_queue):
         data_title_Summary_str = ''.join(data_title_Summary)
@@ -240,88 +250,117 @@ class RainbowKnowledge_Agent:
         result_queue.put(("link_detail_string", link_detail_string))
 
     def custom_search_and_fetch_content(self, question, result_queue):
-        custom_search_link, data_title_Summary = get_google_result.google_custom_search(question)
-
-        # 创建新的线程来处理 data_title_Summary 和 custom_search_link
-        thread3 = threading.Thread(target=self.process_data_title_summary, args=(data_title_Summary, result_queue))
-        thread4 = threading.Thread(target=self.process_custom_search_link, args=(custom_search_link, result_queue))
-
-        thread3.start()
-        thread4.start()
-        thread3.join()
-        thread4.join()
+        try:
+            logger.debug("Starting custom_search_and_fetch_content")
+            custom_search_link, data_title_Summary = get_google_result.google_custom_search(question)
+            
+            thread3 = threading.Thread(target=self.process_data_title_summary, 
+                                     args=(data_title_Summary, result_queue))
+            thread4 = threading.Thread(target=self.process_custom_search_link, 
+                                     args=(custom_search_link, result_queue))
+            
+            thread3.start()
+            thread4.start()
+            
+            # Add timeout to thread joins
+            thread3.join(timeout=30)
+            thread4.join(timeout=30)
+            
+            if thread3.is_alive() or thread4.is_alive():
+                logger.error("Content processing threads timed out")
+                raise TimeoutError("Content processing timed out")
+            
+            logger.debug("Completed custom_search_and_fetch_content successfully")
+        except Exception as e:
+            logger.exception(f"Error in custom_search_and_fetch_content: {str(e)}")
+            result_queue.put(("data_title_Summary_str", f"获取搜索内容时出错: {str(e)}"))
+            result_queue.put(("link_detail_string", ""))
 
     def Google_Search_run(self, question):
-        # get_google_result.set_global_proxy(self.proxy_url_global)
+        try:
+            logger.debug(f"Starting Google search for question: {question}")
+            # get_google_result.set_global_proxy(self.proxy_url_global)
 
-        if self.llm_name_global == "Private-LLM-Model":
-            self.llm = ChatOpenAI(
-                model_name=self.local_private_llm_name_global,
-                openai_api_base=self.local_private_llm_api_global,
-                openai_api_key=self.local_private_llm_key_global,
-                streaming=False,
+            if self.llm_name_global == "Private-LLM-Model":
+                self.llm = ChatOpenAI(
+                    model_name=self.local_private_llm_name_global,
+                    openai_api_base=self.local_private_llm_api_global,
+                    openai_api_key=self.local_private_llm_key_global,
+                    streaming=False,
+                )
+            else:
+                self.llm = ChatOpenAI(temperature=self.temperature_num_global,
+                                      openai_api_key=os.getenv('OPENAI_API_KEY'),
+                                      model=self.llm_name_global)
+
+            local_search_prompt = PromptTemplate(
+                input_variables=["combined_text", "human_input", "human_input_first"],
+                template=self.google_search_template,
             )
-        else:
-            self.llm = ChatOpenAI(temperature=self.temperature_num_global,
-                                  openai_api_key=os.getenv('OPENAI_API_KEY'),
-                                  model=self.llm_name_global)
+            local_chain = LLMChain(
+                llm=self.llm, prompt=local_search_prompt,
+                verbose=True,
+                # return_final_only=True,  # 指示是否仅返回最终解析的结果
+            )
 
-        local_search_prompt = PromptTemplate(
-            input_variables=["combined_text", "human_input", "human_input_first"],
-            template=self.google_search_template,
-        )
-        local_chain = LLMChain(
-            llm=self.llm, prompt=local_search_prompt,
-            verbose=True,
-            # return_final_only=True,  # 指示是否仅返回最终解析的结果
-        )
+            # 创建一个队列来存储线程结果
+            results_queue = queue.Queue()
+            # 创建并启线程
+            thread1 = threading.Thread(target=self.get_google_answer, args=(question, results_queue))
+            thread2 = threading.Thread(target=self.custom_search_and_fetch_content, args=(question, results_queue))
+            
+            logger.debug("Starting search threads")
+            thread1.start()
+            thread2.start()
+            
+            # Add timeout to thread joins
+            thread1.join(timeout=30)
+            thread2.join(timeout=30)
+            
+            if thread1.is_alive() or thread2.is_alive():
+                logger.error("Search threads timed out")
+                raise TimeoutError("Search operation timed out")
 
-        # 创建一个队列来存储线程结果
-        results_queue = queue.Queue()
-        # 创建并启线程
-        thread1 = threading.Thread(target=self.get_google_answer, args=(question, results_queue))
-        thread2 = threading.Thread(target=self.custom_search_and_fetch_content, args=(question, results_queue))
-        thread1.start()
-        thread2.start()
-        thread1.join()
-        thread2.join()
+            # 初始化变量
+            google_answer_box = ""
+            data_title_Summary_str = ""
+            link_detail_string = ""
 
-        # 初始化变量
-        google_answer_box = ""
-        data_title_Summary_str = ""
-        link_detail_string = ""
+            # 提取并分配结果
+            while not results_queue.empty():
+                result_type, result = results_queue.get()
+                if result_type == "google_answer_box":
+                    google_answer_box = result
+                elif result_type == "data_title_Summary_str":
+                    data_title_Summary_str = result
+                elif result_type == "link_detail_string":
+                    link_detail_string = result
 
-        # 提取并分配结果
-        while not results_queue.empty():
-            result_type, result = results_queue.get()
-            if result_type == "google_answer_box":
-                google_answer_box = result
-            elif result_type == "data_title_Summary_str":
-                data_title_Summary_str = result
-            elif result_type == "link_detail_string":
-                link_detail_string = result
+            finally_combined_text = f"""
+            当前关键字搜索的答案框据：
+            {google_answer_box}
 
-        finally_combined_text = f"""
-        当前关键字搜索的答案框据：
-        {google_answer_box}
+            搜索结果相似度TOP10的网站的标题和摘要数据：
+            {data_title_Summary_str}
 
-        搜索结果相似度TOP10的网站的标题和摘要数据：
-        {data_title_Summary_str}
+            搜索结果相似度TOP1的网站的详细内容数据:
+            {link_detail_string}
 
-        搜索结果相似度TOP1的网站的详细内容数据:
-        {link_detail_string}
+            """
 
-        """
+            truncated_text = truncate_string_to_max_tokens(finally_combined_text,
+                                                           self.local_data_embedding_token_max_global,
+                                                           "cl100k_base",
+                                                           step_size=256)
 
-        truncated_text = truncate_string_to_max_tokens(finally_combined_text,
-                                                       self.local_data_embedding_token_max_global,
-                                                       "cl100k_base",
-                                                       step_size=256)
+            answer = local_chain.predict(combined_text=truncated_text, human_input=question,
+                                         human_input_first=self.human_input_global)
 
-        answer = local_chain.predict(combined_text=truncated_text, human_input=question,
-                                     human_input_first=self.human_input_global)
+            return answer
 
-        return answer
+        except Exception as e:
+            logger.exception(f"Error in Google_Search_run: {str(e)}")
+            return f"搜索过程中发生错误: {str(e)}。请检查网络连接或重试。"
 
     def echo(self, message, history, llm_options_checkbox_group, collection_name_select,
              temperature_num, print_speed_step, tool_checkbox_group,
@@ -378,7 +417,7 @@ class RainbowKnowledge_Agent:
             name="Google_Search",
             func=self.Google_Search_run,
             description="""
-                这是一个如果本地知识库���无答案或问题需要网络搜索的Google搜索工具。
+                这是一个如果本地知识库无答案或问题需要网络搜索的Google搜索工具。
                 1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索,可以选择英语或者中文搜索
                 2.同时增加一些搜索提示词包括(引号，时间，关键字)
                 3.如果问题比较复杂，你可以一步一步的思考去搜索和回答
@@ -600,7 +639,7 @@ class RainbowKnowledge_Agent:
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
             with gr.Row(equal_height=True):  # 设置行等高
                 with gr.Column(scale=3):
-                    # 左侧列: 所有控件
+                    # 左侧列: 所���控件
                     with gr.Row():
                         with gr.Group():
                             gr.Markdown("### Language Model Selection")
@@ -617,8 +656,8 @@ class RainbowKnowledge_Agent:
 
                         with gr.Group():
                             gr.Markdown("### Private LLM Settings")
-                            local_private_llm_name = gr.Textbox(value="Qwen-*B-Chat", label="Private llm name")
-                            local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1",
+                            local_private_llm_name = gr.Textbox(value="gpt-4o-mini", label="Private llm name")
+                            local_private_llm_api = gr.Textbox(value=" https://api.chatanywhere.tech",
                                                                label="Private llm openai-api base")
                             local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
 
