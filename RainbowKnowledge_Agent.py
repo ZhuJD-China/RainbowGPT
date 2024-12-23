@@ -14,9 +14,10 @@ from langchain.chains.llm import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain.retrievers import ContextualCompressionRetriever, EnsembleRetriever
 from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
-from langchain_community.chat_models import ChatOpenAI
 from langchain_community.document_transformers import EmbeddingsRedundantFilter
-from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.utilities import WolframAlphaAPIWrapper, ArxivAPIWrapper
 from langchain_community.vectorstores import Chroma
@@ -441,7 +442,7 @@ class RainbowKnowledge_Agent:
             func=self.createImageByBing,
             description="""
                 这是一个图片生成工具，当我的问题中明确需要画图，你就可以使用该工具并生成图片。
-                1。当你回答关于需要使用bing来生成什么、画图、照片时很有用，先提取生成图片的提示词，然后调用该工具。
+                1。当你回答关于需要使用bing来生成什么画图、照片时很有用，先提取生成图片的提示词，然后调用该工具。
                 2.并严格按照Markdown语法: [![图片描述](图片链接)](图片链接)。
                 3.如果生成的图片链接数量大于1，将其全部严格按照Markdown语法: [![图片描述](图片链接)](图片链接)。
                 4.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考。
@@ -479,7 +480,10 @@ class RainbowKnowledge_Agent:
                     self.embeddings.request_timeout = 20
                     self.Embedding_Model_select_global = 0
                 elif Embedding_Model_select == "HuggingFace Embedding":
-                    self.embeddings = HuggingFaceEmbeddings(cache_folder="models")
+                    self.embeddings = HuggingFaceEmbeddings(
+                        model_name="sentence-transformers/all-mpnet-base-v2",
+                        cache_folder="models"
+                    )
                     self.Embedding_Model_select_global = 1
 
                 flag_get_Local_Search_tool = True
@@ -639,7 +643,7 @@ class RainbowKnowledge_Agent:
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
             with gr.Row(equal_height=True):  # 设置行等高
                 with gr.Column(scale=3):
-                    # 左侧列: 所���控件
+                    # 左侧列: 所控件
                     with gr.Row():
                         with gr.Group():
                             gr.Markdown("### Language Model Selection")
