@@ -13,6 +13,22 @@ from sqlalchemy import create_engine
 # Rainbow_utils
 from loguru import logger
 from urllib.parse import quote_plus
+from langchain.callbacks.base import BaseCallbackHandler
+
+
+class IntermediateResultCallbackHandler(BaseCallbackHandler):
+    def __init__(self):
+        self.intermediate_results = []
+
+    def on_intermediate_result(self, result):
+        # Capture intermediate results
+        self.intermediate_results.append(result)
+
+    def get_intermediate_results(self):
+        return self.intermediate_results
+
+    def clear_intermediate_results(self):
+        self.intermediate_results = []
 
 
 class RainbowSQLAgent:
@@ -43,29 +59,7 @@ class RainbowSQLAgent:
         }
         self.memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
 
-        class SQLOutputCallbackHandler:
-            def on_llm_start(self, *args, **kwargs):
-                print("\n🤔 思考中...\n")
-                
-            def on_llm_end(self, *args, **kwargs):
-                print("\n✨ 思考完毕\n")
-                
-            def on_tool_start(self, *args, **kwargs):
-                print(f"\n🔧 执行工具: {args[0].name}\n")
-                
-            def on_tool_end(self, output, *args, **kwargs):
-                print(f"\n📊 工具输出:\n{output}\n")
-                
-            def on_chain_start(self, *args, **kwargs):
-                print("\n🔄 开始执行链\n")
-                
-            def on_chain_end(self, *args, **kwargs):
-                print("\n✅ 链执行完成\n")
-                
-            def on_text(self, text, *args, **kwargs):
-                print(f"\n💬 {text}\n")
-
-        self.sql_callback_handler = SQLOutputCallbackHandler()
+        self.intermediate_handler = IntermediateResultCallbackHandler()
 
     def get_database_tables(self, host, username, password):
         try:
@@ -94,7 +88,7 @@ class RainbowSQLAgent:
             print(f"Error: {e}")
             return []
 
-    # 函数：用于更新下拉列表的表格名称
+    # 函数用于更新下拉列表的表格名称
     def update_tables_list(self, host, username, password):
         databases = self.get_database_tables(host, username, password)
         return gr.Dropdown(
@@ -148,8 +142,8 @@ class RainbowSQLAgent:
         agent_executor = create_sql_agent(
             llm=llm,
             toolkit=SQLDatabaseToolkit(
-                db=db, 
-                llm=llm, 
+                db=db,
+                llm=llm,
                 use_query_checker=False
             ),
             verbose=True,
@@ -158,22 +152,22 @@ class RainbowSQLAgent:
             agent_kwargs={
                 "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
                 "prefix": """你是一个能帮助用户操作SQL数据库的智能助手。
-                            你拥有执行所有SQL命令的完整权限，包括 SELECT、INSERT、UPDATE 和 DELETE。
+                            你拥有执行所有SQL命令的完整整权限，包括 SELECT、INSERT、UPDATE 和 DELETE。
                             当被要求修改数据时，你应该：
                             1. 首先确认数据的当前状态
                             2. 执行所需的修改操作
                             3. 验证修改是否成功完成
                             
                             重要提示：你被允许且应该在用户要求时执行数据修改操作。""",
-                "format_instructions": """在进行数据修改时，你应该始终以SQL语句系列的形式输出。
-                                       首先说明你计划做什么，然后执行它。"""
             },
             memory=self.memory,
             max_iterations=5,
-            callbacks=[self.handler, self.sql_callback_handler],
+            callbacks=[self.handler, self.intermediate_handler],
         )
 
         try:
+
+            # 执行agent查询
             response = agent_executor.run(
                 f"""本次交易说明：
                 1. 你有完整的数据库修改权限
@@ -182,11 +176,35 @@ class RainbowSQLAgent:
                 
                 用户请求：{message}"""
             )
+
+            # Get intermediate results
+            intermediate_results = self.intermediate_handler.get_intermediate_results()
+            intermediate_results_str = "\n".join(intermediate_results)
+
+            # Construct full response with intermediate results
+            full_response = f"""
+### 执行过程
+{intermediate_results_str}
+
+### 最终结果
+{response}
+"""
+
+            # Clear intermediate results after use
+            self.intermediate_handler.clear_intermediate_results()
+
+            # 记录到日志
+            logger.info(f"User Input: {message}")
+            logger.info(f"Final Response: {response}")
+
+            # 逐步显示响应
+            for i in range(0, len(full_response), int(print_speed_step)):
+                yield full_response[: i + int(print_speed_step)]
+
         except Exception as e:
-            response = f"发生错误：{str(e)}"
-        for i in range(0, len(response), int(print_speed_step)):
-            yield response[: i + int(print_speed_step)]
-        logger.info(response)
+            error_msg = f"发生错误：{str(e)}"
+            logger.error(error_msg)
+            yield error_msg
 
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
@@ -196,15 +214,14 @@ class RainbowSQLAgent:
                     with gr.Row():
                         with gr.Group():
                             gr.Markdown("### Language Model Selection")
-                            llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview", "gpt-4", "gpt-3.5-turbo-16k",
-                                           "gpt-3.5-turbo", "Private-LLM-Model"]
+                            llm_options = ["gpt-4o", "Private-LLM-Model"]
                             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                                      value=llm_options[0])
-                            local_private_llm_name = gr.Textbox(value="Qwen-72B-Chat", label="Private llm name")
+                            local_private_llm_name = gr.Textbox(value="gpt-4o-mini", label="Private llm name")
 
                         with gr.Group():
                             gr.Markdown("### Private LLM Settings")
-                            local_private_llm_api = gr.Textbox(value="http://172.16.0.160:8000/v1",
+                            local_private_llm_api = gr.Textbox(value="https://api.chatanywhere.tech",
                                                                label="Private llm openai-api base")
                             local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
 
@@ -219,7 +236,7 @@ class RainbowSQLAgent:
                             input_datatable_name = gr.Dropdown(
                                 choices=[],  # 初始为空列表
                                 label="Database Select Name",
-                                value=None  # 初始值为 None
+                                value=None  # 初始��为 None
                             )
                             update_button = gr.Button("Update Tables List")
                             update_button.click(fn=self.update_tables_list,
@@ -280,10 +297,10 @@ class RainbowSQLAgent:
                     gr.ChatInterface(
                         self.echo,
                         additional_inputs=[llm_options_checkbox_group,
-                                             local_private_llm_api,
-                                             local_private_llm_key,
-                                             local_private_llm_name, input_datatable_name,
-                                             input_database_url, input_database_name, input_database_passwd],
+                                           local_private_llm_api,
+                                           local_private_llm_key,
+                                           local_private_llm_name, input_datatable_name,
+                                           input_database_url, input_database_name, input_database_passwd],
                         title="RainbowSQL-Agent",
                         css=custom_css,
                         description="""
