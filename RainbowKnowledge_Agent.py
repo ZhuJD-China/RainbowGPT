@@ -15,6 +15,7 @@ from langchain.memory import ConversationBufferMemory
 from langchain.retrievers import ContextualCompressionRetriever, EnsembleRetriever
 from langchain.retrievers.document_compressors import EmbeddingsFilter, DocumentCompressorPipeline
 from langchain_community.document_transformers import EmbeddingsRedundantFilter
+from langchain.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -27,6 +28,8 @@ from langchain_core.tools import Tool, render_text_description
 from langchain_core.utils.function_calling import format_tool_to_openai_function
 from langchain_text_splitters import CharacterTextSplitter
 from loguru import logger
+from langchain.chains import LLMMathChain
+from langchain.callbacks.base import BaseCallbackHandler
 
 # Rainbow_utils
 from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \
@@ -49,12 +52,12 @@ class RainbowKnowledge_Agent:
         self.docsearch_db = None
         self.script_name = os.path.basename(__file__)
         self.logfile = "./logs/" + self.script_name + ".log"
-        logger.add(self.logfile, 
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
-            level="DEBUG",
-            rotation="1 MB",
-            compression="zip"
-        )
+        logger.add(self.logfile,
+                   format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+                   level="DEBUG",
+                   rotation="1 MB",
+                   compression="zip"
+                   )
         self.handler = FileCallbackHandler(self.logfile)
         self.persist_directory = ".chromadb/"
         self.client = chromadb.PersistentClient(path=self.persist_directory)
@@ -86,16 +89,35 @@ class RainbowKnowledge_Agent:
         # 全局工具列表创建
         self.tools = []
         # memory
-        # self.agent_kwargs = {
-        #     "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-        # }
-        # self.memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
-        self.memory = ConversationBufferMemory(memory_key="chat_history")
+        self.memory = ConversationBufferMemory(
+            return_messages=True,
+            memory_key="chat_history",
+            output_key="output"
+        )
 
         self.Google_Search_tool = None
         self.Local_Search_tool = None
         self.llm_Agent_checkbox_group = None
         self.intermediate_steps_log = ""
+
+        # 替换为 LLMMathChain
+        llm_math = LLMMathChain.from_llm(llm=ChatOpenAI(temperature=0))
+        self.math_tool = Tool(
+            name="Calculator",
+            func=llm_math.run,
+            description="""
+                这是一个数学计算工具。当你需要:
+                1. 执行基础数学运算（加减乘除）
+                2. 处理复杂数学表达式
+                3. 解决数学问题
+                4. 进行数值计算
+                使用这个工具时，请提供清晰的数学表达式。
+                输入应该是一个数学问题，用自然语言描述。
+            """
+        )
+
+        # 全局工具列表创建时默认加入 Calculator
+        self.tools = [self.math_tool]
 
     def ask_local_vector_db(self, question):
         if self.llm_name_global == "Private-LLM-Model":
@@ -145,7 +167,7 @@ class RainbowKnowledge_Agent:
             bm25_retriever = BM25Retriever.from_texts(the_doc_llist)
             bm25_retriever.k = 30
 
-            # 设置次数
+            # 置次数
             max_retries = 3
             retries = 0
             while retries < max_retries:
@@ -254,23 +276,23 @@ class RainbowKnowledge_Agent:
         try:
             logger.debug("Starting custom_search_and_fetch_content")
             custom_search_link, data_title_Summary = get_google_result.google_custom_search(question)
-            
-            thread3 = threading.Thread(target=self.process_data_title_summary, 
-                                     args=(data_title_Summary, result_queue))
-            thread4 = threading.Thread(target=self.process_custom_search_link, 
-                                     args=(custom_search_link, result_queue))
-            
+
+            thread3 = threading.Thread(target=self.process_data_title_summary,
+                                       args=(data_title_Summary, result_queue))
+            thread4 = threading.Thread(target=self.process_custom_search_link,
+                                       args=(custom_search_link, result_queue))
+
             thread3.start()
             thread4.start()
-            
+
             # Add timeout to thread joins
             thread3.join(timeout=30)
             thread4.join(timeout=30)
-            
+
             if thread3.is_alive() or thread4.is_alive():
                 logger.error("Content processing threads timed out")
                 raise TimeoutError("Content processing timed out")
-            
+
             logger.debug("Completed custom_search_and_fetch_content successfully")
         except Exception as e:
             logger.exception(f"Error in custom_search_and_fetch_content: {str(e)}")
@@ -309,15 +331,15 @@ class RainbowKnowledge_Agent:
             # 创建并启线程
             thread1 = threading.Thread(target=self.get_google_answer, args=(question, results_queue))
             thread2 = threading.Thread(target=self.custom_search_and_fetch_content, args=(question, results_queue))
-            
+
             logger.debug("Starting search threads")
             thread1.start()
             thread2.start()
-            
+
             # Add timeout to thread joins
             thread1.join(timeout=30)
             thread2.join(timeout=30)
-            
+
             if thread1.is_alive() or thread2.is_alive():
                 logger.error("Search threads timed out")
                 raise TimeoutError("Search operation timed out")
@@ -361,7 +383,7 @@ class RainbowKnowledge_Agent:
 
         except Exception as e:
             logger.exception(f"Error in Google_Search_run: {str(e)}")
-            return f"搜索过程中发生错误: {str(e)}。请检查网络连接或重试。"
+            return f"搜索过程中��生错误: {str(e)}。请检查网络连接或重试。"
 
     def echo(self, message, history, llm_options_checkbox_group, collection_name_select,
              temperature_num, print_speed_step, tool_checkbox_group,
@@ -387,12 +409,15 @@ class RainbowKnowledge_Agent:
                 model_name=self.local_private_llm_name_global,
                 openai_api_base=self.local_private_llm_api_global,
                 openai_api_key=self.local_private_llm_key_global,
-                streaming=False,
+                streaming=True,
             )
         else:
-            self.llm = ChatOpenAI(temperature=self.temperature_num_global,
-                                  openai_api_key=os.getenv('OPENAI_API_KEY'),
-                                  model=self.llm_name_global)
+            self.llm = ChatOpenAI(
+                temperature=self.temperature_num_global,
+                openai_api_key=os.getenv('OPENAI_API_KEY'),
+                model=self.llm_name_global,
+                streaming=True,
+            )
 
         self.tools = []  # 重置工具列表
         # Check if 'wolfram-alpha' is in the selected tools
@@ -432,7 +457,7 @@ class RainbowKnowledge_Agent:
                 这是一个本地知识库搜索工具，你可以优使用本地搜索并总结回答。
                 1.你先根我的问题提取出最适合embedding模型向量匹配的关键字进行搜索。
                 2.注意你需要提出非常有针对性准确的问题和回答。
-                3.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考。
+                3.如果问题比较复杂，可以将复杂的问题���行拆分，你可以一步一步的思考。
                 4.确保每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
             """
         )
@@ -441,16 +466,13 @@ class RainbowKnowledge_Agent:
             name="Create_Image",
             func=self.createImageByBing,
             description="""
-                这是一个图片生成工具，当我的问题中明确需要画图，你就可以使用该工具并生成图片。
-                1。当你回答关于需要使用bing来生成什么画图、照片时很有用，先提取生成图片的提示词，然后调用该工具。
+                这是一个图片生成工具，当我的问题中明确需要画图，你就可以使用该工具并生成图片
+                1。当你回关于需要使用bing来生成什么画图、照片时很有用，先提取生成图片的提示词，然后调用该工具。
                 2.并严格按照Markdown语法: [![图片描述](图片链接)](图片链接)。
                 3.如果生成的图片链接数量大于1，将其全部严格按照Markdown语法: [![图片描述](图片链接)](图片链接)。
                 4.如果问题比较复杂，可以将复杂的问题进行拆分，你可以一步一步的思考。
                 """
         )
-
-        # 默认开启
-        self.tools.append(self.Create_Image_tool)
 
         # Initialize flags for additional tools
         flag_get_Local_Search_tool = False
@@ -460,7 +482,6 @@ class RainbowKnowledge_Agent:
                 response = "Google Search 工具加入 回答中..........."
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[:i + int(print_speed_step)]
-
                 self.tools.append(self.Google_Search_tool)
 
             elif tg == "Local Knowledge Search" and self.Local_Search_tool not in self.tools:
@@ -488,6 +509,12 @@ class RainbowKnowledge_Agent:
 
                 flag_get_Local_Search_tool = True
 
+            elif tg == "Create Image" and self.Create_Image_tool not in self.tools:
+                response = "Create Image 工具加入 回答中..........."
+                for i in range(0, len(response), int(print_speed_step)):
+                    yield response[:i + int(print_speed_step)]
+                self.tools.append(self.Create_Image_tool)
+
         if message == "":
             response = "哎呀！好像有点小尴尬，您似乎忘记提出问题了。别着急，随时输入您的问题，我将尽力为您提供帮助！"
             for i in range(0, len(response), int(print_speed_step)):
@@ -508,58 +535,17 @@ class RainbowKnowledge_Agent:
                     yield response[: i + int(print_speed_step)]
                 return
 
-        if llm_Agent_checkbox_group == "chat-zero-shot-react-description":
-            prompt = hub.pull("hwchase17/react-json")
-            prompt = prompt.partial(
-                tools=render_text_description(self.tools),
-                tool_names=", ".join([t.name for t in self.tools]),
+        if llm_Agent_checkbox_group == "openai-functions":
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", "You are a helpful assistant"),
+                ("user", "{input}"),
+                MessagesPlaceholder(variable_name="agent_scratchpad"),
+            ])
+
+            llm_with_tools = self.llm.bind(
+                functions=[format_tool_to_openai_function(t) for t in self.tools]
             )
-            chat_model_with_stop = self.llm.bind(stop=["\nObservation"])
-            agent = (
-                    {
-                        "input": lambda x: x["input"],
-                        "agent_scratchpad": lambda x: format_log_to_str(x["intermediate_steps"]),
-                    }
-                    | prompt
-                    | chat_model_with_stop
-                    | ReActJsonSingleInputOutputParser()
-            )
-            agent_executor = AgentExecutor(agent=agent,
-                                           tools=self.tools,
-                                           verbose=True,
-                                           return_intermediate_steps=True,
-                                           handle_parsing_errors=True
-                                           )
-            try:
-                response = agent_executor.invoke(
-                    {
-                        "input": message
-                    }
-                )
-                if response["intermediate_steps"]:
-                    intermediate_steps_string = str(response["intermediate_steps"][-1][1])
-                else:
-                    intermediate_steps_string = ""
-                self.intermediate_steps_log = intermediate_steps_string
-                response_output = str(response['output'])
-                response_output = concatenate_if_dissimilar(intermediate_steps_string, response_output, 0.5)
-                for i in range(0, len(response_output), int(print_speed_step)):
-                    yield response_output[: i + int(print_speed_step)]
-            except Exception as e:
-                response_output = f"发生错误：{str(e)}"
-                for i in range(0, len(response_output), int(print_speed_step)):
-                    yield response_output[: i + int(print_speed_step)]
-            logger.info(response)
-        elif llm_Agent_checkbox_group == "openai-functions":
-            # 用LCEL创建代理
-            prompt = ChatPromptTemplate.from_messages(
-                [
-                    ("system", "You are a helpful assistant"),
-                    ("user", "{input}"),
-                    MessagesPlaceholder(variable_name="agent_scratchpad"),
-                ]
-            )
-            llm_with_tools = self.llm.bind(functions=[format_tool_to_openai_function(t) for t in self.tools])
+
             agent = (
                     {
                         "input": lambda x: x["input"],
@@ -571,63 +557,125 @@ class RainbowKnowledge_Agent:
                     | llm_with_tools
                     | OpenAIFunctionsAgentOutputParser()
             )
-            # 创建AgentExecutor并调用
-            agent_executor = AgentExecutor(agent=agent,
-                                           tools=self.tools,
-                                           verbose=True,
-                                           return_intermediate_steps=True,
-                                           handle_parsing_errors=True,
-                                           )
+
+            agent_executor = AgentExecutor(
+                agent=agent,
+                tools=self.tools,
+                verbose=True,
+                return_intermediate_steps=True,
+                handle_parsing_errors=True,
+            )
+
             try:
-                response = agent_executor.invoke(
-                    {
-                        "input": message
-                    }
-                )
-                if response["intermediate_steps"]:
-                    intermediate_steps_string = str(response["intermediate_steps"][-1][1])
-                else:
-                    intermediate_steps_string = ""
-                self.intermediate_steps_log = intermediate_steps_string
-                response_output = str(response['output'])
-                response_output = concatenate_if_dissimilar(intermediate_steps_string, response_output, 0.5)
-                for i in range(0, len(response_output), int(print_speed_step)):
-                    yield response_output[: i + int(print_speed_step)]
+                response = ""
+                for chunk in agent_executor.stream({"input": message}):
+                    if "output" in chunk:
+                        response += chunk["output"]
+                        yield response
+                    elif "intermediate_step" in chunk:
+                        self.intermediate_steps_log = str(chunk["intermediate_step"])
+
             except Exception as e:
-                response_output = f"发生错误：{str(e)}"
-                for i in range(0, len(response_output), int(print_speed_step)):
-                    yield response_output[: i + int(print_speed_step)]
-            logger.info(response)
+                yield f"发生错误：{str(e)}"
+                logger.error(f"Error in agent execution: {str(e)}")
         elif llm_Agent_checkbox_group == "ZeroShotAgent-memory":
-            # Define prompt template with memory
-            prefix = """Have a conversation with a human, answering the following questions as best you can. You have access to the following tools:"""
-            suffix = """Begin!\n\n{chat_history}\nQuestion: {input}\n{agent_scratchpad}"""
+            # 修改 prefix 和 suffix 以更好地处理对话
+            prefix = """你是一个智能AI助手，擅长通过逻辑思考来解决问题。在回答问题时，请遵循以下思考步骤：
+
+1. 首先，仔细分析用户的问题，理解问题的核心需求
+2. 思考是否可以直接回答，还是需要使用工具来获取更多信息
+3. 如果问题复杂，可以将其分解成多个子问题逐步解决
+4. 在使用工具时，要明确说明使用原因和预期结果
+
+请严格按照以下格式回复：
+
+Thought: 分析问题并说明思考过程
+(可选) Action: 如果需要使用工具，选择合适的工具
+(可选) Action Input: 输入到工具的具体内容
+(可选) Observation: 工具返回的结果
+... (如果需要，可以重复上述思考-行动-观察循环)
+Thought: 总结所有信息，形成最终答案
+Final Answer: 给出完整、准确、有条理的回答
+
+当前可用的工具有:"""
+
+            suffix = """请记住：
+1. 优先通过自己的知识和逻辑思考来回答
+2. 只在确实需要时才使用工具
+3. 回答要有条理、完整且符合逻辑
+4. 如果不确定，要诚实说明并给出最佳建议
+
+历史对话:
+{chat_history}
+
+当前问题: {input}
+
+思考过程:
+{agent_scratchpad}
+
+让我们一步一步地思考这个问题..."""
+
             prompt = ZeroShotAgent.create_prompt(
                 self.tools,
                 prefix=prefix,
                 suffix=suffix,
                 input_variables=["input", "chat_history", "agent_scratchpad"],
             )
-            # Create the LLMChain and custom agent with memory
+
             llm_chain = LLMChain(llm=self.llm, prompt=prompt)
             agent = ZeroShotAgent(llm_chain=llm_chain, tools=self.tools, verbose=True)
+
+            # 创建一个回调处理器来捕获中间步骤
+            class VerboseHandler(BaseCallbackHandler):
+                def __init__(self):
+                    self.steps = []
+                    super().__init__()
+                
+                def on_agent_action(self, action, color=None, **kwargs):
+                    self.steps.append(f"**思考:** {action.log}")
+                    self.steps.append(f"**行动:** {action.tool}")
+                    self.steps.append(f"**输入:** {action.tool_input}")
+                    
+                def on_agent_observation(self, observation, color=None, **kwargs):
+                    self.steps.append(f"**观察:** {observation}")
+                    
+                def on_agent_finish(self, finish, color=None, **kwargs):
+                    self.steps.append(f"**思考:** {finish.log}")
+                    if "output" in finish.return_values:
+                        self.steps.append(f"**最终答案:** {finish.return_values['output']}")
+
+            handler = VerboseHandler()
+            
+            # 修改 agent_chain 配置，添加回调处理器
             agent_chain = AgentExecutor.from_agent_and_tools(
-                agent=agent, tools=self.tools,
-                verbose=True, memory=self.memory,
+                agent=agent,
+                tools=self.tools,
+                verbose=True,
+                memory=self.memory,
                 max_iterations=3,
                 handle_parsing_errors=True,
+                early_stopping_method="generate",
+                callbacks=[handler]
             )
-            # Execute the agent
+
             try:
-                response = agent_chain.run(input=message)
-                response = str(response)
-                for i in range(0, len(response), int(print_speed_step)):
-                    yield response[: i + int(print_speed_step)]
+                # 获取聊天历史
+                chat_history = self.memory.load_memory_variables({})["chat_history"]
+
+                # 运行agent_chain
+                response = agent_chain.run(
+                    input=message,
+                    chat_history=chat_history
+                )
+
+                # 组合所有步骤并输出
+                full_output = "\n".join(handler.steps)
+                yield full_output
+
             except Exception as e:
-                response = f"发生错误：{str(e)}"
-                for i in range(0, len(response), int(print_speed_step)):
-                    yield response[: i + int(print_speed_step)]
-            logger.info(response)
+                error_msg = f"Agent执行过程中发生错误：{str(e)}"
+                logger.error(error_msg)
+                yield error_msg
 
     def update_collection_name(self):
         # 获取已存在的collection的名称列表
@@ -647,21 +695,20 @@ class RainbowKnowledge_Agent:
                     with gr.Row():
                         with gr.Group():
                             gr.Markdown("### Language Model Selection")
-                            llm_options = ["gpt-3.5-turbo-1106", "gpt-4-1106-preview", "gpt-4", "gpt-3.5-turbo-16k",
-                                           "gpt-3.5-turbo", "Private-LLM-Model"]
+                            llm_options = ["gpt-4o", "Private-LLM-Model"]
                             llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
                                                                      value=llm_options[0])
                             gr.Markdown(
                                 "Note: When selecting a Private LLM Model, ensure that you consider the Private LLM Settings.")
 
-                            llm_Agent = ["openai-functions", "chat-zero-shot-react-description", "ZeroShotAgent-memory"]
+                            llm_Agent = ["openai-functions", "ZeroShotAgent-memory"]
                             llm_Agent_checkbox_group = gr.Dropdown(llm_Agent, label="LLM Agent Type Options",
                                                                    value=llm_Agent[0])
 
                         with gr.Group():
                             gr.Markdown("### Private LLM Settings")
                             local_private_llm_name = gr.Textbox(value="gpt-4o-mini", label="Private llm name")
-                            local_private_llm_api = gr.Textbox(value=" https://api.chatanywhere.tech",
+                            local_private_llm_api = gr.Textbox(value="https://api.chatanywhere.tech",
                                                                label="Private llm openai-api base")
                             local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
 
@@ -669,9 +716,10 @@ class RainbowKnowledge_Agent:
                         with gr.Group():
                             gr.Markdown("### Additional Tools")
 
-                            tool_options = ["Google Search", "Local Knowledge Search", "wolfram-alpha", "arxiv"]
+                            tool_options = ["Google Search", "Local Knowledge Search", "wolfram-alpha", "arxiv",
+                                            "Create Image"]
                             tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select")
-                            gr.Markdown("Note: 'Create Image' Tool are enabled by default.")
+                            gr.Markdown("Note: Select the tools you want to use.")
 
                         with gr.Group():
                             gr.Markdown("### Knowledge Collection Settings")
@@ -747,11 +795,11 @@ class RainbowKnowledge_Agent:
                     chatbot = gr.ChatInterface(
                         self.echo,
                         additional_inputs=[llm_options_checkbox_group, collection_name_select,
-                                          temperature_num, print_speed_step, tool_checkbox_group,
-                                          Embedding_Model_select,
-                                          local_data_embedding_token_max, local_private_llm_api,
-                                          local_private_llm_key,
-                                          local_private_llm_name, llm_Agent_checkbox_group],
+                                           temperature_num, print_speed_step, tool_checkbox_group,
+                                           Embedding_Model_select,
+                                           local_data_embedding_token_max, local_private_llm_api,
+                                           local_private_llm_key,
+                                           local_private_llm_name, llm_Agent_checkbox_group],
                         title="RainbowGPT-Agent",
                         css=custom_css,
                         description="""
@@ -760,8 +808,9 @@ class RainbowKnowledge_Agent:
                             </div>
                         """,
                         theme="soft",
-                        fill_height=True,  # 启用自动填充高度
-                        autoscroll=True    # 启用自动滚动
+                        fill_height=True,
+                        autoscroll=True,
+                        type='messages'
                     )
 
     def launch(self):
