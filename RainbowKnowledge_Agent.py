@@ -30,6 +30,7 @@ from langchain_text_splitters import CharacterTextSplitter
 from loguru import logger
 from langchain.chains import LLMMathChain
 from langchain.callbacks.base import BaseCallbackHandler
+from Rainbow_utils.model_config_manager import ModelConfigManager
 
 # Rainbow_utils
 from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \
@@ -44,6 +45,8 @@ class RainbowKnowledge_Agent:
         self.load_dotenv()
         self.initialize_variables()
         self.create_interface()
+        # 初始化模型配置管理器
+        self.model_manager = ModelConfigManager()
 
     def load_dotenv(self):
         load_dotenv()
@@ -100,8 +103,18 @@ class RainbowKnowledge_Agent:
         self.llm_Agent_checkbox_group = None
         self.intermediate_steps_log = ""
 
-        # 替换为 LLMMathChain
-        llm_math = LLMMathChain.from_llm(llm=ChatOpenAI(temperature=0))
+        # 初始化LLM相关配置
+        self.model_manager = ModelConfigManager()
+        config = self.model_manager.get_active_config()
+        
+        # 使用全局配置初始化Calculator工具的LLM
+        base_llm = ChatOpenAI(
+            model_name=config.model_name,
+            openai_api_base=config.api_base,
+            openai_api_key=config.api_key,
+            temperature=0  # Calculator工具保持temperature=0
+        )
+        llm_math = LLMMathChain.from_llm(llm=base_llm)
         self.math_tool = Tool(
             name="Calculator",
             func=llm_math.run,
@@ -116,35 +129,37 @@ class RainbowKnowledge_Agent:
             """
         )
 
-    def ask_local_vector_db(self, question):
-        if self.llm_name_global == "Private-LLM-Model":
-            llm = ChatOpenAI(
-                model_name=self.local_private_llm_name_global,
-                openai_api_base=self.local_private_llm_api_global,
-                openai_api_key=self.local_private_llm_key_global,
-                streaming=False,
-            )
-        else:
-            llm = ChatOpenAI(temperature=self.temperature_num_global,
-                             openai_api_key=os.getenv('OPENAI_API_KEY'),
-                             model=self.llm_name_global)
+    def get_llm(self):
+        """获取当前配置的LLM实例"""
+        config = self.model_manager.get_active_config()
+        return ChatOpenAI(
+            model_name=config.model_name,
+            openai_api_base=config.api_base,
+            openai_api_key=config.api_key,
+            temperature=config.temperature,
+            streaming=True
+        )
 
+    def ask_local_vector_db(self, question):
+        # 使用模型配置管理器获取LLM
+        self.llm = self.get_llm()
+        
         local_search_prompt = PromptTemplate(
             input_variables=["combined_text", "human_input", "human_input_first"],
             template=self.local_search_template,
         )
-        # 本地知识库工具
+        
         local_chain = LLMChain(
-            llm=llm, prompt=local_search_prompt,
+            llm=self.llm,
+            prompt=local_search_prompt,
             verbose=True,
-            # return_final_only=True,  # 指示是否仅返回最终解析的结果
         )
 
         docs = []
         if self.Embedding_Model_select_global == 0:
             print("OpenAIEmbeddings Search")
             # 结合基础检索器+Embedding上下文压缩
-            # 将稀疏检索器（如 BM25）与密集检索器（如嵌入相似性）相结合
+            # 将稀疏检索器（如 BM25）与密集检���器（如嵌入相似性）相结合
             chroma_retriever = self.docsearch_db.as_retriever(search_kwargs={"k": 30})
 
             # 将缩器和文档转换器串在一起
@@ -299,28 +314,19 @@ class RainbowKnowledge_Agent:
     def Google_Search_run(self, question):
         try:
             logger.debug(f"Starting Google search for question: {question}")
-            # get_google_result.set_global_proxy(self.proxy_url_global)
-
-            if self.llm_name_global == "Private-LLM-Model":
-                self.llm = ChatOpenAI(
-                    model_name=self.local_private_llm_name_global,
-                    openai_api_base=self.local_private_llm_api_global,
-                    openai_api_key=self.local_private_llm_key_global,
-                    streaming=False,
-                )
-            else:
-                self.llm = ChatOpenAI(temperature=self.temperature_num_global,
-                                      openai_api_key=os.getenv('OPENAI_API_KEY'),
-                                      model=self.llm_name_global)
-
+            
+            # 使用模型配置管理器获取LLM
+            self.llm = self.get_llm()
+            
             local_search_prompt = PromptTemplate(
                 input_variables=["combined_text", "human_input", "human_input_first"],
                 template=self.google_search_template,
             )
+            
             local_chain = LLMChain(
-                llm=self.llm, prompt=local_search_prompt,
+                llm=self.llm,
+                prompt=local_search_prompt,
                 verbose=True,
-                # return_final_only=True,  # 指示是否仅返回最终解析的结果
             )
 
             # 创建一个队列来存储线程结果
@@ -382,39 +388,26 @@ class RainbowKnowledge_Agent:
             logger.exception(f"Error in Google_Search_run: {str(e)}")
             return f"搜索过程中生错误: {str(e)}。请检查网络连接或重试。"
 
-    def echo(self, message, history, llm_options_checkbox_group, collection_name_select,
-             temperature_num, print_speed_step, tool_checkbox_group,
-             Embedding_Model_select,
-             local_data_embedding_token_max, local_private_llm_api, local_private_llm_key,
-             local_private_llm_name, llm_Agent_checkbox_group):
+    def echo(self, message, history, collection_name_select, print_speed_step,
+             tool_checkbox_group, Embedding_Model_select, local_data_embedding_token_max,
+             llm_Agent_checkbox_group):
+        """
+        保留llm_Agent_checkbox_group参数
+        """
         self.human_input_global = message
-        self.local_private_llm_name_global = str(local_private_llm_name)
-        self.local_private_llm_api_global = str(local_private_llm_api)
-        self.local_private_llm_key_global = str(local_private_llm_key)
         self.collection_name_select_global = str(collection_name_select)
         self.local_data_embedding_token_max_global = int(local_data_embedding_token_max)
-        self.temperature_num_global = float(temperature_num)
-        self.llm_name_global = str(llm_options_checkbox_group)
-        self.llm_Agent_checkbox_group = llm_Agent_checkbox_group
+        self.llm_Agent_checkbox_group = llm_Agent_checkbox_group  # 保留Agent类型设置
 
-        response = (self.llm_name_global + " 模型加载中....." + "temperature="
-                    + str(self.temperature_num_global))
+        # 获取当前配置
+        config = self.model_manager.get_active_config()
+        
+        response = (f"{config.model_name} 模型加载中..... temperature={config.temperature}")
         for i in range(0, len(response), int(print_speed_step)):
             yield response[: i + int(print_speed_step)]
-        if self.llm_name_global == "Private-LLM-Model":
-            self.llm = ChatOpenAI(
-                model_name=self.local_private_llm_name_global,
-                openai_api_base=self.local_private_llm_api_global,
-                openai_api_key=self.local_private_llm_key_global,
-                streaming=True,
-            )
-        else:
-            self.llm = ChatOpenAI(
-                temperature=self.temperature_num_global,
-                openai_api_key=os.getenv('OPENAI_API_KEY'),
-                model=self.llm_name_global,
-                streaming=True,
-            )
+
+        # 初始化LLM
+        self.llm = self.get_llm()
 
         self.tools = []  # 重置工具列表
         # Check if 'wolfram-alpha' is in the selected tools
@@ -455,7 +448,7 @@ class RainbowKnowledge_Agent:
                 1.你先根我的问题提取出最适合embedding模型向量匹配的关键字进行搜索。
                 2.注意你需要提出非常有针对性准确的问题和回答。
                 3.如果问题比较复杂，可以将复杂的问题进行行拆分，你可以一步一步的思考。
-                4.确保每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
+                4.确��每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
             """
         )
 
@@ -582,7 +575,7 @@ class RainbowKnowledge_Agent:
 
 1. 首先，仔细分析用户的问题，理解问题的核心需求
 2. 思考是否可以直接回答，还是需要使用工具来获取更多信息
-3. 如果问题复杂，可以将其分解成多个子问题逐步解决
+3. 如问题复杂，可以将其分解成多个子问题逐步解决
 4. 在使用工具时，要明确说明使用原因和预期结果
 
 请严格按照以下格式回复：
@@ -733,50 +726,38 @@ Final Answer: 给出完整、准确、有条理的回答
 
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
-            with gr.Row(equal_height=True):  # 设置行等高
+            with gr.Row(equal_height=True):
                 with gr.Column(scale=3):
                     # 左侧列: 所控件
                     with gr.Row():
                         with gr.Group():
-                            gr.Markdown("### Language Model Selection")
-                            llm_options = ["gpt-4o", "Private-LLM-Model"]
-                            llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
-                                                                     value=llm_options[0])
-                            gr.Markdown(
-                                "Note: When selecting a Private LLM Model, ensure that you consider the Private LLM Settings.")
-
+                            gr.Markdown("### Agent Settings")
                             llm_Agent = ["openai-functions", "ZeroShotAgent-memory"]
-                            llm_Agent_checkbox_group = gr.Dropdown(llm_Agent, label="LLM Agent Type Options",
-                                                                   value=llm_Agent[0])
+                            llm_Agent_checkbox_group = gr.Dropdown(
+                                llm_Agent, 
+                                label="LLM Agent Type Options",
+                                value=llm_Agent[0]
+                            )
 
-                        with gr.Group():
-                            gr.Markdown("### Private LLM Settings")
-                            local_private_llm_name = gr.Textbox(value="gpt-4o-mini", label="Private llm name")
-                            local_private_llm_api = gr.Textbox(value="https://api.chatanywhere.tech",
-                                                               label="Private llm openai-api base")
-                            local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
+                    with gr.Group():
+                        gr.Markdown("### Knowledge Collection Settings")
+                        collection_name_select = gr.Dropdown(
+                            choices=[],
+                            label="Select existed Collection",
+                            value=None
+                        )
+                        Refresh_button = gr.Button("Refresh Collection", variant="secondary")
+                        Refresh_button.click(fn=self.update_collection_name, outputs=collection_name_select)
+
+                        print_speed_step = gr.Slider(5, 10, label="Print Speed Step", step=1)
 
                     with gr.Row():
                         with gr.Group():
                             gr.Markdown("### Additional Tools")
-
                             tool_options = ["Google Search", "Local Knowledge Search", "wolfram-alpha", "arxiv",
-                                            "Create Image"]
+                                          "Create Image"]
                             tool_checkbox_group = gr.CheckboxGroup(tool_options, label="Tools Select")
                             gr.Markdown("Note: Select the tools you want to use.")
-
-                        with gr.Group():
-                            gr.Markdown("### Knowledge Collection Settings")
-                            collection_name_select = gr.Dropdown(
-                                choices=[],  # 初始为空列表
-                                label="Select existed Collection",
-                                value=None  # 初始值为 None
-                            )
-                            Refresh_button = gr.Button("Refresh Collection", variant="secondary")
-                            Refresh_button.click(fn=self.update_collection_name, outputs=collection_name_select)
-
-                            temperature_num = gr.Slider(0, 1, label="Temperature")
-                            print_speed_step = gr.Slider(5, 10, label="Print Speed Step", step=1)
 
                     with gr.Group():
                         gr.Markdown("### Embedding Data Settings")
@@ -838,12 +819,9 @@ Final Answer: 给出完整、准确、有条理的回答
 
                     chatbot = gr.ChatInterface(
                         self.echo,
-                        additional_inputs=[llm_options_checkbox_group, collection_name_select,
-                                           temperature_num, print_speed_step, tool_checkbox_group,
-                                           Embedding_Model_select,
-                                           local_data_embedding_token_max, local_private_llm_api,
-                                           local_private_llm_key,
-                                           local_private_llm_name, llm_Agent_checkbox_group],
+                        additional_inputs=[collection_name_select, print_speed_step,
+                                         tool_checkbox_group, Embedding_Model_select,
+                                         local_data_embedding_token_max, llm_Agent_checkbox_group],
                         title="RainbowGPT-Agent",
                         css=custom_css,
                         description="""
