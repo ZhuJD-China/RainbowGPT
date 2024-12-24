@@ -43,6 +43,30 @@ class RainbowSQLAgent:
         }
         self.memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
 
+        class SQLOutputCallbackHandler:
+            def on_llm_start(self, *args, **kwargs):
+                print("\n🤔 思考中...\n")
+                
+            def on_llm_end(self, *args, **kwargs):
+                print("\n✨ 思考完毕\n")
+                
+            def on_tool_start(self, *args, **kwargs):
+                print(f"\n🔧 执行工具: {args[0].name}\n")
+                
+            def on_tool_end(self, output, *args, **kwargs):
+                print(f"\n📊 工具输出:\n{output}\n")
+                
+            def on_chain_start(self, *args, **kwargs):
+                print("\n🔄 开始执行链\n")
+                
+            def on_chain_end(self, *args, **kwargs):
+                print("\n✅ 链执行完成\n")
+                
+            def on_text(self, text, *args, **kwargs):
+                print(f"\n💬 {text}\n")
+
+        self.sql_callback_handler = SQLOutputCallbackHandler()
+
     def get_database_tables(self, host, username, password):
         try:
             print(host, username, password)
@@ -146,12 +170,12 @@ class RainbowSQLAgent:
             },
             memory=self.memory,
             max_iterations=5,
-            callbacks=[self.handler],
+            callbacks=[self.handler, self.sql_callback_handler],
         )
 
         try:
             response = agent_executor.run(
-                f"""本次交��说明：
+                f"""本次交易说明：
                 1. 你有完整的数据库修改权限
                 2. 你应该直接执行用户的请求
                 3. 修改后，验证并报告结果,特别的你需要指出数据库变化的地方查询展示。
