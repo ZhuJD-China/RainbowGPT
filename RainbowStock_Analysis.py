@@ -21,6 +21,9 @@ import PyPDF2
 from io import BytesIO
 from openai import OpenAI
 from Rainbow_utils.model_config_manager import ModelConfigManager
+from langchain_community.chat_models import ChatBaichuan
+from langchain_core.messages import HumanMessage
+from Rainbow_utils.baichuan_api import BaichuanAPI
 
 
 class RainbowStock_Analysis:
@@ -57,41 +60,63 @@ class RainbowStock_Analysis:
         使用全局配置的模型进行 API 调用
         """
         try:
-            print("Starting OpenAI API call...")
+            print("Starting API call...")
             
             # 获取当前活动的模型配置
             config = self.model_manager.get_active_config()
             if not config:
                 raise ValueError("No active model configuration found")
+
+            # Handle Baichuan model
+            if config.model_name == "Baichuan-192K":
+                try:
+                    # 创建Baichuan API客户端实例
+                    baichuan_client = BaichuanAPI(api_key=config.api_key)
+                    
+                    # 合并instruction和message
+                    combined_message = f"{instruction}\n\n{message}" if instruction else message
+                    
+                    # 构建消息列表
+                    messages = [
+                        {"role": "user", "content": combined_message}
+                    ]
+                    
+                    # 调用Baichuan API
+                    gpt_response = baichuan_client.chat_completion(
+                        messages=messages,
+                        temperature=config.temperature,
+                        stream=True  # 使用流式输出
+                    )
+                    
+                    print(f"Baichuan API Response: {gpt_response}")
+                    
+                except Exception as baichuan_error:
+                    error_detail = f"Baichuan API Error: {str(baichuan_error)}"
+                    raise Exception(error_detail)
+                    
+            else:
+                # OpenAI API调用保持不变
+                client = OpenAI(
+                    api_key=config.api_key,
+                    base_url=config.api_base
+                )
+                
+                response = client.chat.completions.create(
+                    model=config.model_name,
+                    messages=[
+                        {"role": "system", "content": instruction},
+                        {"role": "user", "content": message}
+                    ],
+                    temperature=config.temperature
+                )
+                gpt_response = response.choices[0].message.content
             
-            # 使用配置创建客户端
-            client = OpenAI(
-                api_key=config.api_key,
-                base_url=config.api_base
-            )
-            
-            # 添加日志以帮助调试
-            print(f"Using model: {config.model_name}")
-            print(f"API base: {config.api_base}")
-            print(f"Temperature: {config.temperature}")
-            
-            response = client.chat.completions.create(
-                model=config.model_name,
-                messages=[
-                    {"role": "system", "content": instruction},
-                    {"role": "user", "content": message}
-                ],
-                temperature=config.temperature
-            )
-            
-            gpt_response = response.choices[0].message.content
-            
-            # 保存响应到文件
+            # Save response to file
             gpt_file_name = f"{stock_name}_gpt_response_{timestamp_str}.txt"
             gpt_file_name = "./logs/" + gpt_file_name
             with open(gpt_file_name, 'w', encoding='utf-8') as gpt_file:
                 gpt_file.write(gpt_response)
-            print(f"OpenAI API response saved to file: {gpt_file_name}")
+            print(f"API response saved to file: {gpt_file_name}")
             
             if result is not None and index is not None:
                 result[index] = gpt_response
@@ -99,15 +124,21 @@ class RainbowStock_Analysis:
             return gpt_response
             
         except Exception as e:
-            error_message = f"OpenAI API call failed: {str(e)}"
+            error_message = f"API call failed: {str(e)}"
             print(error_message)
             
-            # 保存错误日志
+            # Save detailed error log
             error_file_name = f"{stock_name}_error_{timestamp_str}.txt"
             error_file_name = "./logs/" + error_file_name
             try:
                 with open(error_file_name, 'w', encoding='utf-8') as error_file:
                     error_file.write(error_message)
+                    error_file.write("\n\nDebug Information:\n")
+                    error_file.write(f"Model Type: {config.model_name}\n")
+                    error_file.write(f"API Key Length: {len(config.api_key)}\n")
+                    error_file.write(f"Message Length: {len(message)}\n")
+                    if hasattr(e, '__dict__'):
+                        error_file.write(f"Error attributes: {str(e.__dict__)}\n")
             except Exception as file_error:
                 print(f"Failed to write error log: {str(file_error)}")
             
@@ -413,18 +444,10 @@ class RainbowStock_Analysis:
             本工具使用AI技术对A股股票进行深度分析，提供全面的投资建议和市场洞察。
             
             ### 🔍 分析维度
-            1. 主营业务和产业动态分析
-            2. 多维度资金流向分析
-            3. 财务指标深度解读
-            4. 市场情绪和新闻影响评估
-            5. 技术指标综合分析
-            6. 具体投资建议和策略
+            1. 主营业务和产业动态分析 2. 多维度资金流向分析 3. 财务指标深度解读 4. 市场情绪和新闻影响评估 5. 技术指标综合分析6. 具体投资建议和策略
             
             ### 📝 使用说明
-            1. 填写股票基本信息（市场、代码、名称）
-            2. 设置数据查询时间范围
-            3. 输入股票所属概念板块
-            4. 点击提交获取分析报告
+            1. 填写股票基本信息（市场、代码、名称） 2. 设置数据查询时间范围 3. 输入股票所属概念板块 4. 点击提交获取分析报告
             """)
             
             with gr.Row():
@@ -435,7 +458,7 @@ class RainbowStock_Analysis:
                         http_proxy = gr.Textbox(
                             value="http://localhost:10809",
                             label="HTTP代理设置",
-                            info="用于Google搜索，如不需要可留空"
+                            info="用于Google搜索，如不需要可空"
                         )
                     
                     with gr.Group():
@@ -481,7 +504,7 @@ class RainbowStock_Analysis:
                         gr.Markdown("### 🏷️ 概念板块")
                         concept = gr.Textbox(
                             label="概念板块",
-                            placeholder="例如：机器人概念",
+                            placeholder="例如：机器人概���",
                             value="机器人概念",
                             info="股票所属的主要概念板块"
                         )

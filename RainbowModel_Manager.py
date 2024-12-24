@@ -5,8 +5,9 @@ class RainbowModelManager:
     def __init__(self):
         self.model_manager = ModelConfigManager()
         # 预定义模型列表
-        self.gpt_models = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "Custom"]
-        self.private_models = ["llama2", "mistral", "qwen", "Custom"]
+        self.gpt_models = ["gpt-4o", "gpt-4o-mini","Custom"]
+        # Add Baichuan to private models
+        self.private_models = ["Baichuan-192K", "Custom"]
         self.create_interface()
     
     def update_model_config(self, model_type, model_select, custom_model_name, api_base, api_key, temperature):
@@ -20,14 +21,24 @@ class RainbowModelManager:
                 self.model_manager.set_gpt_config(final_model_name, temperature)
                 self.model_manager.use_gpt_model()
             else:
-                # 对于私有模型，总是使用新提供的配置
-                self.model_manager.set_private_llm_config(
-                    final_model_name,
-                    api_base if api_base.strip() else "http://localhost:8000",
-                    api_key if api_key.strip() else "",
-                    temperature
-                )
-                self.model_manager.use_private_llm_model()
+                # 对于私有模型，检查是否是Baichuan模型
+                if final_model_name == "Baichuan-192K":
+                    self.model_manager.set_private_llm_config(
+                        final_model_name,
+                        "",  # Baichuan不需要api_base
+                        api_key if api_key.strip() else "",
+                        temperature
+                    )
+                    self.model_manager.use_baichuan_model()
+                else:
+                    # 其他私有模型的处理
+                    self.model_manager.set_private_llm_config(
+                        final_model_name,
+                        api_base if api_base.strip() else "http://localhost:8000",
+                        api_key if api_key.strip() else "",
+                        temperature
+                    )
+                    self.model_manager.use_private_llm_model()
             
             active_config = self.model_manager.get_active_config()
             return (f"Successfully updated configuration:\n"
@@ -49,20 +60,23 @@ class RainbowModelManager:
                     # model_select (Dropdown)
                     gr.update(choices=self.gpt_models, value=self.gpt_models[0]),
                     # api_base (Textbox)
-                    gr.update(value="https://api.chatanywhere.tech"),
+                    gr.update(visible=True, value="https://api.chatanywhere.tech"),
                     # api_key (Textbox)
-                    gr.update(value="")
+                    gr.update(visible=True, value="")
                 ]
             else:
+                selected_model = self.private_models[0]
+                is_baichuan = selected_model == "Baichuan-192K"
+                
                 return [
                     # custom_model_box (Textbox)
                     gr.update(visible=False, value=""),
                     # model_select (Dropdown)
-                    gr.update(choices=self.private_models, value=self.private_models[0]),
+                    gr.update(choices=self.private_models, value=selected_model),
                     # api_base (Textbox)
-                    gr.update(value="http://localhost:8000"),
+                    gr.update(visible=not is_baichuan, value="" if is_baichuan else "http://localhost:8000"),
                     # api_key (Textbox)
-                    gr.update(value="")
+                    gr.update(visible=True, value="")
                 ]
         except Exception as e:
             print(f"Error in update_model_visibility: {str(e)}")
@@ -72,7 +86,13 @@ class RainbowModelManager:
         """更新自定义模型输入框的可见性和值"""
         if model_name == "Custom":
             return gr.update(visible=True, value="")  # 当选择Custom时显示空输入框
-        return gr.update(visible=False, value=model_name)  # 否则隐藏并保存当前选择的模型名称
+        return gr.update(visible=False, value=model_name)  # 否隐藏并保存当前选择的模型名称
+    
+    def update_model_components_visibility(self, model_name):
+        """根据选择的模型更新组件可见性"""
+        if model_name == "Baichuan-192K":
+            return gr.update(visible=False)
+        return gr.update(visible=True)
     
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
@@ -81,7 +101,7 @@ class RainbowModelManager:
             with gr.Row():
                 with gr.Column(scale=2):
                     model_type = gr.Radio(
-                        choices=["GPT Model", "Private LLM Model"],
+                        choices=["GPT Model", "Private LLM Model"],  # Remove Baichuan as separate type
                         label="Model Type",
                         value="GPT Model",
                         info="选择模型类型"
@@ -100,13 +120,14 @@ class RainbowModelManager:
                             placeholder="输入自定义模型名称",
                             visible=False,
                             info="当选择Custom时可用",
-                            value=""  # 确保初始值为空
+                            value=""
                         )
                         
                         api_base = gr.Textbox(
                             value="https://api.chatanywhere.tech",
                             label="API Base URL",
-                            info="API基础URL"
+                            info="API基础URL (Baichuan模型不需要填写)",
+                            visible=True
                         )
                         
                         api_key = gr.Textbox(
@@ -114,7 +135,8 @@ class RainbowModelManager:
                             label="API Key",
                             type="password",
                             info="API密钥 (为安全起见不显示当前值)",
-                            placeholder="输入新的 API Key"
+                            placeholder="输入新的 API Key",
+                            visible=True
                         )
                         
                         temperature = gr.Slider(

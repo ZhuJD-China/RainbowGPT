@@ -2,6 +2,8 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 from dotenv import load_dotenv
+from langchain_community.chat_models import ChatBaichuan
+from langchain_core.messages import HumanMessage
 
 @dataclass
 class ModelConfig:
@@ -30,6 +32,7 @@ class ModelConfigManager:
     def _initialize(self):
         load_dotenv()
         self.openai_api_key = os.getenv('OPENAI_API_KEY', '')
+        self.baichuan_api_key = os.getenv('BAICHUAN_API_KEY', '')
         self.default_api_base = "https://api.chatanywhere.tech"
         
         # 默认配置
@@ -43,6 +46,13 @@ class ModelConfigManager:
             model_name="gpt-4-mini",
             api_base=self.default_api_base,
             api_key=""
+        )
+
+        # Add Baichuan config
+        self.baichuan_config = ModelConfig(
+            model_name="Baichuan-192K",
+            api_base="",  # Baichuan doesn't need api_base
+            api_key=self.baichuan_api_key
         )
         
         self.active_config = self.gpt_config
@@ -90,3 +100,7 @@ class ModelConfigManager:
     def get_masked_api_key(self) -> str:
         """返回当前配置的掩码处理后的API key"""
         return self.active_config.get_masked_key() 
+    
+    def use_baichuan_model(self):
+        """Switch to Baichuan model"""
+        self.active_config = self.baichuan_config 
