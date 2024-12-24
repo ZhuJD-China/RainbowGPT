@@ -14,21 +14,76 @@ from sqlalchemy import create_engine
 from loguru import logger
 from urllib.parse import quote_plus
 from langchain.callbacks.base import BaseCallbackHandler
+from langchain.chains import LLMChain
 
 
-class IntermediateResultCallbackHandler(BaseCallbackHandler):
+class VerboseHandler(BaseCallbackHandler):
     def __init__(self):
-        self.intermediate_results = []
-
-    def on_intermediate_result(self, result):
-        # Capture intermediate results
-        self.intermediate_results.append(result)
-
-    def get_intermediate_results(self):
-        return self.intermediate_results
-
-    def clear_intermediate_results(self):
-        self.intermediate_results = []
+        self.steps = []
+        self.current_iteration = 0
+        super().__init__()
+    
+    def on_llm_start(self, serialized, prompts, **kwargs):
+        self.steps.append("🤖 开始分析SQL查询...")
+    
+    def on_llm_end(self, response, **kwargs):
+        if hasattr(response, 'generations'):
+            for gen in response.generations:
+                if gen:
+                    self.steps.append(f"🤔 思考结果: {gen[0].text}")
+    
+    def on_tool_start(self, serialized, input_str, **kwargs):
+        tool_name = serialized.get("name", "unknown tool")
+        self.steps.append(f"🔧 开始执行: {tool_name}")
+        if "sql" in tool_name.lower():
+            self.steps.append(f"📝 SQL语句:\n```sql\n{input_str}\n```")
+    
+    def on_agent_action(self, action, color=None, **kwargs):
+        try:
+            self.current_iteration += 1
+            self.steps.append(f"\n**第 {self.current_iteration} 轮执行**")
+            
+            if hasattr(action, 'log'):
+                self.steps.append(f"**思考过程:** {action.log}")
+            
+            if hasattr(action, 'tool'):
+                self.steps.append(f"**执行操作:** {action.tool}")
+            
+            if hasattr(action, 'tool_input'):
+                self.steps.append(f"**输入参数:**\n```sql\n{action.tool_input}\n```")
+        except Exception as e:
+            self.steps.append(f"**注意:** 操作记录出现问题: {str(e)}")
+    
+    def on_agent_observation(self, observation, color=None, **kwargs):
+        try:
+            if observation:
+                self.steps.append(f"**观察结果:**\n```\n{observation}\n```")
+        except Exception as e:
+            self.steps.append(f"**注意:** 结果记录出现问题: {str(e)}")
+    
+    def on_chain_start(self, serialized, inputs, **kwargs):
+        self.steps.append("🔄 开始执行查询链...")
+    
+    def on_chain_end(self, outputs, **kwargs):
+        self.steps.append("✅ 查询链执行完成")
+    
+    def on_chain_error(self, error, **kwargs):
+        self.steps.append(f"❌ 执行出错: {str(error)}")
+    
+    def on_agent_finish(self, finish, color=None, **kwargs):
+        try:
+            if hasattr(finish, 'log'):
+                self.steps.append(f"\n**执行总结**")
+                self.steps.append(f"**结论:** {finish.log}")
+            
+            if hasattr(finish, 'return_values'):
+                output = finish.return_values.get('output', str(finish.return_values))
+                self.steps.append(f"**最终结果:** {output}")
+        except Exception as e:
+            self.steps.append(f"**注意:** 完成记录出现问题: {str(e)}")
+    
+    def get_steps(self):
+        return "\n".join(self.steps)
 
 
 class RainbowSQLAgent:
@@ -59,7 +114,7 @@ class RainbowSQLAgent:
         }
         self.memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
 
-        self.intermediate_handler = IntermediateResultCallbackHandler()
+        self.intermediate_handler = VerboseHandler()
 
     def get_database_tables(self, host, username, password):
         try:
@@ -138,64 +193,100 @@ class RainbowSQLAgent:
             view_support=True
         )
 
-        # 创建代理执行器
-        agent_executor = create_sql_agent(
-            llm=llm,
-            toolkit=SQLDatabaseToolkit(
+        try:
+            # 创建 verbose handler
+            verbose_handler = VerboseHandler()
+            
+            # 创建SQL工具包
+            toolkit = SQLDatabaseToolkit(
                 db=db,
                 llm=llm,
-                use_query_checker=False
-            ),
-            verbose=True,
-            agent_type=AgentType.OPENAI_FUNCTIONS,
-            handle_parsing_errors=True,
-            agent_kwargs={
-                "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
-                "prefix": """你是一个能帮助用户操作SQL数据库的智能助手。
-                            你拥有执行所有SQL命令的完整整权限，包括 SELECT、INSERT、UPDATE 和 DELETE。
-                            当被要求修改数据时，你应该：
-                            1. 首先确认数据的当前状态
-                            2. 执行所需的修改操作
-                            3. 验证修改是否成功完成
-                            
-                            重要提示：你被允许且应该在用户要求时执行数据修改操作。""",
-            },
-            memory=self.memory,
-            max_iterations=5,
-            callbacks=[self.handler, self.intermediate_handler],
-        )
-
-        try:
-
-            # 执行agent查询
-            response = agent_executor.run(
-                f"""本次交易说明：
-                1. 你有完整的数据库修改权限
-                2. 你应该直接执行用户的请求
-                3. 修改后，验证并报告结果,特别的你需要指出数据库变化的地方查询展示。
-                
-                用户请求：{message}"""
+                use_query_checker=True
             )
 
-            # Get intermediate results
-            intermediate_results = self.intermediate_handler.get_intermediate_results()
-            intermediate_results_str = "\n".join(intermediate_results)
+            # 获取工具列表
+            tools = toolkit.get_tools()
 
-            # Construct full response with intermediate results
+            # 创建代理提示
+            prefix = """你是一个能帮助用户操作SQL数据库的智能助手。在回答问题时，请遵循以下思考步骤：
+
+1. 仔细分析用户的问题，理解需求
+2. 检查数据库结构，确定需要查询或修改的表
+3. 设计合适的SQL语句
+4. 执行操作并验证结果
+
+请严格按照以下格式回复：
+
+Thought: 分析问题并说明思考过程
+Action: 选择要使用的工具（sql_db_query, sql_db_schema, sql_db_list_tables）
+Action Input: 具体的SQL查询或命令
+Observation: 工具返回的结果
+... (根据需要重复上述步骤)
+Thought: 总结所有信息
+Final Answer: 给出完整的答案
+
+当前可用的工具有:"""
+
+            suffix = """请记住：
+1. 在执行修改操作前，先确认当前数据状态
+2. 确保SQL语句准确无误
+3. 验证操作结果
+4. 给出清晰的解释
+
+当前问题: {input}
+思考过程: {agent_scratchpad}"""
+
+            # 创建代理
+            from langchain.agents import ZeroShotAgent, AgentExecutor
+            prompt = ZeroShotAgent.create_prompt(
+                tools,
+                prefix=prefix,
+                suffix=suffix,
+                input_variables=["input", "agent_scratchpad"]
+            )
+
+            llm_chain = LLMChain(llm=llm, prompt=prompt)
+            agent = ZeroShotAgent(llm_chain=llm_chain, tools=tools, verbose=True)
+            
+            agent_executor = AgentExecutor.from_agent_and_tools(
+                agent=agent,
+                tools=tools,
+                verbose=True,
+                max_iterations=5,
+                handle_parsing_errors=True,
+                callbacks=[verbose_handler],
+                return_intermediate_steps=True
+            )
+
+            # 执行查询
+            result = agent_executor(
+                {
+                    "input": f"""本次交易说明：
+                    1. 你有完整的数据库修改权限
+                    2. 你应该直接执行用户的请求
+                    3. 修改后，验证并报告结果,特别的你需要指出数据库变化的地方查询展示。
+                    
+                    用户请求：{message}"""
+                }
+            )
+
+            # 获取执行步骤和结果
+            execution_steps = verbose_handler.get_steps()
+            final_response = result["output"] if isinstance(result, dict) and "output" in result else str(result)
+            
+            # 构建完整响应
             full_response = f"""
 ### 执行过程
-{intermediate_results_str}
+{execution_steps}
 
 ### 最终结果
-{response}
+{final_response}
 """
 
-            # Clear intermediate results after use
-            self.intermediate_handler.clear_intermediate_results()
-
-            # 记录到日志
+            # 记录日志
             logger.info(f"User Input: {message}")
-            logger.info(f"Final Response: {response}")
+            logger.info(f"Execution Steps: {execution_steps}")
+            logger.info(f"Final Response: {final_response}")
 
             # 逐步显示响应
             for i in range(0, len(full_response), int(print_speed_step)):
@@ -236,7 +327,7 @@ class RainbowSQLAgent:
                             input_datatable_name = gr.Dropdown(
                                 choices=[],  # 初始为空列表
                                 label="Database Select Name",
-                                value=None  # 初始��为 None
+                                value=None  # 初始为 None
                             )
                             update_button = gr.Button("Update Tables List")
                             update_button.click(fn=self.update_tables_list,
