@@ -8,13 +8,13 @@ from langchain_community.chat_models import ChatOpenAI
 from langchain_community.utilities import SQLDatabase
 from langchain_core.callbacks import FileCallbackHandler
 from langchain_core.prompts import MessagesPlaceholder
-# 导入 langchain 模块的相关内容
 from sqlalchemy import create_engine
-# Rainbow_utils
 from loguru import logger
 from urllib.parse import quote_plus
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain
+from Rainbow_utils.model_config_manager import ModelConfigManager
+from datetime import datetime
 
 
 class VerboseHandler(BaseCallbackHandler):
@@ -101,20 +101,27 @@ class RainbowSQLAgent:
         self.logfile = "./logs/" + self.script_name + ".log"
         logger.add(self.logfile, colorize=True, enqueue=True)
         self.handler = FileCallbackHandler(self.logfile)
-        self.local_private_llm_name_global = None
-        self.local_private_llm_api_global = None
-        self.local_private_llm_key_global = None
-        self.proxy_url_global = None
-        self.llm = None
-        self.llm_name_global = None
-        self.temperature_num_global = 0
+        
+        # 初始化模型配置管理器
+        self.model_manager = ModelConfigManager()
+        
         self.human_input_global = None
         self.agent_kwargs = {
             "extra_prompt_messages": [MessagesPlaceholder(variable_name="memory")],
         }
         self.memory = ConversationBufferMemory(memory_key="memory", return_messages=True)
-
         self.intermediate_handler = VerboseHandler()
+
+    def get_llm(self):
+        """获取当前配置的LLM实例"""
+        config = self.model_manager.get_active_config()
+        return ChatOpenAI(
+            model_name=config.model_name,
+            openai_api_base=config.api_base,
+            openai_api_key=config.api_key,
+            temperature=config.temperature,
+            streaming=True
+        )
 
     def get_database_tables(self, host, username, password):
         try:
@@ -151,53 +158,33 @@ class RainbowSQLAgent:
             value=databases[0] if databases else None
         )
 
-    def echo(self, message, history, llm_options_checkbox_group,
-             local_private_llm_api,
-             local_private_llm_key, local_private_llm_name, input_datatable_name,
+    def echo(self, message, history, input_datatable_name,
              input_database_url, input_database_name, input_database_passwd):
+        """
+        移除了原有的LLM配置参数，使用全局配置
+        """
         print_speed_step = 10
-        temperature_num_global = 0
-
-        self.local_private_llm_name_global = str(local_private_llm_name)
-        self.local_private_llm_api_global = str(local_private_llm_api)
-        self.local_private_llm_key_global = str(local_private_llm_key)
         self.human_input_global = message
-        self.llm_name_global = str(llm_options_checkbox_group)
 
-        if self.llm_name_global == "Private-LLM-Model":
-            llm = ChatOpenAI(
-                model_name=self.local_private_llm_name_global,
-                openai_api_base=self.local_private_llm_api_global,
-                openai_api_key=self.local_private_llm_key_global,
-                streaming=False,
-            )
-        else:
-            llm = ChatOpenAI(temperature=temperature_num_global,
-                             openai_api_key=os.getenv('OPENAI_API_KEY'),
-                             model=self.llm_name_global)
+        # 获取当前配置的LLM
+        llm = self.get_llm()
 
         if message == "":
-            response = "哎呀！好像有点小尴，您似乎忘记提出问题了。别着急，随时输入您的问题，我将尽力为您提供帮助！"
+            response = "哎呀！好像有点小尴尬，您似乎忘记提出问题了。别着急，随时输入您的问题，我将尽力为您提供帮助！"
             for i in range(0, len(response), int(print_speed_step)):
                 yield response[: i + int(print_speed_step)]
             return
 
         db_name = input_datatable_name
-        # 对密码进行URL编码
         encoded_password = quote_plus(input_database_passwd)
-        # 创建数据库连接
         db = SQLDatabase.from_uri(
             f"mysql+pymysql://{input_database_name}:{encoded_password}@{input_database_url}/{db_name}",
-            # include_tables=['inventory_check', 'inventory_details', 'products'],  # 明确指定表
             sample_rows_in_table_info=3,
             view_support=True
         )
 
         try:
-            # 创建 verbose handler
             verbose_handler = VerboseHandler()
-            
-            # 创建SQL工具包
             toolkit = SQLDatabaseToolkit(
                 db=db,
                 llm=llm,
@@ -213,9 +200,9 @@ class RainbowSQLAgent:
 1. 仔细分析用户的问题，理解需求
 2. 检查数据库结构，确定需要查询或修改的表
 3. 设计合适的SQL语句
-4. 执行操作并验证结果
+4. 执行操作并验证���果
 
-请严格按照以下格式回复：
+请严格按照以下式回复：
 
 Thought: 分析问题并说明思考过程
 Action: 选择要使用的工具（sql_db_query, sql_db_schema, sql_db_list_tables）
@@ -297,45 +284,197 @@ Final Answer: 给出完整的答案
             logger.error(error_msg)
             yield error_msg
 
+    def test_connection(self, host, username, password):
+        """测试数据库连接"""
+        try:
+            encoded_password = quote_plus(password)
+            connection_string = f"mysql+pymysql://{username}:{encoded_password}@{host}/"
+            engine = create_engine(connection_string)
+            connection = engine.connect()
+            connection.close()
+            return "✅ 连接成功", "已连接"
+        except Exception as e:
+            return f"❌ 连接失败: {str(e)}", "连接失败"
+
+    def refresh_connection(self, host, username, password, current_db):
+        """刷新数据库连接"""
+        try:
+            databases = self.get_database_tables(host, username, password)
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            if current_db:
+                # 获取当前数据库的表数量
+                encoded_password = quote_plus(password)
+                connection_string = f"mysql+pymysql://{username}:{encoded_password}@{host}/{current_db}"
+                engine = create_engine(connection_string)
+                with engine.connect() as conn:
+                    result = conn.execute("SHOW TABLES")
+                    table_count = len(list(result))
+            else:
+                table_count = 0
+            
+            db_info = {
+                "已选数据库": current_db or "无",
+                "表数量": table_count,
+                "连接时间": current_time
+            }
+            
+            return gr.Dropdown(choices=databases, value=current_db), db_info, "已连接"
+        except Exception as e:
+            return None, {"错误": str(e)}, "连接��败"
+
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
             with gr.Row(equal_height=True):
                 with gr.Column(scale=3):
-                    # 左侧列: 所有控件
                     with gr.Row():
                         with gr.Group():
-                            gr.Markdown("### Language Model Selection")
-                            llm_options = ["gpt-4o", "Private-LLM-Model"]
-                            llm_options_checkbox_group = gr.Dropdown(llm_options, label="LLM Model Select Options",
-                                                                     value=llm_options[0])
-                            local_private_llm_name = gr.Textbox(value="gpt-4o-mini", label="Private llm name")
-
-                        with gr.Group():
-                            gr.Markdown("### Private LLM Settings")
-                            local_private_llm_api = gr.Textbox(value="https://api.chatanywhere.tech",
-                                                               label="Private llm openai-api base")
-                            local_private_llm_key = gr.Textbox(value="EMPTY", label="Private llm openai-api key")
-
-                    with gr.Row():
-                        with gr.Group():
-                            gr.Markdown("### DataBase Settings")
-                            input_database_url = gr.Textbox(value="localhost", label="MySql Database url")
-                            with gr.Row():
-                                input_database_name = gr.Textbox(value="root", label="database user name")
-                                input_database_passwd = gr.Textbox(value="", label="database user passwd",
-                                                                   type="password")
-                            input_datatable_name = gr.Dropdown(
-                                choices=[],  # 初始为空列表
-                                label="Database Select Name",
-                                value=None  # 初始为 None
+                            gr.Markdown("""
+                            ### 🌈 Database Settings
+                            
+                            #### 使用说明
+                            1. 📝 填写数据库连接信息
+                               - Database URL: 数据库服务器地址（默认localhost）
+                               - Username: 数据库用户名（默认root）
+                               - Password: 数据库密码
+                            
+                            2. 🔄 点击"Update Tables List"更新数据库列表
+                            
+                            3. 📊 从下拉菜单选择要操作的数据库
+                            
+                            #### 连接状态
+                            """)
+                            
+                            # 添加连接状态指示器
+                            connection_status = gr.Textbox(
+                                value="未连接",
+                                label="数据库连接状态",
+                                interactive=False,
+                                container=False,
                             )
-                            update_button = gr.Button("Update Tables List")
-                            update_button.click(fn=self.update_tables_list,
-                                                inputs=[input_database_url, input_database_name,
-                                                        input_database_passwd],
-                                                outputs=input_datatable_name)
+                            
+                            # 数据库连接信息分组
+                            with gr.Group():
+                                gr.Markdown("#### 📊 数据库连接信息")
+                                input_database_url = gr.Textbox(
+                                    value="localhost",
+                                    label="Database URL",
+                                    placeholder="例如: localhost 或 127.0.0.1"
+                                )
+                                with gr.Row():
+                                    input_database_name = gr.Textbox(
+                                        value="root",
+                                        label="Username",
+                                        placeholder="数据库用户名"
+                                    )
+                                    input_database_passwd = gr.Textbox(
+                                        value="",
+                                        label="Password",
+                                        type="password",
+                                        placeholder="数据库密码"
+                                    )
+                                
+                                # 添加测试连接按钮
+                                test_connection_btn = gr.Button(
+                                    "🔍 测试连接",
+                                    variant="secondary"
+                                )
+                            
+                            # 数据库选择分组
+                            with gr.Group():
+                                gr.Markdown("#### 📁 数据库选择")
+                                input_datatable_name = gr.Dropdown(
+                                    choices=[],
+                                    label="选择数据库",
+                                    value=None,
+                                    container=True,
+                                    interactive=True
+                                )
+                                with gr.Row():
+                                    update_button = gr.Button(
+                                        "🔄 更新数据库列表",
+                                        variant="primary"
+                                    )
+                                    refresh_btn = gr.Button(
+                                        "🔄 刷新连接",
+                                        variant="secondary"
+                                    )
+                            
+                            # 添加数据库信息显示区
+                            with gr.Group():
+                                gr.Markdown("#### ℹ️ 当前数据库信息")
+                                db_info = gr.JSON(
+                                    value={
+                                        "已选数据库": "无",
+                                        "表数量": 0,
+                                        "连接时间": "未连接"
+                                    },
+                                    label="数据库详情"
+                                )
+                            
+                            # 添加结果显示区
+                            connection_result = gr.Textbox(
+                                label="连接测试结果",
+                                visible=False
+                            )
+
+                            # 绑定按钮事件
+                            test_connection_btn.click(
+                                fn=self.test_connection,
+                                inputs=[
+                                    input_database_url,
+                                    input_database_name,
+                                    input_database_passwd
+                                ],
+                                outputs=[
+                                    connection_result,
+                                    connection_status
+                                ]
+                            )
+                            
+                            update_button.click(
+                                fn=self.update_tables_list,
+                                inputs=[
+                                    input_database_url,
+                                    input_database_name,
+                                    input_database_passwd
+                                ],
+                                outputs=[input_datatable_name]
+                            )
+                            
+                            refresh_btn.click(
+                                fn=self.refresh_connection,
+                                inputs=[
+                                    input_database_url,
+                                    input_database_name,
+                                    input_database_passwd,
+                                    input_datatable_name
+                                ],
+                                outputs=[
+                                    input_datatable_name,
+                                    db_info,
+                                    connection_status
+                                ]
+                            )
+                            
+                            # 数据库选择变化时更新信息
+                            input_datatable_name.change(
+                                fn=self.refresh_connection,
+                                inputs=[
+                                    input_database_url,
+                                    input_database_name,
+                                    input_database_passwd,
+                                    input_datatable_name
+                                ],
+                                outputs=[
+                                    input_datatable_name,
+                                    db_info,
+                                    connection_status
+                                ]
+                            )
+
                 with gr.Column(scale=5):
-                    # 右侧列: Chat Interface
+                    # Chat Interface部分
                     custom_css = """
                         <style>
                             .footer-email {
@@ -387,11 +526,8 @@ Final Answer: 给出完整的答案
 
                     gr.ChatInterface(
                         self.echo,
-                        additional_inputs=[llm_options_checkbox_group,
-                                           local_private_llm_api,
-                                           local_private_llm_key,
-                                           local_private_llm_name, input_datatable_name,
-                                           input_database_url, input_database_name, input_database_passwd],
+                        additional_inputs=[input_datatable_name,
+                                       input_database_url, input_database_name, input_database_passwd],
                         title="RainbowSQL-Agent",
                         css=custom_css,
                         description="""
@@ -404,10 +540,5 @@ Final Answer: 给出完整的答案
                         autoscroll=True
                     )
 
-    # 创建 Gradio 界面的代码
-    def launch(self):
-        return self.interface
-
-    # 创建 Gradio 界面的代码
     def launch(self):
         return self.interface
