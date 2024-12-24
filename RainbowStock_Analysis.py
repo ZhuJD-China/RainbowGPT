@@ -20,106 +20,73 @@ import requests
 import PyPDF2
 from io import BytesIO
 from openai import OpenAI
+from Rainbow_utils.model_config_manager import ModelConfigManager
 
 
 class RainbowStock_Analysis:
     def __init__(self):
+        """初始化类"""
         self.load_dotenv()
         self.initialize_variables()
         self.create_interface()
 
     def load_dotenv(self):
+        """加载环境变量"""
         load_dotenv()
 
     def initialize_variables(self):
-        self.OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-        self.DASHSCOPE_API_KEY = os.getenv('DASHSCOPE_API_KEY')
-        self.openai_client = OpenAI(
-            api_key=self.OPENAI_API_KEY,
-            base_url="https://api.chatanywhere.tech"
-        )
-        dashscope.api_key = self.DASHSCOPE_API_KEY
-        self.concept_name = pd.read_csv('./Rainbow_utils/concept_name.csv')
-
-    def openai_0_28_1_api_call(self, model="gpt-3.5-turbo-1106",
-                               instruction="",
-                               message="你好啊？", timestamp_str="", result=None, index=None, stock_name=None):
-        gpt_response = ""
+        """初始化变量"""
         try:
-            print("openai_0_28_1_api_call..................")
-            response = self.openai_client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": instruction},
-                    {"role": "user", "content": message}
-                ]
-            )
-            gpt_response = response.choices[0].message.content
-            gpt_file_name = f"{stock_name}_gpt_response_{timestamp_str}.txt"
-            gpt_file_name = "./logs/" + gpt_file_name
-            with open(gpt_file_name, 'w', encoding='utf-8') as gpt_file:
-                gpt_file.write(gpt_response)
-            print(f"OpenAI API 响应已保存到文件: {gpt_file_name}")
-            result[index] = gpt_response
-        except Exception as e:
-            print("发生异常:" + str(gpt_response))
-            result[index] = "发生异常:" + str(gpt_response)
-
-    def qwen_api_call(self, model="qwen-72b-chat",
-                      instruction="",
-                      message="你好啊？", timestamp_str="", result=None, index=None, stock_name=None):
-        try:
-            print("qwen_api_call............................")
-            messages = [
-                {"role": "system", "content": instruction},
-                {"role": "user", "content": message}
-            ]
-            qwen_response = dashscope.Generation.call(
-                model=model,
-                messages=messages,
-                result_format='message',  # set the result is message format.
-            )
-            qwen_response = qwen_response["output"]["choices"][0]["message"]["content"]
-            qwen_file_name = f"{stock_name}_qwen_response_{timestamp_str}.txt"
-            qwen_file_name = "./logs/" + qwen_file_name
-            with open(qwen_file_name, 'w', encoding='utf-8') as qwen_file:
-                qwen_file.write(qwen_response)
-            print(f"qwen API 响应已保存到文件: {qwen_file_name}")
-            # return qwen_response
-            result[index] = qwen_response  # 将结果存储在结果列表中，使用给定的索引
-        except Exception as e:
-            print("发生异常:" + str(qwen_response))
-            # 在这里可以添加适当的异常处理代码，例如记录异常日志或采取其他适当的措施
-            result[index] = "发生异常:" + str(qwen_response)
-
-    def openai_async_api_call(self, model="gpt-4o", 
-                            instruction="You are a helpful assistant.",
-                            message="", timestamp_str="", result=None, index=None, stock_name=None):
-        """
-        使用异步方式调用 OpenAI API
-        
-        Args:
-            model: OpenAI 模型名称
-            instruction: 系统指令
-            message: 用户消息
-            timestamp_str: 时间戳字符串
-            result: 结果列表
-            index: 结果索引
-            stock_name: 股票名称
-        """
-        try:
-            print(f"Calling OpenAI API with model {model}...")
+            # 初始化模型配置管理器
+            self.model_manager = ModelConfigManager()
             
-            response = self.openai_client.chat.completions.create(
-                model=model,
+            # 加载概念名称数据
+            try:
+                self.concept_name = pd.read_csv('./Rainbow_utils/concept_name.csv')
+            except Exception as e:
+                print(f"Warning: Failed to load concept_name.csv: {str(e)}")
+                self.concept_name = None
+                
+        except Exception as e:
+            print(f"Error in initialize_variables: {str(e)}")
+            raise
+
+    def openai_async_api_call(self, instruction="You are a helpful assistant.",
+                             message="", timestamp_str="", result=None, index=None, stock_name=None):
+        """
+        使用全局配置的模型进行 API 调用
+        """
+        try:
+            print("Starting OpenAI API call...")
+            
+            # 获取当前活动的模型配置
+            config = self.model_manager.get_active_config()
+            if not config:
+                raise ValueError("No active model configuration found")
+            
+            # 使用配置创建客户端
+            client = OpenAI(
+                api_key=config.api_key,
+                base_url=config.api_base
+            )
+            
+            # 添加日志以帮助调试
+            print(f"Using model: {config.model_name}")
+            print(f"API base: {config.api_base}")
+            print(f"Temperature: {config.temperature}")
+            
+            response = client.chat.completions.create(
+                model=config.model_name,
                 messages=[
                     {"role": "system", "content": instruction},
                     {"role": "user", "content": message}
-                ]
+                ],
+                temperature=config.temperature
             )
             
             gpt_response = response.choices[0].message.content
             
+            # 保存响应到文件
             gpt_file_name = f"{stock_name}_gpt_response_{timestamp_str}.txt"
             gpt_file_name = "./logs/" + gpt_file_name
             with open(gpt_file_name, 'w', encoding='utf-8') as gpt_file:
@@ -135,6 +102,7 @@ class RainbowStock_Analysis:
             error_message = f"OpenAI API call failed: {str(e)}"
             print(error_message)
             
+            # 保存错误日志
             error_file_name = f"{stock_name}_error_{timestamp_str}.txt"
             error_file_name = "./logs/" + error_file_name
             try:
@@ -298,10 +266,10 @@ class RainbowStock_Analysis:
             return truncated_text
         return None
 
-    def get_stock_data(self, llm_options_checkbox_group, llm_options_checkbox_group_qwen,
-                       market, symbol, stock_name,
+    def get_stock_data(self, market, symbol, stock_name,
                        start_date, end_date, concept, http_proxy):
-        instruction = "你作为A股分析专家,请详细分析市场趋势、行业前景，揭示潜在投资机会,请确保提供充分的数据支持和专业见解。"
+        """获取股票数据并进行分析"""
+        instruction = "你作为A股分析家,请详细分析市场趋势、行业前景，揭示潜在投资机会,请确保提供充分的数据支持和专业见解。"
 
         # 主营业务介绍-根据主营业务网络搜索相关事件报道
         # get_google_result.set_global_proxy(http_proxy)
@@ -323,7 +291,7 @@ class RainbowStock_Analysis:
         dated_snippets_with_links.sort(key=lambda x: x[0], reverse=True)
         # 提取前三个文本片段及其对应的链接
         first_three_snippets_with_links = dated_snippets_with_links[:2]
-        # 将这三个文本片段转换为字符串，并提取相应的链接
+        # 将这三个文本片段转换为字符串，并提取对应的链接
         first_three_snippets = " ".join([snippet for _, snippet, _ in first_three_snippets_with_links])
         sorted_links = [link for _, _, link in first_three_snippets_with_links]
         # Using ThreadPoolExecutor
@@ -391,10 +359,10 @@ class RainbowStock_Analysis:
         # 构建最终prompt
         finally_prompt = self.process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hist_df,
                                              stock_news_em_df,
-                                             stock_individual_fund_flow_df, technical_indicators_df
-                                             , stock_financial_analysis_indicator_df, single_industry_df,
+                                             stock_individual_fund_flow_df, technical_indicators_df,
+                                             stock_financial_analysis_indicator_df, single_industry_df,
                                              concept_info_df)
-        # return finally_prompt
+        
         user_message = (
             f"{finally_prompt}\n"
             f"请基于以上收集到的实时的真实数据，发挥你的A股分析专业知识，对未来3天该股票的价格走势做出深度预测。\n"
@@ -402,12 +370,12 @@ class RainbowStock_Analysis:
             f"给出具体的涨跌百分比数据分析总结。\n\n"
             f"以下是具体问题，请详尽回答：\n\n"
             f"1.对当前股票主营业务和产业的相关的历史动态进行分析行业走势。"
-            f"2. 对最近这个股票的资金流动情况以及所在行业的资金流情况和所在概念板块的资金情况分别进行深入分析，"
-            f"请详解这三个维度的资金流入或者流出的主要原因，并评估是否属于短期现象和未来的影响。\n\n"
+            f"2. 对最近这个股票的资金流动情况以及所在行业的资金情况和所在概念板块的资金情况分别进行深入分析，"
+            f"请详解这三维度的资金流入或者流出的主要原因，并评估是否属于短期现象和未来的影响。\n\n"
             f"3. 基于最近财务指标数据，深刻评估公司未来业绩是否有望积极改善，可以关注盈利能力、负债情况等财务指标。"
             f"同时分析未来财务状况。\n\n"
             f"4. 是否存在与行业或公司相关的积极或者消极的消息，可能对股票价格产生什么影响？分析新闻对市场情绪的具体影响，"
-            f"并评估消息的可靠性和长期影响。\n\n"
+            f"评估消息的可靠性和长期影响。\n\n"
             f"5. 基于技术分析指标，如均线、MACD、RSI、CCI等，请提供更为具体的未来走势预测。"
             f"关注指标的交叉和趋势，并解读当下可能的买卖信号。\n\n"
             f"6. 在综合以上分析的基础上，向投资者推荐在未来3天内采取何种具体操作？"
@@ -416,103 +384,146 @@ class RainbowStock_Analysis:
             f"你可以一步一步的去思考，期待你对接下来几天的股票走势和价格预测进行深刻的分析，将有力指导我的投资决策。"
         )
 
-        print(user_message)
-
-        # 获取当前时间戳字符串
+        # 保存用户消息到文件
         timestamp_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
-        file_name = f"{stock_name}_{timestamp_str}.txt"  # 修改这一行，确保文件名合法
+        file_name = f"{stock_name}_{timestamp_str}.txt"
         file_name = "./logs/" + file_name
         with open(file_name, 'w', encoding='utf-8') as file:
             file.write(user_message)
         print(f"{stock_name}_已保存到文件: {file_name}")
-        
-       
-        
-        # 创建一个列表来存储结果
-        result = [None, None]
 
-        # 创建两个线程，分别调用不同的API，并把结果保存在列表中
-        gpt_thread = threading.Thread(
-            target=self.openai_async_api_call,
-            args=(
-                llm_options_checkbox_group, instruction,
-                user_message, timestamp_str, result, 0, stock_name)  # 注意这里多传了两个参数，分别是列表和索引
-        )
-        qwen_thread = threading.Thread(
-            target=self.qwen_api_call,
-            args=(
-                llm_options_checkbox_group_qwen,
-                instruction,
-                user_message, timestamp_str, result, 1, stock_name)  # 同上
+        # 直接调用 OpenAI API
+        response = self.openai_async_api_call(
+            instruction=instruction,
+            message=user_message,
+            timestamp_str=timestamp_str,
+            stock_name=stock_name
         )
 
-        # 把两个线程对象保存在一个列表中
-        threads = [gpt_thread, qwen_thread]
-
-        # 启动所有的线程
-        for thread in threads:
-            thread.start()
-
-        # 等待所有的线程结束
-        for thread in threads:
-            thread.join()
-
-        # 获取结果
-        gpt_response = result[0]  # 通过列表和索引来访问结果
-        qwen_response = result[1]
-
-        return gpt_response, qwen_response
+        return response
 
     def create_interface(self):
-        with gr.Blocks() as self.interface:
-            gr.Markdown("## StockGPT Analysis")
+        """创建Gradio界面"""
+        with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
+            # 添加标题和说明
+            gr.Markdown("""
+            # 🌈 RainbowGPT Stock Analysis
+            
+            ## 📊 功能介绍
+            本工具使用AI技术对A股股票进行深度分析，提供全面的投资建议和市场洞察。
+            
+            ### 🔍 分析维度
+            1. 主营业务和产业动态分析
+            2. 多维度资金流向分析
+            3. 财务指标深度解读
+            4. 市场情绪和新闻影响评估
+            5. 技术指标综合分析
+            6. 具体投资建议和策略
+            
+            ### 📝 使用说明
+            1. 填写股票基本信息（市场、代码、名称）
+            2. 设置数据查询时间范围
+            3. 输入股票所属概念板块
+            4. 点击提交获取分析报告
+            """)
+            
             with gr.Row():
-                with gr.Column():
-                    # 左侧列: 输入控件，两两排列
-                    with gr.Row():
-                        llm_options = ["gpt-4o-mini", "gpt-4-1106-preview", "gpt-4o"]
-                        llm_options_checkbox_group = gr.Dropdown(llm_options, label="GPT Model Select Options",
-                                                                 value=llm_options[0])
-                        llm_options_qwen = ["qwen2-72b-instruct"]
-                        llm_options_checkbox_group_qwen = gr.Dropdown(llm_options_qwen,
-                                                                      label="Qwen Model Select Options",
-                                                                      value=llm_options_qwen[0])
-                    with gr.Row():
-                        http_proxy = gr.Textbox(value="http://localhost:10809", label="System Http Proxy")
-                        market = gr.Textbox(lines=1, placeholder="请输入股票市场（sz或sh，示例：sz）", label="Market",
-                                            value="sh")
+                # 左侧：输入区域
+                with gr.Column(scale=1):
+                    with gr.Group():
+                        gr.Markdown("### 🔧 基础设置")
+                        http_proxy = gr.Textbox(
+                            value="http://localhost:10809",
+                            label="HTTP代理设置",
+                            info="用于Google搜索，如不需要可留空"
+                        )
+                    
+                    with gr.Group():
+                        gr.Markdown("### 📈 股票信息")
+                        with gr.Row():
+                            market = gr.Dropdown(
+                                choices=["sh", "sz"],
+                                label="交易市场",
+                                value="sh",
+                                info="上海证券交易所(sh) 或 深圳证券交易所(sz)"
+                            )
+                            symbol = gr.Textbox(
+                                label="股票代码",
+                                placeholder="例如：600839",
+                                value="600839",
+                                info="6位数字代码"
+                            )
+                        
+                        stock_name = gr.Textbox(
+                            label="股票名称",
+                            placeholder="例如：四川长虹",
+                            value="四川长虹",
+                            info="请输入完整股票名称"
+                        )
+                    
+                    with gr.Group():
+                        gr.Markdown("### 📅 时间范围")
+                        with gr.Row():
+                            start_date = gr.Textbox(
+                                label="开始日期",
+                                placeholder="YYYYMMDD",
+                                value="20240805",
+                                info="历史数据查询起始日期"
+                            )
+                            end_date = gr.Textbox(
+                                label="结束日期",
+                                placeholder="YYYYMMDD",
+                                value="20241202",
+                                info="历史数据查询结束日期"
+                            )
+                    
+                    with gr.Group():
+                        gr.Markdown("### 🏷️ 概念板块")
+                        concept = gr.Textbox(
+                            label="概念板块",
+                            placeholder="例如：机器人概念",
+                            value="机器人概念",
+                            info="股票所属的主要概念板块"
+                        )
+                    
+                    # 提交按钮
+                    submit_button = gr.Button(
+                        "📊 开始分析",
+                        variant="primary",
+                        scale=1
+                    )
+                
+                # 右侧：输出区域
+                with gr.Column(scale=2):
+                    with gr.Group():
+                        gr.Markdown("### 📑 分析报告")
+                        response = gr.Textbox(
+                            label="AI 分析结果",
+                            show_label=False,
+                            lines=30,
+                            max_lines=50,
+                            show_copy_button=True
+                        )
+                    
+                    with gr.Group():
+                        gr.Markdown("""
+                        ### ⚠️ 免责声明
+                        1. 本工具提供的分析仅供参考，不构成投资建议
+                        2. 投资有风险，入市需谨慎
+                        3. 使用者应对自己的投资决策负责
+                        
+                        ### 📮 联系方式
+                        如有问题或建议，请联系：[zhujiadongvip@163.com](mailto:zhujiadongvip@163.com)
+                        """)
 
-                    with gr.Row():
-                        symbol = gr.Textbox(lines=1, placeholder="请输入股票代码(示例股票代码:600839)", label="Symbol",
-                                            value="600839")
-                        stock_name = gr.Textbox(lines=1, placeholder="请输入股票名称(示例股票名称:首航高科): ",
-                                                label="Stock Name", value="四川长虹")
-
-                    with gr.Row():
-                        start_date = gr.Textbox(lines=1,
-                                                placeholder="请输入K线历史数据查询起始日期（YYYYMMDD，示例：20240805）: ",
-                                                label="Start Date", value="20240805")
-                        end_date = gr.Textbox(lines=1,
-                                              placeholder="输入K线历史数据结束日期（YYYYMMDD，示例：20241202）: ",
-                                              label="End Date", value="20241202")
-
-                    with gr.Row():
-                        concept = gr.Textbox(lines=1, placeholder="请输入当前股票所属概念板块名称(示例：机器人概念): ",
-                                             label="Concept", value="机器人概念")
-
-                with gr.Column():
-                    # 右侧列: 输出控件
-                    gpt_response = gr.Textbox(label="GPT Response")
-                    qwen_response = gr.Textbox(label="QWEN Response")
-
-            # 提交按钮
-            submit_button = gr.Button("Submit")
+            # 绑定提交事件
             submit_button.click(
                 fn=self.get_stock_data,
-                inputs=[llm_options_checkbox_group, llm_options_checkbox_group_qwen, market, symbol, stock_name,
-                        start_date,
-                        end_date, concept, http_proxy],
-                outputs=[gpt_response, qwen_response]
+                inputs=[
+                    market, symbol, stock_name,
+                    start_date, end_date, concept, http_proxy
+                ],
+                outputs=[response]
             )
 
     def launch(self):
