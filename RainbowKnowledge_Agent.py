@@ -383,7 +383,7 @@ class RainbowKnowledge_Agent:
 
         except Exception as e:
             logger.exception(f"Error in Google_Search_run: {str(e)}")
-            return f"搜索过程中��生错误: {str(e)}。请检查网络连接或重试。"
+            return f"搜索过程中生错误: {str(e)}。请检查网络连接或重试。"
 
     def echo(self, message, history, llm_options_checkbox_group, collection_name_select,
              temperature_num, print_speed_step, tool_checkbox_group,
@@ -457,7 +457,7 @@ class RainbowKnowledge_Agent:
                 这是一个本地知识库搜索工具，你可以优使用本地搜索并总结回答。
                 1.你先根我的问题提取出最适合embedding模型向量匹配的关键字进行搜索。
                 2.注意你需要提出非常有针对性准确的问题和回答。
-                3.如果问题比较复杂，可以将复杂的问题���行拆分，你可以一步一步的思考。
+                3.如果问题比较复杂，可以将复杂的问题进行行拆分，你可以一步一步的思考。
                 4.确保每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
             """
         )
@@ -629,24 +629,51 @@ Final Answer: 给出完整、准确、有条理的回答
             class VerboseHandler(BaseCallbackHandler):
                 def __init__(self):
                     self.steps = []
+                    self.current_iteration = 0  # 添加轮次计数器
                     super().__init__()
                 
                 def on_agent_action(self, action, color=None, **kwargs):
-                    self.steps.append(f"**思考:** {action.log}")
-                    self.steps.append(f"**行动:** {action.tool}")
-                    self.steps.append(f"**输入:** {action.tool_input}")
+                    try:
+                        # 确保思考过程被正确记录
+                        if hasattr(action, 'log') and action.log:
+                            self.current_iteration += 1  # 增加轮次计数
+                            self.steps.append(f"\n**第 {self.current_iteration} 轮思考过程**")
+                            self.steps.append(f"**思考:** {action.log}")
+                        
+                        # 确保工具名称被正确记录
+                        if hasattr(action, 'tool'):
+                            self.steps.append(f"**行动:** {action.tool}")
+                        
+                        # 确保工具输入被正确记录
+                        if hasattr(action, 'tool_input'):
+                            self.steps.append(f"**输入:** {action.tool_input}")
+                    except Exception as e:
+                        self.steps.append(f"**注意:** 行动记录出现问题: {str(e)}")
                     
                 def on_agent_observation(self, observation, color=None, **kwargs):
-                    self.steps.append(f"**观察:** {observation}")
+                    try:
+                        if observation:
+                            self.steps.append(f"**观察:** {observation}")
+                    except Exception as e:
+                        self.steps.append(f"**注意:** 观察记录出现问题: {str(e)}")
                     
                 def on_agent_finish(self, finish, color=None, **kwargs):
-                    self.steps.append(f"**思考:** {finish.log}")
-                    if "output" in finish.return_values:
-                        self.steps.append(f"**最终答案:** {finish.return_values['output']}")
+                    try:
+                        if hasattr(finish, 'log') and finish.log:
+                            self.steps.append(f"\n**最终思考**")
+                            self.steps.append(f"**思考:** {finish.log}")
+                        
+                        if hasattr(finish, 'return_values'):
+                            if isinstance(finish.return_values, dict) and "output" in finish.return_values:
+                                self.steps.append(f"**最终答案:** {finish.return_values['output']}")
+                            else:
+                                self.steps.append(f"**最终答案:** {str(finish.return_values)}")
+                    except Exception as e:
+                        self.steps.append(f"**注意:** 完成记录出现问题: {str(e)}")
 
             handler = VerboseHandler()
             
-            # 修改 agent_chain 配置，添加回调处理器
+            # 修改 agent_chain 配置
             agent_chain = AgentExecutor.from_agent_and_tools(
                 agent=agent,
                 tools=self.tools,
@@ -655,7 +682,8 @@ Final Answer: 给出完整、准确、有条理的回答
                 max_iterations=3,
                 handle_parsing_errors=True,
                 early_stopping_method="generate",
-                callbacks=[handler]
+                callbacks=[handler],
+                return_intermediate_steps=True  # 添加这个参数以确保获取中间步骤
             )
 
             try:
@@ -663,13 +691,31 @@ Final Answer: 给出完整、准确、有条理的回答
                 chat_history = self.memory.load_memory_variables({})["chat_history"]
 
                 # 运行agent_chain
-                response = agent_chain.run(
-                    input=message,
-                    chat_history=chat_history
+                result = agent_chain(
+                    {"input": message, "chat_history": chat_history},
+                    include_run_info=True
                 )
 
                 # 组合所有步骤并输出
-                full_output = "\n".join(handler.steps)
+                if handler.steps:
+                    full_output = "\n".join(handler.steps)
+                else:
+                    # 如果没有捕获到步骤，尝试从结果中提取
+                    steps = []
+                    if "intermediate_steps" in result:
+                        for step in result["intermediate_steps"]:
+                            if len(step) >= 2:
+                                action, observation = step
+                                steps.append(f"**思考:** {action.log if hasattr(action, 'log') else ''}")
+                                steps.append(f"**行动:** {action.tool if hasattr(action, 'tool') else ''}")
+                                steps.append(f"**输入:** {action.tool_input if hasattr(action, 'tool_input') else ''}")
+                                steps.append(f"**观察:** {observation}")
+                    
+                    if "output" in result:
+                        steps.append(f"**最终答案:** {result['output']}")
+                    
+                    full_output = "\n".join(steps)
+
                 yield full_output
 
             except Exception as e:
