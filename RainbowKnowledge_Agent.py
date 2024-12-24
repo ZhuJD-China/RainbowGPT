@@ -116,9 +116,6 @@ class RainbowKnowledge_Agent:
             """
         )
 
-        # 全局工具列表创建时默认加入 Calculator
-        self.tools = [self.math_tool]
-
     def ask_local_vector_db(self, question):
         if self.llm_name_global == "Private-LLM-Model":
             llm = ChatOpenAI(
@@ -474,6 +471,7 @@ class RainbowKnowledge_Agent:
                 """
         )
 
+        self.tools = [self.math_tool]  # 确保始终包含 Calculator 工具
         # Initialize flags for additional tools
         flag_get_Local_Search_tool = False
         # Check for additional tools and append them if not already in the list
