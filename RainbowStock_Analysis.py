@@ -162,20 +162,21 @@ class RainbowStock_Analysis:
         recommendation = re.search(r'建议：([^，。\n]*)', response)
         
         # 添加标题和总览
-        formatted_response = "# 🎯 股票分析报告\n\n"
+        formatted_response = "# 🎯 股票分析报告\n\n&nbsp;\n\n"  # 添加空行
         
         # 添加总览卡片
-        formatted_response += "## 📊 分析总览\n\n"
+        formatted_response += "## 📊 分析总览\n\n&nbsp;\n\n"  # 添加空行
         formatted_response += "| 指标 | 数值 |\n"
-        formatted_response += "|------|------|\n"
-        formatted_response += f"| 🎯 预期走势 | {price_trend.group(1) if price_trend else '未明确'} |\n"
-        formatted_response += f"| ⬆️ 目标价位 | {target_price.group(1) if target_price else '未设定'} |\n"
-        formatted_response += f"| ⬇️ 止损价位 | {stop_loss.group(1) if stop_loss else '未设定'} |\n"
-        formatted_response += f"| 💡 操作建议 | {recommendation.group(1) if recommendation else '未给出'} |\n\n"
+        formatted_response += "|:------:|:------:|\n"  # 居中对齐
+        formatted_response += f"| 🎯 预期走势 | {price_trend.group(1) if price_trend else '待分析'} |\n"
+        formatted_response += f"| ⬆️ 目标价位 | {target_price.group(1) if target_price else '待确定'} |\n"
+        formatted_response += f"| ⬇️ 止损价位 | {stop_loss.group(1) if stop_loss else '待确定'} |\n"
+        formatted_response += f"| 💡 操作建议 | {recommendation.group(1) if recommendation else '待建议'} |\n\n"
         
         # 添加风险提示
         formatted_response += "> ⚠️ **风险提示**：以上数据基于当前市场情况分析，仅供参考。\n\n"
-        formatted_response += "---\n\n"
+        formatted_response += "&nbsp;\n\n"  # 添加空行
+        formatted_response += "---\n\n&nbsp;\n\n"  # 添加分隔线和空行
         
         # 处理详细分析部分
         sections = response.split('\n\n')
@@ -198,17 +199,20 @@ class RainbowStock_Analysis:
                     }
                     
                     icon = icons.get(number, '📌')
-                    formatted_sections.append(f"## {icon} {number}.{content}")
+                    formatted_sections.append(f"## {icon} {number}.{content}\n\n&nbsp;\n")  # 每节后添加空行
+                else:
+                    formatted_sections.append(section.strip() + "\n\n&nbsp;\n")  # 添加空行
             else:
-                formatted_sections.append(section.strip())
+                formatted_sections.append(section.strip() + "\n\n&nbsp;\n")  # 添加空行
         
         formatted_response += "\n\n".join(formatted_sections)
         
         # 添加总结框
-        formatted_response += "\n\n---\n\n"
+        formatted_response += "\n\n---\n\n&nbsp;\n\n"  # 添加分隔线和空行
         formatted_response += "> 💡 **投资建议总结**\n"
         formatted_response += "> \n"
-        formatted_response += "> 以上分析仅供参考，投资需谨慎。请结合自身风险承受能力做出投资决策。\n"
+        formatted_response += "> 以上分析仅供参考，投资需谨慎。请结合自身风险承受能力做出投资决策。\n\n"
+        formatted_response += "&nbsp;\n\n"  # 最后添加空行
         
         return formatted_response
 
@@ -500,16 +504,21 @@ class RainbowStock_Analysis:
 
     def create_stock_charts(self, stock_zh_a_hist_df, technical_indicators_df):
         """创建增强版股票走势和技术指标图表"""
-        # 创建子图布局
+        # 创建子图布局，增加垂直间距
         fig = make_subplots(
             rows=4, cols=1,
             shared_xaxes=True,
-            vertical_spacing=0.03,
-            subplot_titles=('价格走势预测', '成交量分析', '趋势指标(MACD)', '动量指标(RSI/CCI)'),
+            vertical_spacing=0.08,  # 增加垂直间距
+            subplot_titles=(
+                '<b>价格走势预测</b>',  # 加粗标题
+                '<b>成交量分析</b>',
+                '<b>趋势指标(MACD)</b>',
+                '<b>动量指标(RSI/CCI)</b>'
+            ),
             row_heights=[0.4, 0.2, 0.2, 0.2]
         )
 
-        # 1. 增强版K线图和预测
+        # 1. K线图和预测
         fig.add_trace(
             go.Candlestick(
                 x=stock_zh_a_hist_df['日期'],
@@ -524,35 +533,30 @@ class RainbowStock_Analysis:
             row=1, col=1
         )
 
-        # 添加均线
-        for window in [5, 10, 20]:
+        # 添加均线，使用不同颜色和透明度
+        colors = ['rgba(255,255,0,0.8)', 'rgba(0,255,255,0.8)', 'rgba(255,192,203,0.8)']
+        for i, window in enumerate([5, 10, 20]):
             ma = stock_zh_a_hist_df['收盘'].rolling(window=window).mean()
             fig.add_trace(
                 go.Scatter(
                     x=stock_zh_a_hist_df['日期'],
                     y=ma,
                     name=f'MA{window}',
-                    line=dict(width=1)
+                    line=dict(color=colors[i], width=1)
                 ),
                 row=1, col=1
             )
 
-        # 添加预测区域
+        # 添加预测区域，使用渐变色
         last_date = stock_zh_a_hist_df['日期'].iloc[-1]
         last_close = stock_zh_a_hist_df['收盘'].iloc[-1]
-        
-        # 生成未来3天的日期
         future_dates = pd.date_range(start=last_date, periods=4, freq='D')[1:]
         
-        # 使用简单的线性预测（这里可以根据实际分析结果调整）
-        prediction_high = last_close * 1.05  # 假设最高上涨5%
-        prediction_low = last_close * 0.95   # 假设最低下跌5%
-        
-        # 添加预测区域
+        # 使用渐变色填充预测区域
         fig.add_trace(
             go.Scatter(
                 x=future_dates,
-                y=[last_close, prediction_high, prediction_high, prediction_high],
+                y=[last_close, last_close*1.05, last_close*1.05, last_close*1.05],
                 name='预测上限',
                 line=dict(color='rgba(255,165,0,0.3)', dash='dash'),
                 fill=None
@@ -563,17 +567,17 @@ class RainbowStock_Analysis:
         fig.add_trace(
             go.Scatter(
                 x=future_dates,
-                y=[last_close, prediction_low, prediction_low, prediction_low],
+                y=[last_close, last_close*0.95, last_close*0.95, last_close*0.95],
                 name='预测下限',
                 line=dict(color='rgba(255,165,0,0.3)', dash='dash'),
-                fill='tonexty',  # 填充两条线之间的区域
+                fill='tonexty',
                 fillcolor='rgba(255,165,0,0.1)'
             ),
             row=1, col=1
         )
 
-        # 2. 增强版成交量图
-        colors = ['red' if row['收盘'] >= row['开盘'] else 'green' 
+        # 2. 成交量图，使用渐变色
+        colors = ['rgba(255,0,0,0.7)' if row['收盘'] >= row['开盘'] else 'rgba(0,255,0,0.7)' 
                  for _, row in stock_zh_a_hist_df.iterrows()]
         
         fig.add_trace(
@@ -587,25 +591,13 @@ class RainbowStock_Analysis:
             row=2, col=1
         )
 
-        # 添加成交量均线
-        vol_ma = stock_zh_a_hist_df['成交量'].rolling(window=5).mean()
-        fig.add_trace(
-            go.Scatter(
-                x=stock_zh_a_hist_df['日期'],
-                y=vol_ma,
-                name='成交量MA5',
-                line=dict(color='yellow', width=1)
-            ),
-            row=2, col=1
-        )
-
-        # 3. MACD指标
+        # 3. MACD指标，使用对比色
         fig.add_trace(
             go.Scatter(
                 x=technical_indicators_df['日期'],
                 y=technical_indicators_df['MACD'],
                 name='MACD',
-                line=dict(color='blue')
+                line=dict(color='rgba(0,191,255,0.8)', width=1.5)
             ),
             row=3, col=1
         )
@@ -615,18 +607,18 @@ class RainbowStock_Analysis:
                 x=technical_indicators_df['日期'],
                 y=technical_indicators_df['SIGNAL'],
                 name='Signal',
-                line=dict(color='orange')
+                line=dict(color='rgba(255,165,0,0.8)', width=1.5)
             ),
             row=3, col=1
         )
 
-        # 4. RSI和CCI
+        # 4. RSI和CCI，使用不同的Y轴
         fig.add_trace(
             go.Scatter(
                 x=technical_indicators_df['日期'],
                 y=technical_indicators_df['RSI'],
                 name='RSI',
-                line=dict(color='purple')
+                line=dict(color='rgba(147,112,219,0.8)', width=1.5)
             ),
             row=4, col=1
         )
@@ -636,7 +628,8 @@ class RainbowStock_Analysis:
                 x=technical_indicators_df['日期'],
                 y=technical_indicators_df['CCI'],
                 name='CCI',
-                line=dict(color='cyan')
+                line=dict(color='rgba(60,179,113,0.8)', width=1.5),
+                yaxis="y2"
             ),
             row=4, col=1
         )
@@ -644,11 +637,12 @@ class RainbowStock_Analysis:
         # 更新布局
         fig.update_layout(
             title=dict(
-                text='股票技术分析与预测',
+                text='<b>股票技术分析与预测</b>',
                 x=0.5,
-                y=0.95
+                y=0.95,
+                font=dict(size=20)
             ),
-            height=1000,
+            height=1200,  # 增加整体高度
             template='plotly_dark',
             showlegend=True,
             legend=dict(
@@ -656,18 +650,57 @@ class RainbowStock_Analysis:
                 yanchor="bottom",
                 y=1.02,
                 xanchor="right",
-                x=1
-            )
+                x=1,
+                bgcolor='rgba(0,0,0,0.5)'  # 半透明背景
+            ),
+            margin=dict(t=100, b=50),  # 调整上下边距
         )
 
-        # 添加网格线
-        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(128,128,128,0.2)')
-        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(128,128,128,0.2)')
+        # 添加网格线和参考线
+        fig.update_xaxes(
+            showgrid=True, 
+            gridwidth=1, 
+            gridcolor='rgba(128,128,128,0.2)',
+            showline=True,
+            linewidth=1,
+            linecolor='rgba(128,128,128,0.5)'
+        )
+        
+        fig.update_yaxes(
+            showgrid=True, 
+            gridwidth=1, 
+            gridcolor='rgba(128,128,128,0.2)',
+            showline=True,
+            linewidth=1,
+            linecolor='rgba(128,128,128,0.5)'
+        )
 
         # 添加RSI的参考线
-        fig.add_hline(y=70, line_dash="dash", line_color="red", row=4, col=1)
-        fig.add_hline(y=30, line_dash="dash", line_color="green", row=4, col=1)
+        fig.add_hline(
+            y=70, 
+            line_dash="dash", 
+            line_color="rgba(255,0,0,0.5)", 
+            row=4, 
+            col=1,
+            annotation_text="超买区",
+            annotation_position="top right"
+        )
+        
+        fig.add_hline(
+            y=30, 
+            line_dash="dash", 
+            line_color="rgba(0,255,0,0.5)", 
+            row=4, 
+            col=1,
+            annotation_text="超卖区",
+            annotation_position="bottom right"
+        )
 
+        # 为每个子图添加背景色，增加层次感
+        for i in range(1, 5):
+            fig.update_xaxes(row=i, col=1, showgrid=True, gridcolor='rgba(128,128,128,0.1)')
+            fig.update_yaxes(row=i, col=1, showgrid=True, gridcolor='rgba(128,128,128,0.1)')
+        
         return fig
 
     def create_interface(self):
