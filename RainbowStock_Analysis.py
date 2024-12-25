@@ -111,20 +111,23 @@ class RainbowStock_Analysis:
                 )
                 gpt_response = response.choices[0].message.content
             
+            # 添加Markdown格式化
+            formatted_response = self.format_response_as_markdown(gpt_response)
+            
             # Save response to file
             gpt_file_name = f"{stock_name}_gpt_response_{timestamp_str}.txt"
             gpt_file_name = "./logs/" + gpt_file_name
             with open(gpt_file_name, 'w', encoding='utf-8') as gpt_file:
-                gpt_file.write(gpt_response)
+                gpt_file.write(formatted_response)
             print(f"API response saved to file: {gpt_file_name}")
             
             if result is not None and index is not None:
-                result[index] = gpt_response
+                result[index] = formatted_response
                 
-            return gpt_response
+            return formatted_response
             
         except Exception as e:
-            error_message = f"API call failed: {str(e)}"
+            error_message = f"**错误**: {str(e)}"
             print(error_message)
             
             # Save detailed error log
@@ -146,6 +149,36 @@ class RainbowStock_Analysis:
                 result[index] = error_message
                 
             return error_message
+
+    def format_response_as_markdown(self, response):
+        """将API响应格式化为Markdown格式"""
+        # 分割响应为不同部分
+        sections = response.split('\n\n')
+        formatted_sections = []
+        
+        for section in sections:
+            # 检查是否是数字开头的段落（表示分析部分）
+            if section.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.')):
+                # 将分析部分转换为二级标题
+                section_parts = section.split('.', 1)
+                if len(section_parts) > 1:
+                    formatted_sections.append(f"## {section_parts[0]}. {section_parts[1].strip()}")
+            else:
+                # 其他段落保持原样，但确保适当的换行
+                formatted_sections.append(section.strip())
+        
+        # 添加一些Markdown增强
+        formatted_response = "\n\n".join(formatted_sections)
+        
+        # 突出显示关键信息
+        formatted_response = re.sub(r'(止盈位：[^，。\n]*)', r'**\1**', formatted_response)
+        formatted_response = re.sub(r'(止损位：[^，。\n]*)', r'**\1**', formatted_response)
+        formatted_response = re.sub(r'(建议：[^，。\n]*)', r'**\1**', formatted_response)
+        
+        # 添加分隔线
+        formatted_response = "---\n\n" + formatted_response + "\n\n---"
+        
+        return formatted_response
 
     def calculate_technical_indicators(self, stock_zh_a_hist_df,
                                        ma_window=5, macd_windows=(12, 26, 9),
@@ -520,12 +553,10 @@ class RainbowStock_Analysis:
                 with gr.Column(scale=2):
                     with gr.Group():
                         gr.Markdown("### 📑 分析报告")
-                        response = gr.Textbox(
+                        response = gr.Markdown(
                             label="AI 分析结果",
+                            value="*等待分析结果...*",
                             show_label=False,
-                            lines=30,
-                            max_lines=50,
-                            show_copy_button=True
                         )
                     
                     with gr.Group():
