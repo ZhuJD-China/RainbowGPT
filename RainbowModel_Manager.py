@@ -96,7 +96,7 @@ class RainbowModelManager:
     
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
-            gr.Markdown("## RainbowOpenAI Server标准 Configuration")
+            gr.Markdown("## Rainbow GPT Model Configuration")
             
             with gr.Row():
                 with gr.Column(scale=2):
