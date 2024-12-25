@@ -24,7 +24,8 @@ class ChromaDBGradioUI:
         with gr.Blocks() as self.interface:
             # 使用行和列来组织布局
             with gr.Row():
-                with gr.Column():
+                # 左侧控制面板
+                with gr.Column(scale=2):
                     gr.Markdown("### Create Collection Settings")
                     with gr.Row():
                         self.new_collection_name = gr.Textbox("", label="New Collection Name")
@@ -45,28 +46,54 @@ class ChromaDBGradioUI:
                         label="Select collection name",
                         value=collection_names[0] if collection_names else None
                     )
-                    # 功能按钮
                     delete_button = gr.Button("Delete Collection")
 
-                with gr.Column():
+                # 右侧显示和使用说明
+                with gr.Column(scale=3):
+                    # 上半部分显示区域
                     gr.Markdown("### Refresh and Display Settings")
-                    # 集合信息显示
-                    self.collection_info_text = gr.Textbox(label="Collection INFO", interactive=False)
-                    # 新增刷新按钮
+                    self.collection_info_text = gr.Textbox(label="Collection INFO", interactive=False, lines=5)
                     refresh_button = gr.Button("Refresh and Display All Collections")
-                    refresh_button.click(fn=self.refresh_collections, inputs=None,
-                                         outputs=[self.collection_info_text, self.collections_combo])
-                    # 日志信息
-                    self.log_text = gr.Textbox(label="Options Logs ..", interactive=False)
+                    self.log_text = gr.Textbox(label="Options Logs ..", interactive=False, lines=10)
+                    
+                    # 下半部分使用说明
+                    gr.Markdown("""
+                        ### 🌈 知识库管理工具使用指南
+                        
+                        #### 1️⃣ 创建新知识库
+                        1. **基本设置**
+                           - Collection Name: 输入英文名称
+                           - Embedding Model: 选择向量化模型
+                             * Openai Embedding: 更准确，需要API
+                             * HuggingFace Embedding: 本地运行，免费
+                           - Chunk Size: 文档切分大小(建议300-500)
+                           - Chunk Overlap: 重叠长度(建议10-50)
+                        
+                        2. **文件上传**
+                           - 支持格式：PDF、TXT、DOCX、MD
+                           - 可多选文件
+                           - 建议文件使用英文名
+                        
+                        #### 2️⃣ 删除知识库
+                        - 从下拉菜单选择要删除的知识库
+                        - 点击Delete确认删除
+                        - 删除操作不可恢复，请谨慎
+                        
+                        #### ⚠️ 注意事项
+                        - 知识库名称仅支持英文
+                        - 大文件处理需要较长时间
+                        - 建议定期备份重要数据
+                    """)
 
             # 功能绑定
+            refresh_button.click(fn=self.refresh_collections, inputs=None,
+                                 outputs=[self.collection_info_text, self.collections_combo])
             delete_button.click(fn=self.delete_collection, inputs=self.collections_combo,
                                 outputs=[self.collection_info_text, self.log_text, self.collections_combo])
             Create_button.click(fn=self.create_new_collection,
                                 inputs=[self.new_collection_name, self.Embedding_Model_select,
                                         self.input_chunk_size, self.uploaded_files, self.intput_chunk_overlap],
-                                outputs=[self.log_text]
-                                )
+                                outputs=[self.log_text])
 
         # 初始显示集合信息
         self.update_collection_info()
@@ -167,7 +194,7 @@ class ChromaDBGradioUI:
         for i in range(0, len(response), len(response) // 5):
             yield response[: i + (len(response) // 5)]
         print("after split documents len= ", texts.__len__())
-        response = "切分之后文档数据长度为：" + str(texts.__len__()) + " 数据开始写入词向量库....."
+        response = "切分之后档数据长度为：" + str(texts.__len__()) + " 数据开始写入词向量库....."
         for i in range(0, len(response), int(3)):
             yield response[: i + int(3)]
         print(response)

@@ -107,23 +107,59 @@ class CSVToMySQLUploader:
             return str(e)
 
     def launch(self):
-        # Organize inputs into a two-column grid layout
         with gr.Blocks() as interface:
-            gr.Markdown("# CSV/XLSX to MySQL")
-            gr.Markdown("Upload a CSV/XLSX file and input your MySQL database configuration to import the data.")
-            with gr.Column():
-                with gr.Row():
+            gr.Markdown("# CSV/XLSX to MySQL Uploader")
+            
+            with gr.Row():
+                # 左侧数据库配置
+                with gr.Column(scale=2):
                     file_input = gr.File(label="Select CSV/XLSX File")
-                    host_input = gr.Textbox(value="localhost", label="Host")
-                    user_input = gr.Textbox(value="root", label="User")
-                    password_input = gr.Textbox(value="", label="Password", type="password")
-                    db_input = gr.Textbox(value="Environmental", label="Database")
-                    table_input = gr.Textbox(value="disclosure_info", label="Table Name")
-            output_text = gr.Textbox(label="OutPut Logs")
-            gr.Button("Upload Data").click(
+                    with gr.Row():
+                        host_input = gr.Textbox(value="localhost", label="Host")
+                        user_input = gr.Textbox(value="root", label="User")
+                        password_input = gr.Textbox(value="", label="Password", type="password")
+                    with gr.Row():
+                        db_input = gr.Textbox(value="Environmental", label="Database")
+                        table_input = gr.Textbox(value="disclosure_info", label="Table Name")
+                    upload_button = gr.Button("Upload Data")
+                    output_text = gr.Textbox(label="OutPut Logs", lines=10, interactive=False)
+                
+                # 右侧使用说明
+                with gr.Column(scale=3):
+                    gr.Markdown("""
+                        ### 📊 数据导入工具使用指南
+                        
+                        #### 1️⃣ 文件准备
+                        - **支持格式：** CSV文件、XLSX文件（Excel）
+                        - **文件要求：**
+                          - 确保文件编码为UTF-8
+                          - 第一行应为列名
+                          - 数据格式统一
+                        
+                        #### 2️⃣ 数据库配置
+                        - **Host**: 数据库服务器地址（默认localhost）
+                        - **User**: 数据库用户名（默认root）
+                        - **Password**: 数据库密码
+                        - **Database**: 目标数据库名称
+                        - **Table**: 目标表名称
+                        
+                        #### ⚠️ 注意事项
+                        - 确保数据库连接信息正确
+                        - 大文件导入可能需要较长时间
+                        - 表将自动创建（如不存在）
+                        - 字段类型会自动推断
+                        - 建议先备份重��数据
+                        
+                        #### 💡 使用技巧
+                        - 导入前检查数据格式
+                        - 观察日志了解导入进度
+                        - 如遇错误，检查数据库权限
+                    """)
+
+            upload_button.click(
                 self.load_data_gradio,
                 inputs=[file_input, host_input, user_input, password_input, db_input, table_input],
                 outputs=output_text
             )
 
-        return interface
+            return interface
