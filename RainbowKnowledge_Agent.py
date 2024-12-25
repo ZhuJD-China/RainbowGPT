@@ -47,6 +47,15 @@ class RainbowKnowledge_Agent:
         self.create_interface()
         # 初始化模型配置管理器
         self.model_manager = ModelConfigManager()
+        # 添加搜索历史记录器
+        self.search_history = {
+            "Google_Search": set(),
+            "Local_Search": set(),
+            "Calculator": set(),
+            "Wolfram Alpha": set(),
+            "Arxiv": set(),
+            "Create_Image": set()
+        }
 
     def load_dotenv(self):
         load_dotenv()
@@ -140,7 +149,18 @@ class RainbowKnowledge_Agent:
             streaming=True
         )
 
+    def check_search_history(self, tool_name, query):
+        """检查是否存在重复搜索"""
+        if query in self.search_history[tool_name]:
+            return True
+        self.search_history[tool_name].add(query)
+        return False
+
     def ask_local_vector_db(self, question):
+        # 检查是否重复搜索
+        if self.check_search_history("Local_Search", question):
+            return "⚠️ 检测到重复搜索。请尝试使用不同的关键词或其他工具来获取新信息。"
+        
         # 使用模型配置管理器获取LLM
         self.llm = self.get_llm()
         
@@ -313,6 +333,10 @@ class RainbowKnowledge_Agent:
 
     def Google_Search_run(self, question):
         try:
+            # 检查是否重复搜索
+            if self.check_search_history("Google_Search", question):
+                return "⚠️ 检测到重复搜索。请尝试使用不同的关键词或其他工具来获取新信息。"
+            
             logger.debug(f"Starting Google search for question: {question}")
             
             # 使用模型配置管理器获取LLM
@@ -394,6 +418,16 @@ class RainbowKnowledge_Agent:
         """
         保留llm_Agent_checkbox_group参数
         """
+        # 重置搜索历史
+        self.search_history = {
+            "Google_Search": set(),
+            "Local_Search": set(),
+            "Calculator": set(),
+            "Wolfram Alpha": set(),
+            "Arxiv": set(),
+            "Create_Image": set()
+        }
+        
         self.human_input_global = message
         self.collection_name_select_global = str(collection_name_select)
         self.local_data_embedding_token_max_global = int(local_data_embedding_token_max)
@@ -571,30 +605,88 @@ class RainbowKnowledge_Agent:
                 logger.error(f"Error in agent execution: {str(e)}")
         elif llm_Agent_checkbox_group == "ZeroShotAgent-memory":
             # 修改 prefix 和 suffix 以更好地处理对话
-            prefix = """你是一个智能AI助手，擅长通过逻辑思考来解决问题。在回答问题时，请遵循以下思考步骤：
+            prefix = """你是一个高效智能的AI助手，擅长通过逻辑思考来解决问题。为了提供最准确的信息，请遵循以下原则：
 
-1. 首先，仔细分析用户的问题，理解问题的核心需求
-2. 思考是否可以直接回答，还是需要使用工具来获取更多信息
-3. 如问题复杂，可以将其分解成多个子问题逐步解决
-4. 在使用工具时，要明确说明使用原因和预期结果
+1. 思考流程（每次行动前必须执行）：
+   A. 信息评估
+      - 检查已有信息是否足够回答问题
+      - 确认是否已获得完整答案
+      - 评估信息的时效性和准确性
+   
+   B. 决策判断
+      - 如果已有完整答案 → 直接输出最终答案
+      - 如果信息不完整 → 确定最适合的工具和关键词
+      - 如果需要补充 → 使用不同角度的关键词
+
+2. 工具使用规则：
+   A. 使用条件（必须满足所有条件）
+      - 现有信息不足以回答问题
+      - 未获得完整答案
+      - 未达到工具使用次数限制（最多2次）
+      - 未使用过相同的搜索关键词
+   
+   B. 工具选择指南
+      * Google Search：实时数据、新闻、市场信息
+      * Local Knowledge：专业知识、历史资料
+      * Calculator：数学计算
+      * 其他工具：特定领域查询
+
+3. 答案质量控制：
+   A. 完整性检查清单
+      □ 核心问题是否已回答
+      □ 信息是否准确且及时
+      □ 是否需要补充说明
+      □ 是否符合用户需求
+
+   B. 终止条件（满足任一条件即停止搜索）
+      □ 已获得完整答案
+      □ 信息足够详细准确
+      □ 达到工具使用次数限制
+      □ 现有信息已满足需求
 
 请严格按照以下格式回复：
 
-Thought: 分析问题并说明思考过程
-(可选) Action: 如果需要使用工具，选择合适的工具
-(可选) Action Input: 输入到工具的具体内容
-(可选) Observation: 工具返回的结果
-... (如果需要，可以重复上述思考-行动-观察循环)
-Thought: 总结所有信息，形成最终答案
-Final Answer: 给出完整、准确、有条理的回答
+Thought: 执行思考流程
+1. 已有信息评估：
+   - 现有信息是否完整？
+   - 是否需要补充？
+   - 是否已有答案？
+
+2. 决策：
+   - 如果信息完整 → 直接输出答案
+   - 如果需要搜索 → 选择工具和关键词
+   - 确保未使用过相同关键词
+
+Action: 仅当必要时选择工具
+Action Input: 使用全新的关键词（禁止重复）
+
+Observation: 工具返回的结果
+
+Final Answer: 仅当获得完整答案时输出
+- 确保信息完整准确
+- 包含所有必要信息
+- 逻辑清晰连贯
 
 当前可用的工具有:"""
 
-            suffix = """请记住：
-1. 优先通过自己的知识和逻辑思考来回答
-2. 只在确实需要时才使用工具
-3. 回答要有条理、完整且符合逻辑
-4. 如果不确定，要诚实说明并给出最佳建议
+            suffix = """重要提示：
+1. 工具使用规范：
+   - 仅在必要时使用工具
+   - 禁止重复使用相同工具和关键词
+   - 最多使用两次工具查询
+   - 获得完整答案后立即停止
+
+2. 回答质量要求：
+   - 直接提供具体信息
+   - 避免使用建议性语气
+   - 确保答案完整且有价值
+   - 保持专业性和准确性
+
+3. 答案完整性检查：
+   - 是否回答了核心问题
+   - 信息是否足够详细
+   - 是否需要补充说明
+   - 时效性是否得到保证
 
 历史对话:
 {chat_history}
@@ -604,7 +696,7 @@ Final Answer: 给出完整、准确、有条理的回答
 思考过程:
 {agent_scratchpad}
 
-让我们一步一步地思考这个问题..."""
+请基于以上原则提供专业、准确、有价值的答案。"""
 
             prompt = ZeroShotAgent.create_prompt(
                 self.tools,
@@ -621,69 +713,71 @@ Final Answer: 给出完整、准确、有条理的回答
                 def __init__(self):
                     self.steps = []
                     self.current_iteration = 0
-                    self.current_output = ""  # 添加当前输出缓存
+                    self.current_output = ""
                     super().__init__()
                 
                 def on_agent_action(self, action, color=None, **kwargs):
                     try:
                         # 增加轮次计数和思考过程记录
                         self.current_iteration += 1
-                        step_text = f"\n**第 {self.current_iteration} 轮思考过程**\n"
+                        # 使用 Markdown 格式来突出显示轮次信息
+                        step_text = f"\n### 🤔 第 {self.current_iteration} 轮思考过程\n\n"
                         
-                        # 记录思考过程
+                        # 记录思考过程，使用更醒目的格式
                         if hasattr(action, 'log') and action.log:
-                            step_text += f"**思考:** {action.log}\n"
+                            step_text += f"🔍 **思考:** {action.log}\n\n"
                         
                         # 记录工具使用
                         if hasattr(action, 'tool'):
-                            step_text += f"**行动:** 使用{action.tool}工具\n"
+                            step_text += f"🛠️ **使用工具:** {action.tool}\n\n"
                         
                         # 记录工具输入
                         if hasattr(action, 'tool_input'):
-                            step_text += f"**输入:** {action.tool_input}\n"
+                            step_text += f"📝 **输入参数:** {action.tool_input}\n\n"
                         
                         self.steps.append(step_text)
-                        self.current_output = "\n".join(self.steps)
+                        # 实时更新当前输出
+                        self.current_output = "".join(self.steps)
                         
                     except Exception as e:
-                        error_text = f"**注意:** 行动记录出现问题: {str(e)}\n"
+                        error_text = f"⚠️ **错误:** 行动记录出现问题: {str(e)}\n\n"
                         self.steps.append(error_text)
-                        self.current_output = "\n".join(self.steps)
+                        self.current_output = "".join(self.steps)
                 
                 def on_agent_observation(self, observation, color=None, **kwargs):
                     try:
                         if observation:
-                            # 将观察结果添加到当前轮次的记录中
-                            observation_text = f"**观察结果:**\n{observation}\n"
+                            # 使用更醒目的格式显示观察结果
+                            observation_text = f"📊 **观察结果:**\n```\n{observation}\n```\n\n"
                             self.steps.append(observation_text)
-                            self.current_output = "\n".join(self.steps)
+                            self.current_output = "".join(self.steps)
                             
                     except Exception as e:
-                        error_text = f"**注意:** 观察记录出现问题: {str(e)}\n"
+                        error_text = f"⚠️ **错误:** 观察记录出现问题: {str(e)}\n\n"
                         self.steps.append(error_text)
-                        self.current_output = "\n".join(self.steps)
+                        self.current_output = "".join(self.steps)
                 
                 def on_agent_finish(self, finish, color=None, **kwargs):
                     try:
                         # 添加最终思考过程
                         if hasattr(finish, 'log') and finish.log:
-                            final_thought = f"\n**最终思考过程**\n**思考:** {finish.log}\n"
+                            final_thought = f"\n### 🎯 最终思考过程\n\n**思考:** {finish.log}\n\n"
                             self.steps.append(final_thought)
                         
-                        # 添加最终答案
+                        # 添加最终答案，使用更醒目的格式
                         if hasattr(finish, 'return_values'):
                             if isinstance(finish.return_values, dict) and "output" in finish.return_values:
-                                final_answer = f"**最终答案:**\n{finish.return_values['output']}\n"
+                                final_answer = f"### ✨ 最终答案:\n\n{finish.return_values['output']}\n\n"
                             else:
-                                final_answer = f"**最终答案:**\n{str(finish.return_values)}\n"
+                                final_answer = f"### ✨ 最终答案:\n\n{str(finish.return_values)}\n\n"
                             self.steps.append(final_answer)
                             
-                        self.current_output = "\n".join(self.steps)
+                        self.current_output = "".join(self.steps)
                         
                     except Exception as e:
-                        error_text = f"**注意:** 完成记录出现问题: {str(e)}\n"
+                        error_text = f"⚠️ **错误:** 完成记录出现问题: {str(e)}\n\n"
                         self.steps.append(error_text)
-                        self.current_output = "\n".join(self.steps)
+                        self.current_output = "".join(self.steps)
 
                 def get_current_output(self):
                     """返回当前的输出内容"""
@@ -701,7 +795,7 @@ Final Answer: 给出完整、准确、有条理的回答
                 handle_parsing_errors=True,
                 early_stopping_method="generate",
                 callbacks=[handler],
-                return_intermediate_steps=True  # 添加这个参数以确保获取中间步骤
+                return_intermediate_steps=True
             )
 
             try:
@@ -915,7 +1009,7 @@ Final Answer: 给出完整、准确、有条理的回答
                         - **刷新按钮**
                           - 用于更新知识库列表
                           - 添加新知识库后需刷新
-                        - **打印速度**
+                          - **打印速度**
                           - 调整文本显示速度
                           - 数值越大，显示越快
                         
