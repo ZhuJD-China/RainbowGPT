@@ -125,11 +125,11 @@ class RainbowModelManager:
                             placeholder="输入自定义模型名称",
                             visible=False,
                             info="当选择Custom时可用",
-                            value=""
+                            value="models/qwen/Qwen2___5-3B-Instruct"
                         )
                         
                         api_base = gr.Textbox(
-                            value="https://api.chatanywhere.tech",
+                            value="http://172.16.0.170:8000/v1",
                             label="API Base URL",
                             info="API基础URL",
                             visible=True

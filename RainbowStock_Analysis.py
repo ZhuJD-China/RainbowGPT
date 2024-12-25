@@ -567,7 +567,7 @@ class RainbowStock_Analysis:
             row=2, col=1
         )
 
-        # 3. MACD指标
+        # 3. MACD指标 - 添加 MACD、Signal 和 MACD 柱状图
         fig.add_trace(
             go.Scatter(
                 x=technical_indicators_df['日期'],
@@ -577,8 +577,32 @@ class RainbowStock_Analysis:
             ),
             row=3, col=1
         )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=technical_indicators_df['日期'],
+                y=technical_indicators_df['SIGNAL'],
+                name='Signal',
+                line=dict(color='orange')
+            ),
+            row=3, col=1
+        )
+        
+        # 添加 MACD 柱状图
+        macd_hist = technical_indicators_df['MACD'] - technical_indicators_df['SIGNAL']
+        colors = ['red' if val >= 0 else 'green' for val in macd_hist]
+        
+        fig.add_trace(
+            go.Bar(
+                x=technical_indicators_df['日期'],
+                y=macd_hist,
+                name='MACD Histogram',
+                marker_color=colors
+            ),
+            row=3, col=1
+        )
 
-        # 4. RSI指标
+        # 4. RSI指标 - 添加超买超卖区域
         fig.add_trace(
             go.Scatter(
                 x=technical_indicators_df['日期'],
@@ -586,6 +610,21 @@ class RainbowStock_Analysis:
                 name='RSI',
                 line=dict(color='purple')
             ),
+            row=4, col=1
+        )
+
+        # 添加 RSI 超买超卖区域
+        fig.add_hrect(
+            y0=70, y1=100,
+            fillcolor="red", opacity=0.1,
+            layer="below", line_width=0,
+            row=4, col=1
+        )
+        
+        fig.add_hrect(
+            y0=0, y1=30,
+            fillcolor="green", opacity=0.1,
+            layer="below", line_width=0,
             row=4, col=1
         )
 
@@ -610,8 +649,16 @@ class RainbowStock_Analysis:
                 bgcolor='rgba(0,0,0,0.5)',  # 半透明背景
                 bordercolor='rgba(255,255,255,0.2)',  # 边框颜色
                 borderwidth=1
-            )
+            ),
+            xaxis4=dict(title="日期"),  # 为最底部添加 x 轴标签
+            yaxis1=dict(title="价格"),
+            yaxis2=dict(title="成交量"),
+            yaxis3=dict(title="MACD"),
+            yaxis4=dict(title="RSI")
         )
+
+        # 更新 Y 轴范围
+        fig.update_yaxes(range=[0, 100], row=4, col=1)  # RSI 范围固定在 0-100
 
         # 添加RSI参考线
         fig.add_hline(y=70, line_dash="dash", line_color="red", row=4, col=1)
