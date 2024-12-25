@@ -57,9 +57,11 @@ class ModelConfigManager:
         
         self.active_config = self.gpt_config
     
-    def set_gpt_config(self, model_name: str, temperature: float = 0.0):
+    def set_gpt_config(self, model_name: str, api_base: str = None, temperature: float = 0.0):
         """设置GPT模型配置"""
         self.gpt_config.model_name = model_name
+        if api_base:  # 添加对api_base的更新
+            self.gpt_config.api_base = api_base
         self.gpt_config.temperature = temperature
         # 如果当前是GPT配置，更新活动配置
         if self.active_config == self.gpt_config:

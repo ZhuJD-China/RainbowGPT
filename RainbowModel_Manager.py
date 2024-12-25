@@ -18,7 +18,12 @@ class RainbowModelManager:
             if model_type == "OpenAI Server标准":
                 if api_key.strip():  # 如果提供了新的API key
                     self.model_manager.gpt_config.api_key = api_key
-                self.model_manager.set_gpt_config(final_model_name, temperature)
+                # 更新调用以包含api_base
+                self.model_manager.set_gpt_config(
+                    final_model_name, 
+                    api_base=api_base if api_base.strip() else "https://api.chatanywhere.tech",
+                    temperature=temperature
+                )
                 self.model_manager.use_gpt_model()
             else:
                 # 对于私有模型，检查是否是Baichuan模型
