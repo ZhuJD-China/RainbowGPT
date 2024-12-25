@@ -481,7 +481,7 @@ class RainbowKnowledge_Agent:
                     yield response[:i + int(print_speed_step)]
                 self.tools.append(self.Local_Search_tool)
 
-                response = (f"{self.llm_name_global} & {Embedding_Model_select} 模型加载中.....temperature="
+                response = (f"{config.model_name} & {Embedding_Model_select} 模型加载中.....temperature="
                             + str(self.temperature_num_global))
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[:i + int(print_speed_step)]
