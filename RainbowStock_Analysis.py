@@ -24,6 +24,9 @@ from Rainbow_utils.model_config_manager import ModelConfigManager
 from langchain_community.chat_models import ChatBaichuan
 from langchain_core.messages import HumanMessage
 from Rainbow_utils.baichuan_api import BaichuanAPI
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 
 
 class RainbowStock_Analysis:
@@ -151,32 +154,56 @@ class RainbowStock_Analysis:
             return error_message
 
     def format_response_as_markdown(self, response):
-        """将API响应格式化为Markdown格式"""
+        """将API响应格式化为更美观的Markdown格式"""
+        # 添加标题
+        formatted_response = "# 🎯 股票分析报告\n\n"
+        
         # 分割响应为不同部分
         sections = response.split('\n\n')
-        formatted_sections = []
+        formatted_sections = []  # 在这里初始化列表
         
         for section in sections:
-            # 检查是否是数字开头的段落（表示分析部分）
             if section.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.')):
-                # 将分析部分转换为二级标题
                 section_parts = section.split('.', 1)
                 if len(section_parts) > 1:
-                    formatted_sections.append(f"## {section_parts[0]}. {section_parts[1].strip()}")
+                    number = section_parts[0]
+                    content = section_parts[1].strip()
+                    
+                    # 为不同部分添加不同的图标
+                    icons = {
+                        '1': '🏢', # 主营业务
+                        '2': '💰', # 资金流动
+                        '3': '📊', # 财务指标
+                        '4': '📰', # 新闻影响
+                        '5': '📈', # 技术分析
+                        '6': '🎯', # 投资建议
+                    }
+                    
+                    icon = icons.get(number, '📌')
+                    formatted_sections.append(f"## {icon} {number}.{content}")
             else:
-                # 其他段落保持原样，但确保适当的换行
                 formatted_sections.append(section.strip())
         
-        # 添加一些Markdown增强
+        # 合并所有格式化后的部分
         formatted_response = "\n\n".join(formatted_sections)
         
         # 突出显示关键信息
-        formatted_response = re.sub(r'(止盈位：[^，。\n]*)', r'**\1**', formatted_response)
-        formatted_response = re.sub(r'(止损位：[^，。\n]*)', r'**\1**', formatted_response)
-        formatted_response = re.sub(r'(建议：[^，。\n]*)', r'**\1**', formatted_response)
+        key_patterns = [
+            (r'(止盈位：[^，。\n]*)', r'🎯 **\1**'),
+            (r'(止损位：[^，。\n]*)', r'⚠️ **\1**'),
+            (r'(建议：[^，。\n]*)', r'💡 **\1**'),
+            (r'(上涨概率：[^，。\n]*)', r'📈 **\1**'),
+            (r'(下跌风险：[^，。\n]*)', r'📉 **\1**'),
+        ]
         
-        # 添加分隔线
-        formatted_response = "---\n\n" + formatted_response + "\n\n---"
+        for pattern, replacement in key_patterns:
+            formatted_response = re.sub(pattern, replacement, formatted_response)
+        
+        # 添加总结框
+        formatted_response += "\n\n---\n\n"
+        formatted_response += "> 💡 **投资建议总结**\n"
+        formatted_response += "> \n"
+        formatted_response += "> 以上分析仅供参考，投资需谨慎。请结合自身风险承受能力做出投资决策。\n"
         
         return formatted_response
 
@@ -271,7 +298,7 @@ class RainbowStock_Analysis:
 
         return formatted_date
 
-    # 函数来提取日期并转换为datetime对象
+    # 函数来提取日期并转为datetime对象
     def extract_and_convert_date(self, text):
         # 使用正则表达式来匹配日期格式 "年-月-日" 或 "月 日, 年"
         match = re.search(r'(\d{4})[ 年](\d{1,2})[ 月](\d{1,2})[ 日]|(\w{3}) (\d{1,2}), (\d{4})', text)
@@ -466,6 +493,87 @@ class RainbowStock_Analysis:
 
         return response
 
+    def create_stock_charts(self, stock_zh_a_hist_df, technical_indicators_df):
+        """创建股票走势和技术指标图表"""
+        # 创建子图布局
+        fig = make_subplots(
+            rows=3, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.05,
+            subplot_titles=('价格走势', '成交量', '技术指标'),
+            row_heights=[0.5, 0.2, 0.3]
+        )
+
+        # 添加K线图
+        fig.add_trace(
+            go.Candlestick(
+                x=stock_zh_a_hist_df['日期'],
+                open=stock_zh_a_hist_df['开盘'],
+                high=stock_zh_a_hist_df['最高'],
+                low=stock_zh_a_hist_df['最低'],
+                close=stock_zh_a_hist_df['收盘'],
+                name='K线'
+            ),
+            row=1, col=1
+        )
+
+        # 添加MA5均线
+        fig.add_trace(
+            go.Scatter(
+                x=technical_indicators_df['日期'],
+                y=technical_indicators_df['MA_5'],
+                name='MA5',
+                line=dict(color='orange')
+            ),
+            row=1, col=1
+        )
+
+        # 添加成交量柱状图
+        colors = ['red' if row['收盘'] >= row['开盘'] else 'green' 
+                 for _, row in stock_zh_a_hist_df.iterrows()]
+        
+        fig.add_trace(
+            go.Bar(
+                x=stock_zh_a_hist_df['日期'],
+                y=stock_zh_a_hist_df['成交量'],
+                name='成交量',
+                marker_color=colors
+            ),
+            row=2, col=1
+        )
+
+        # 添加MACD
+        fig.add_trace(
+            go.Scatter(
+                x=technical_indicators_df['日期'],
+                y=technical_indicators_df['MACD'],
+                name='MACD',
+                line=dict(color='blue')
+            ),
+            row=3, col=1
+        )
+
+        # 添加RSI
+        fig.add_trace(
+            go.Scatter(
+                x=technical_indicators_df['日期'],
+                y=technical_indicators_df['RSI'],
+                name='RSI',
+                line=dict(color='purple')
+            ),
+            row=3, col=1
+        )
+
+        # 更新布局
+        fig.update_layout(
+            title='股票走势分析',
+            height=800,
+            xaxis_rangeslider_visible=False,
+            template='plotly_dark'
+        )
+
+        return fig
+
     def create_interface(self):
         """创建Gradio界面"""
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
@@ -491,7 +599,7 @@ class RainbowStock_Analysis:
                         http_proxy = gr.Textbox(
                             value="http://localhost:10809",
                             label="HTTP代理设置",
-                            info="用于Google搜索，如不需要可空"
+                            info="于Google搜索，如不需要可空"
                         )
                     
                     with gr.Group():
@@ -553,6 +661,14 @@ class RainbowStock_Analysis:
                 with gr.Column(scale=2):
                     with gr.Group():
                         gr.Markdown("### 📑 分析报告")
+                        
+                        # 添加图表显示区域
+                        stock_chart = gr.Plot(
+                            label="股票走势分析",
+                            show_label=True,
+                        )
+                        
+                        # 分析结果显示
                         response = gr.Markdown(
                             label="AI 分析结果",
                             value="*等待分析结果...*",
@@ -570,14 +686,29 @@ class RainbowStock_Analysis:
                         如有问题或建议，请联系：[zhujiadongvip@163.com](mailto:zhujiadongvip@163.com)
                         """)
 
+            # 修改提按钮的处理函数
+            def process_and_display(market, symbol, stock_name, start_date, end_date, concept, http_proxy):
+                # 获取分析结果
+                analysis_result = self.get_stock_data(market, symbol, stock_name, 
+                                                    start_date, end_date, concept, http_proxy)
+                
+                # 创建图表
+                stock_data = ak.stock_zh_a_hist(symbol=symbol, period="daily", 
+                                               start_date=start_date, end_date=end_date,
+                                               adjust="")
+                technical_data = self.calculate_technical_indicators(stock_data)
+                chart = self.create_stock_charts(stock_data, technical_data)
+                
+                return chart, analysis_result
+            
             # 绑定提交事件
             submit_button.click(
-                fn=self.get_stock_data,
+                fn=process_and_display,
                 inputs=[
                     market, symbol, stock_name,
                     start_date, end_date, concept, http_proxy
                 ],
-                outputs=[response]
+                outputs=[stock_chart, response]
             )
 
     def launch(self):
