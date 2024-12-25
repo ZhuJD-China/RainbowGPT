@@ -187,7 +187,7 @@ class RainbowStock_Analysis:
                     }
                     
                     icon = icons.get(number, '📌')
-                    formatted_sections.append(f"## {icon} {number}.{content} \n")  # 每节后添加空行
+                    formatted_sections.append(f"## {icon} {number}.{content}\n")  # 每节后添加空行
                 else:
                     formatted_sections.append(section.strip() + "\n")  # 添加空行
             else:
@@ -543,7 +543,12 @@ class RainbowStock_Analysis:
                 y=[last_close, last_close*1.03, last_close*1.05, last_close*1.07],  # 假设上涨趋势
                 name='预测趋势',
                 line=dict(color='orange', dash='dash'),
-                mode='lines'
+                mode='lines',
+                showlegend=True,
+                legendgroup='prediction',
+                legendgrouptitle_text='预测信息',
+                legendgrouptitle_font=dict(size=10),  # 设置图例组标题字体大小
+                legendrank=1  # 确保预测线显示在图例的最上方
             ),
             row=1, col=1
         )
@@ -596,11 +601,15 @@ class RainbowStock_Analysis:
             template='plotly_dark',
             showlegend=True,
             legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
+                orientation="h",  # 水平布局
+                yanchor="top",   # 改为顶部对齐
+                y=1.0,           # 位置稍微调整
+                xanchor="left",  # 左对齐
+                x=0.01,          # 靠左显示
+                font=dict(size=10),  # 设置图例字体大小
+                bgcolor='rgba(0,0,0,0.5)',  # 半透明背景
+                bordercolor='rgba(255,255,255,0.2)',  # 边框颜色
+                borderwidth=1
             )
         )
 
