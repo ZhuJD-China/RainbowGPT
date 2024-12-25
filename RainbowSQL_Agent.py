@@ -200,7 +200,7 @@ class RainbowSQLAgent:
 1. 仔细分析用户的问题，理解需求
 2. 检查数据库结构，确定需要查询或修改的表
 3. 设计合适的SQL语句
-4. 执行操作并验证���果
+4. 执行操作并验证结果
 
 请严格按照以下式回复：
 
@@ -321,7 +321,7 @@ Final Answer: 给出完整的答案
             
             return gr.Dropdown(choices=databases, value=current_db), db_info, "已连接"
         except Exception as e:
-            return None, {"错误": str(e)}, "连接��败"
+            return None, {"错误": str(e)}, "连接失败"
 
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:

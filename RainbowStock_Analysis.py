@@ -504,7 +504,7 @@ class RainbowStock_Analysis:
                         gr.Markdown("### 🏷️ 概念板块")
                         concept = gr.Textbox(
                             label="概念板块",
-                            placeholder="例如：机器人概���",
+                            placeholder="例如：机器人概念",
                             value="机器人概念",
                             info="股票所属的主要概念板块"
                         )
