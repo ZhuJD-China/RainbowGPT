@@ -162,10 +162,10 @@ class RainbowStock_Analysis:
         recommendation = re.search(r'建议：([^，。\n]*)', response)
         
         # 添加标题和总览
-        formatted_response = "# 🎯 股票分析报告\n\n&nbsp;\n\n"  # 添加空行
+        formatted_response = "# 🎯 股票分析报告\n\n&nbsp;"  # 添加空行
         
         # 添加总览卡片
-        formatted_response += "## 📊 分析总览\n\n&nbsp;\n\n"  # 添加空行
+        formatted_response += "## 📊 分析总览&nbsp;"  # 添加空行
         formatted_response += "| 指标 | 数值 |\n"
         formatted_response += "|:------:|:------:|\n"  # 居中对齐
         formatted_response += f"| 🎯 预期走势 | {price_trend.group(1) if price_trend else '待分析'} |\n"
@@ -175,7 +175,6 @@ class RainbowStock_Analysis:
         
         # 添加风险提示
         formatted_response += "> ⚠️ **风险提示**：以上数据基于当前市场情况分析，仅供参考。\n\n"
-        formatted_response += "&nbsp;\n\n"  # 添加空行
         formatted_response += "---\n\n&nbsp;\n\n"  # 添加分隔线和空行
         
         # 处理详细分析部分
