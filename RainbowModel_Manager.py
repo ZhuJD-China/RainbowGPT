@@ -126,7 +126,7 @@ class RainbowModelManager:
                         api_base = gr.Textbox(
                             value="https://api.chatanywhere.tech",
                             label="API Base URL",
-                            info="API基础URL (Baichuan模型不需要填写)",
+                            info="API基础URL",
                             visible=True
                         )
                         
