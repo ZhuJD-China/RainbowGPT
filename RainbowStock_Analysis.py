@@ -68,7 +68,7 @@ class RainbowStock_Analysis:
                 raise ValueError("No active model configuration found")
 
             # Handle Baichuan model
-            if config.model_name == "Baichuan-192K":
+            if config.model_name == "Baichuan3-Turbo-128k":
                 try:
                     # 创建Baichuan API客户端实例
                     baichuan_client = BaichuanAPI(api_key=config.api_key)

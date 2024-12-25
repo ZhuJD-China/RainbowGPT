@@ -7,7 +7,7 @@ class RainbowModelManager:
         # 预定义模型列表
         self.gpt_models = ["gpt-4o", "gpt-4o-mini","Custom"]
         # Add Baichuan to private models
-        self.private_models = ["Baichuan-192K", "Custom"]
+        self.private_models = ["Baichuan3-Turbo-128k", "Custom"]
         self.create_interface()
     
     def update_model_config(self, model_type, model_select, custom_model_name, api_base, api_key, temperature):
@@ -15,14 +15,14 @@ class RainbowModelManager:
             # 确定最终使用的模型名称
             final_model_name = custom_model_name if model_select == "Custom" and custom_model_name.strip() else model_select
             
-            if model_type == "GPT Model":
+            if model_type == "OpenAI Server标准":
                 if api_key.strip():  # 如果提供了新的API key
                     self.model_manager.gpt_config.api_key = api_key
                 self.model_manager.set_gpt_config(final_model_name, temperature)
                 self.model_manager.use_gpt_model()
             else:
                 # 对于私有模型，检查是否是Baichuan模型
-                if final_model_name == "Baichuan-192K":
+                if final_model_name == "Baichuan3-Turbo-128k":
                     self.model_manager.set_private_llm_config(
                         final_model_name,
                         "",  # Baichuan不需要api_base
@@ -53,7 +53,7 @@ class RainbowModelManager:
     def update_model_visibility(self, model_type, custom_model_box, model_select, api_base, api_key):
         """更新界面组件的可见性和值"""
         try:
-            if model_type == "GPT Model":
+            if model_type == "OpenAI Server标准":
                 return [
                     # custom_model_box (Textbox)
                     gr.update(visible=False, value=""),
@@ -66,7 +66,7 @@ class RainbowModelManager:
                 ]
             else:
                 selected_model = self.private_models[0]
-                is_baichuan = selected_model == "Baichuan-192K"
+                is_baichuan = selected_model == "Baichuan3-Turbo-128k"
                 
                 return [
                     # custom_model_box (Textbox)
@@ -90,20 +90,20 @@ class RainbowModelManager:
     
     def update_model_components_visibility(self, model_name):
         """根据选择的模型更新组件可见性"""
-        if model_name == "Baichuan-192K":
+        if model_name == "Baichuan3-Turbo-128k":
             return gr.update(visible=False)
         return gr.update(visible=True)
     
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
-            gr.Markdown("## RainbowGPT Model Configuration")
+            gr.Markdown("## RainbowOpenAI Server标准 Configuration")
             
             with gr.Row():
                 with gr.Column(scale=2):
                     model_type = gr.Radio(
-                        choices=["GPT Model", "Private LLM Model"],  # Remove Baichuan as separate type
+                        choices=["OpenAI Server标准", "Other LLM Server API"],  # Remove Baichuan as separate type
                         label="Model Type",
-                        value="GPT Model",
+                        value="OpenAI Server标准",
                         info="选择模型类型"
                     )
                     
@@ -186,14 +186,14 @@ class RainbowModelManager:
             # 添加使用说明
             gr.Markdown("""
             ### 使用说明
-            1. 选择模型类型（GPT Model 或 Private LLM Model）
+            1. 选择模型类型（OpenAI Server标准 或 Other LLM Server API）
             2. 从预定义列表选择模型或选择"Custom"输入自定义模型名称
             3. 根据需要修改API设置和温度参数
             4. 点击"Save Configuration"保存设置
             
             注意：
-            - GPT Model默认使用OpenAI的API
-            - Private LLM Model适用于自托管的模型
+            - OpenAI Server标准默认使用OpenAI Server标准的API
+            - Other LLM Server API适用于自托管的模型
             - Temperature越高，输出越随机创造性；越低，输出越确定性
             """)
     

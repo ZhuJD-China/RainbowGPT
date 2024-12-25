@@ -50,7 +50,7 @@ class ModelConfigManager:
 
         # Add Baichuan config
         self.baichuan_config = ModelConfig(
-            model_name="Baichuan-192K",
+            model_name="Baichuan3-Turbo-128k",
             api_base="",  # Baichuan doesn't need api_base
             api_key=self.baichuan_api_key
         )
