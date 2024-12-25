@@ -159,7 +159,7 @@ class RainbowKnowledge_Agent:
         if self.Embedding_Model_select_global == 0:
             print("OpenAIEmbeddings Search")
             # 结合基础检索器+Embedding上下文压缩
-            # 将稀疏检索器（如 BM25）与密集检���器（如嵌入相似性）相结合
+            # 将稀疏检索器（如 BM25）与密集检索器（如嵌入相似性）相结合
             chroma_retriever = self.docsearch_db.as_retriever(search_kwargs={"k": 30})
 
             # 将缩器和文档转换器串在一起
@@ -366,7 +366,7 @@ class RainbowKnowledge_Agent:
             当前关键字搜索的答案框据：
             {google_answer_box}
 
-            搜索结果相似度TOP10的网站的标题和摘要数据：
+            搜索结果相似度TOP10的网站标题和摘要数据：
             {data_title_Summary_str}
 
             搜索结果相似度TOP1的网站的详细内容数据:
@@ -447,8 +447,8 @@ class RainbowKnowledge_Agent:
                 这是一个本地知识库搜索工具，你可以优使用本地搜索并总结回答。
                 1.你先根我的问题提取出最适合embedding模型向量匹配的关键字进行搜索。
                 2.注意你需要提出非常有针对性准确的问题和回答。
-                3.如果问题比较复杂，可以将复杂的问题进行行拆分，你可以一步一步的思考。
-                4.确��每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
+                3.如果问题比较复杂，可��将复杂的问题进行行拆分，你可以一步一步的思考。
+                4.确保每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
             """
         )
 
@@ -574,7 +574,7 @@ class RainbowKnowledge_Agent:
             prefix = """你是一个智能AI助手，擅长通过逻辑思考来解决问题。在回答问题时，请遵循以下思考步骤：
 
 1. 首先，仔细分析用户的问题，理解问题的核心需求
-2. 思考是否可以直接回答，还是需要使用工具来获取更多信息
+2. 思考是否可以直接回答，还是需���使用工具来获取更多信息
 3. 如问题复杂，可以将其分解成多个子问题逐步解决
 4. 在使用工具时，要明确说明使用原因和预期结果
 
@@ -726,6 +726,69 @@ Final Answer: 给出完整、准确、有条理的回答
 
     def create_interface(self):
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
+            # 定义自定义CSS样式
+            custom_css = """
+                <style>
+                    /* 标题样式 */
+                    .gradio-header h1 {
+                        text-align: center;
+                        margin-bottom: 1rem;
+                        font-family: "Courier New", monospace;
+                        background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                        color: transparent;
+                    }
+
+                    /* 聊天界面容器样式 */
+                    .gradio-container {
+                        min-height: 95vh !important;
+                    }
+
+                    /* 聊天记录区域样式 */
+                    .chat-history {
+                        height: calc(95vh - 200px) !important;
+                        overflow-y: auto;
+                    }
+
+                    /* 帮助面板样式 */
+                    .help-panel {
+                        padding: 15px;
+                        background: #f8f9fa;
+                        border-radius: 8px;
+                        height: calc(95vh - 40px);
+                        overflow-y: auto;
+                    }
+
+                    /* 链接样式 */
+                    a {
+                        color: #007bff;
+                        text-decoration: none;
+                    }
+
+                    a:hover {
+                        text-decoration: underline;
+                    }
+
+                    /* 分割线样式 */
+                    hr {
+                        border: 0;
+                        height: 1px;
+                        background: #dee2e6;
+                        margin: 1rem 0;
+                    }
+
+                    /* 工具选择组样式 */
+                    .tool-group {
+                        margin-bottom: 1rem;
+                        padding: 10px;
+                        border-radius: 5px;
+                        background: #ffffff;
+                    }
+                </style>
+            """
+
             with gr.Row(equal_height=True):
                 with gr.Column(scale=3):
                     # 左侧列: 所控件
@@ -768,55 +831,7 @@ Final Answer: 给出完整、准确、有条理的回答
                                                                    label="Embeddings Data Max Tokens",
                                                                    value=2048)
                 with gr.Column(scale=5):
-                    # 右侧列: Chat Interface
-                    custom_css = """
-                        <style>
-                            .footer-email {
-                                position: fixed;
-                                left: 0;
-                                right: 0;
-                                bottom: 0;
-                                text-align: center;
-                                padding: 10px;
-                                background-color: #f8f9fa;
-                                box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-                                font-family: Arial, sans-serif;
-                                font-size: 14px;
-                            }
-                            
-                            .footer-email a {
-                                color: #007bff;
-                                text-decoration: none;
-                            }
-                            
-                            .footer-email a:hover {
-                                text-decoration: underline;
-                            }
-
-                            /* 调整聊天界面容器高度 */
-                            .gradio-container {
-                                min-height: 95vh !important;
-                            }
-                            
-                            /* 调整聊天记录区域高度 */
-                            .chat-history {
-                                height: calc(95vh - 200px) !important;
-                                overflow-y: auto;
-                            }
-                            
-                            .gradio-header h1 {
-                                text-align: center;
-                                margin-bottom: 1rem;
-                                font-family: "Courier New", monospace;
-                                background: linear-gradient(135deg, #9400D3, #4B0082, #0000FF, #008000, #FFFF00, #FF7F00, #FF0000);
-                                -webkit-background-clip: text;
-                                -webkit-text-fill-color: transparent;
-                                background-clip: text;
-                                color: transparent;
-                            }
-                        </style>
-                    """
-
+                    # 中间聊天界面
                     chatbot = gr.ChatInterface(
                         self.echo,
                         additional_inputs=[collection_name_select, print_speed_step,
@@ -824,16 +839,110 @@ Final Answer: 给出完整、准确、有条理的回答
                                          local_data_embedding_token_max, llm_Agent_checkbox_group],
                         title="RainbowGPT-Agent",
                         css=custom_css,
-                        description="""
-                            <div class='footer-email'>
-                                <p>How to reach us：<a href='mailto:zhujiadongvip@163.com'>zhujiadongvip@163.com</a></p>
-                            </div>
-                        """,
                         theme="soft",
                         fill_height=True,
                         autoscroll=True,
                         type='messages'
                     )
+
+            with gr.Column(scale=2):
+                # 右侧帮助面板
+                with gr.Group(elem_classes="help-panel"):
+                    gr.Markdown("""
+                        ### 🌈 RainbowGPT-Agent 使用指南
+
+                        #### 🚀 快速开始
+                        1. **选择Agent模式**
+                           - 在左侧Agent Settings中选择运行模式
+                           - 建议新手先使用openai-functions模式
+                        
+                        2. **配置知识库**
+                           - 在Knowledge Collection Settings中选择已有知识库
+                           - 如无知识库显示，点击"Refresh Collection"刷新
+                        
+                        3. **选择所需工具**
+                           - 在Additional Tools中勾选需要使用的工具
+                           - 可以根据问题类型组合使用多个工具
+                        
+                        4. **开始对话**
+                           - 在对话框输入问题并发送
+                           - 等待AI助手回应
+                        
+                        #### 💡 功能详解
+
+                        **1. Agent运行模式** 🤖
+                        - **openai-functions模式**
+                          - 响应速度快，适合一般对话
+                          - 直接给出答案
+                        - **ZeroShotAgent-memory模式**
+                          - 展示详细思考过程
+                          - 适合复杂问题分析
+                          - 可以看到工具使用过程
+                        
+                        **2. 知识库功能** 📚
+                        - **选择知识库**
+                          - 从下拉菜单选择已导入的知识库
+                          - 确保选择正确的知识库集合
+                        - **刷新按钮**
+                          - 用于更新知识库列表
+                          - 添加新知识库后需刷新
+                        - **打印速度**
+                          - 调整文本显示速度
+                          - 数值越大，显示越快
+                        
+                        **3. 工具集成** 🛠️
+                        - **Google搜索**
+                          - 实时联网搜索信息
+                          - 适合查询最新资讯
+                        - **本地知识库**
+                          - 搜索已导入的专业资料
+                          - 适合领域专业问题
+                        - **Wolfram Alpha**
+                          - 数学计算和科学分析
+                          - 支持复杂数学问题
+                        - **Arxiv论文**
+                          - 学术论文搜索
+                          - 获取研究前沿信息
+                        - **AI绘图**
+                          - 创建和生成图片
+                          - 支持多种图片风格
+                        
+                        **4. Embedding配置** ⚙️
+                        - **模型选择**
+                          - OpenAI Embedding: 更准确但需API
+                          - HuggingFace Embedding: 本地运行，免费使用
+                        - **Token限制**
+                          - 控制单次处理文本量
+                          - 建议保持默认值2048
+                        
+                        #### 🎯 使用技巧
+                        
+                        **1. 提问技巧**
+                        - 问题要清晰具体
+                        - 复杂问题可以分步提问
+                        - 可以追问以获取更详细信息
+                        
+                        **2. 工具使用**
+                        - 可以同时选择多个工具
+                        - 系统会自动选择最适合的工具
+                        - 不同工具可以协同工作
+                        
+                        **3. 对话优化**
+                        - 保持对话上下文连贯
+                        - 可以参考之前的对话历史
+                        - 需要时可以请求澄清或补充
+                        
+                        **4. 性能优化**
+                        - 选择合适的Embedding模型
+                        - 适当调整Token限制
+                        - 根据需求选择Agent模式
+                        
+                        ---
+                        #### 📞 需要帮助？
+                        - 遇到问题请联系：[zhujiadongvip@163.com](mailto:zhujiadongvip@163.com)
+                        - 建议优先查看使用技巧解决问题
+                        - 欢迎反馈使用体验
+                    """)
 
     def launch(self):
         return self.interface
