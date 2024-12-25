@@ -759,18 +759,28 @@ Final Answer: 仅当获得完整答案时输出
                 
                 def on_agent_finish(self, finish, color=None, **kwargs):
                     try:
-                        # 添加最终思考过程
-                        if hasattr(finish, 'log') and finish.log:
-                            final_thought = f"\n### 🎯 最终思考过程\n\n**思考:** {finish.log}\n\n"
-                            self.steps.append(final_thought)
-                        
-                        # 添加最终答案，使用更醒目的格式
+                        # 检查是否是最终答案
                         if hasattr(finish, 'return_values'):
                             if isinstance(finish.return_values, dict) and "output" in finish.return_values:
-                                final_answer = f"### ✨ 最终答案:\n\n{finish.return_values['output']}\n\n"
+                                final_answer = finish.return_values['output']
                             else:
-                                final_answer = f"### ✨ 最终答案:\n\n{str(finish.return_values)}\n\n"
-                            self.steps.append(final_answer)
+                                final_answer = str(finish.return_values)
+                            
+                            # 检查是否包含"思考:"前缀
+                            if "思考:" in final_answer:
+                                # 提取实际答案（去除思考部分）
+                                answer_parts = final_answer.split("思考:")
+                                if len(answer_parts) > 1:
+                                    # 取最后一个分割部分作为实际答案
+                                    actual_answer = answer_parts[0].strip()
+                                else:
+                                    actual_answer = final_answer
+                            else:
+                                actual_answer = final_answer
+                            
+                            # 格式化最终输出
+                            formatted_output = f"### ✨ 最终答案:\n\n{actual_answer}\n\n"
+                            self.steps.append(formatted_output)
                             
                         self.current_output = "".join(self.steps)
                         
