@@ -620,47 +620,74 @@ Final Answer: 给出完整、准确、有条理的回答
             class VerboseHandler(BaseCallbackHandler):
                 def __init__(self):
                     self.steps = []
-                    self.current_iteration = 0  # 添加轮次计数器
+                    self.current_iteration = 0
+                    self.current_output = ""  # 添加当前输出缓存
                     super().__init__()
                 
                 def on_agent_action(self, action, color=None, **kwargs):
                     try:
-                        # 确保思考过程被正确记录
+                        # 增加轮次计数和思考过程记录
+                        self.current_iteration += 1
+                        step_text = f"\n**第 {self.current_iteration} 轮思考过程**\n"
+                        
+                        # 记录思考过程
                         if hasattr(action, 'log') and action.log:
-                            self.current_iteration += 1  # 增加轮次计数
-                            self.steps.append(f"\n**第 {self.current_iteration} 轮思考过程**")
-                            self.steps.append(f"**思考:** {action.log}")
+                            step_text += f"**思考:** {action.log}\n"
                         
-                        # 确保工具名称被正确记录
+                        # 记录工具使用
                         if hasattr(action, 'tool'):
-                            self.steps.append(f"**行动:** {action.tool}")
+                            step_text += f"**行动:** 使用{action.tool}工具\n"
                         
-                        # 确保工具输入被正确记录
+                        # 记录工具输入
                         if hasattr(action, 'tool_input'):
-                            self.steps.append(f"**输入:** {action.tool_input}")
+                            step_text += f"**输入:** {action.tool_input}\n"
+                        
+                        self.steps.append(step_text)
+                        self.current_output = "\n".join(self.steps)
+                        
                     except Exception as e:
-                        self.steps.append(f"**注意:** 行动记录出现问题: {str(e)}")
-                    
+                        error_text = f"**注意:** 行动记录出现问题: {str(e)}\n"
+                        self.steps.append(error_text)
+                        self.current_output = "\n".join(self.steps)
+                
                 def on_agent_observation(self, observation, color=None, **kwargs):
                     try:
                         if observation:
-                            self.steps.append(f"**观察:** {observation}")
+                            # 将观察结果添加到当前轮次的记录中
+                            observation_text = f"**观察结果:**\n{observation}\n"
+                            self.steps.append(observation_text)
+                            self.current_output = "\n".join(self.steps)
+                            
                     except Exception as e:
-                        self.steps.append(f"**注意:** 观察记录出现问题: {str(e)}")
-                    
+                        error_text = f"**注意:** 观察记录出现问题: {str(e)}\n"
+                        self.steps.append(error_text)
+                        self.current_output = "\n".join(self.steps)
+                
                 def on_agent_finish(self, finish, color=None, **kwargs):
                     try:
+                        # 添加最终思考过程
                         if hasattr(finish, 'log') and finish.log:
-                            self.steps.append(f"\n**最终思考**")
-                            self.steps.append(f"**思考:** {finish.log}")
+                            final_thought = f"\n**最终思考过程**\n**思考:** {finish.log}\n"
+                            self.steps.append(final_thought)
                         
+                        # 添加最终答案
                         if hasattr(finish, 'return_values'):
                             if isinstance(finish.return_values, dict) and "output" in finish.return_values:
-                                self.steps.append(f"**最终答案:** {finish.return_values['output']}")
+                                final_answer = f"**最终答案:**\n{finish.return_values['output']}\n"
                             else:
-                                self.steps.append(f"**最终答案:** {str(finish.return_values)}")
+                                final_answer = f"**最终答案:**\n{str(finish.return_values)}\n"
+                            self.steps.append(final_answer)
+                            
+                        self.current_output = "\n".join(self.steps)
+                        
                     except Exception as e:
-                        self.steps.append(f"**注意:** 完成记录出现问题: {str(e)}")
+                        error_text = f"**注意:** 完成记录出现问题: {str(e)}\n"
+                        self.steps.append(error_text)
+                        self.current_output = "\n".join(self.steps)
+
+                def get_current_output(self):
+                    """返回当前的输出内容"""
+                    return self.current_output
 
             handler = VerboseHandler()
             
@@ -680,18 +707,20 @@ Final Answer: 给出完整、准确、有条理的回答
             try:
                 # 获取聊天历史
                 chat_history = self.memory.load_memory_variables({})["chat_history"]
-
+                
+                # 创建处理器实例
+                handler = VerboseHandler()
+                
                 # 运行agent_chain
                 result = agent_chain(
                     {"input": message, "chat_history": chat_history},
                     include_run_info=True
                 )
-
-                # 组合所有步骤并输出
-                if handler.steps:
-                    full_output = "\n".join(handler.steps)
-                else:
-                    # 如果没有捕获到步骤，尝试从结果中提取
+                
+                # 使用处理器获取完整输出
+                full_output = handler.get_current_output()
+                
+                if not full_output:  # 如果没有捕获到步骤，使用备用方案
                     steps = []
                     if "intermediate_steps" in result:
                         for step in result["intermediate_steps"]:
@@ -700,13 +729,13 @@ Final Answer: 给出完整、准确、有条理的回答
                                 steps.append(f"**思考:** {action.log if hasattr(action, 'log') else ''}")
                                 steps.append(f"**行动:** {action.tool if hasattr(action, 'tool') else ''}")
                                 steps.append(f"**输入:** {action.tool_input if hasattr(action, 'tool_input') else ''}")
-                                steps.append(f"**观察:** {observation}")
+                                steps.append(f"**观察结果:**\n{observation}")
                     
                     if "output" in result:
-                        steps.append(f"**最终答案:** {result['output']}")
+                        steps.append(f"**最终答案:**\n{result['output']}")
                     
                     full_output = "\n".join(steps)
-
+                
                 yield full_output
 
             except Exception as e:
