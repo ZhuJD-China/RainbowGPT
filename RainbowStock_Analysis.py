@@ -165,7 +165,6 @@ class RainbowStock_Analysis:
         formatted_response = "# 🎯 股票分析报告\n\n&nbsp;"  # 添加空行
         # 添加风险提示
         formatted_response += "> ⚠️ **风险提示**：以下数据基于当前市场情况分析，仅供参考。\n\n"
-        formatted_response += "---\n\n&nbsp;\n\n"  # 添加分隔线和空行
         
         # 处理详细分析部分
         sections = response.split('\n\n')
@@ -188,18 +187,17 @@ class RainbowStock_Analysis:
                     }
                     
                     icon = icons.get(number, '📌')
-                    formatted_sections.append(f"## {icon} {number}.{content}\n\n&nbsp;\n")  # 每节后添加空行
+                    formatted_sections.append(f"## {icon} {number}.{content} \n")  # 每节后添加空行
                 else:
-                    formatted_sections.append(section.strip() + "\n\n&nbsp;\n")  # 添加空行
+                    formatted_sections.append(section.strip() + "\n")  # 添加空行
             else:
-                formatted_sections.append(section.strip() + "\n\n&nbsp;\n")  # 添加空行
+                formatted_sections.append(section.strip()+"\n")  # 添加空行
         
         formatted_response += "\n\n".join(formatted_sections)
         
         # 添加总结框
-        formatted_response += "\n\n---\n\n&nbsp;\n\n"  # 添加分隔线和空行
+
         formatted_response += "> 💡 **投资建议总结**\n"
-        formatted_response += "> \n"
         formatted_response += "> 以上分析仅供参考，投资需谨慎。请结合自身风险承受能力做出投资决策。\n\n"
         formatted_response += "&nbsp;\n\n"  # 最后添加空行
         
