@@ -626,8 +626,8 @@ class RainbowKnowledge_Agent:
       - 未使用过相同的搜索关键词
    
    B. 工具选择指南
-      * Google Search：实时数据、新闻、市场信息
-      * Local Knowledge：专业知识、历史资料
+      * Google_Search：实时数据、新闻、市场信息
+      * Local_Search：专业知识、历史资料
       * Calculator：数学计算
       * 其他工具：特定领域查询
 
@@ -646,19 +646,11 @@ class RainbowKnowledge_Agent:
 
 请严格按照以下格式回复：
 
-Thought: 执行思考流程
-1. 已有信息评估：
-   - 现有信息是否完整？
-   - 是否需要补充？
-   - 是否已有答案？
+Thought: 分析当前问题和已有信息，说明为什么需要使用工具
 
-2. 决策：
-   - 如果信息完整 → 直接输出答案
-   - 如果需要搜索 → 选择工具和关键词
-   - 确保未使用过相同关键词
+Action: 直接写工具名称（例如：Local_Search、Google_Search、Calculator等）
 
-Action: 仅当必要时选择工具
-Action Input: 使用全新的关键词（禁止重复）
+Action Input: 输入具体的查询内容或计算表达式
 
 Observation: 工具返回的结果
 
@@ -693,10 +685,7 @@ Final Answer: 仅当获得完整答案时输出
 
 当前问题: {input}
 
-思考过程:
-{agent_scratchpad}
-
-请基于以上原则提供专业、准确、有价值的答案。"""
+{agent_scratchpad}"""
 
             prompt = ZeroShotAgent.create_prompt(
                 self.tools,

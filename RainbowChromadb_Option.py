@@ -5,10 +5,14 @@ import sys
 
 import gradio as gr
 import chromadb
-from langchain_community.document_loaders import DirectoryLoader
+from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, TextLoader
+from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import CharacterTextSplitter
+from langchain.schema import Document
+import pdfplumber
+import docx
 
 
 class ChromaDBGradioUI:
@@ -123,10 +127,8 @@ class ChromaDBGradioUI:
 
         # 获取当前脚本所在文件夹的绝对路径
         current_script_folder = os.path.abspath(os.path.dirname(__file__))
-        # 获取当前时间并格式化为字符串
         current_time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         base_folder = "\\data\\" + str(new_collection_name)
-        # 根据时间创建唯一的文件夹名
         save_folder = current_script_folder + f"{base_folder}_{current_time}"
 
         try:
@@ -135,80 +137,155 @@ class ChromaDBGradioUI:
             response = str(e)
             for i in range(0, len(response), int(3)):
                 yield response[: i + int(3)]
-            print(f"创建文件夹失败：{e}")
+            return
 
-        # 保存每个文件到指定文件夹
+        # 保存上传的文件
         try:
             for file in uploaded_files:
-                # 将文件指针重置到文件的开头
-                source_file_path = str(file.orig_name)
-                # 读取文件内容
-                with open(source_file_path, 'rb') as source_file:
-                    file_data = source_file.read()
-                # 使用原始文件名构建保存文件的路径
-                save_path = os.path.join(save_folder, os.path.basename(file.orig_name))
+                if hasattr(file, 'name'):
+                    source_file_path = file.name
+                elif hasattr(file, 'orig_name'):
+                    source_file_path = file.orig_name
+                else:
+                    source_file_path = str(file)
+
+                file_name = os.path.basename(source_file_path)
+                save_path = os.path.join(save_folder, file_name)
+
                 # 保存文件
-                # 保存文件到目标文件夹
-                with open(save_path, 'wb') as target_file:
-                    target_file.write(file_data)
+                if hasattr(file, 'read'):
+                    content = file.read()
+                    mode = 'wb' if isinstance(content, bytes) else 'w'
+                    with open(save_path, mode) as target_file:
+                        target_file.write(content)
+                else:
+                    with open(source_file_path, 'rb') as source_file:
+                        with open(save_path, 'wb') as target_file:
+                            target_file.write(source_file.read())
+
         except Exception as e:
-            response = str(e)
-            for i in range(0, len(response), int(3)):
-                yield response[: i + int(3)]
-            print(f"保存文件时发生异常：{e}")
+            response = f"保存文件时发生异常：{str(e)}"
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+            return
 
-        # 设置向量存储相关配置
-        response = "开始转换文件夹中的所有数据成知识库........"
+        # 使用DirectoryLoader加载文档
+        documents = []
+        try:
+            response = "开始加载PDF文件..."
+            print(response)
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+                
+            # 加载PDF文件
+            pdf_loader = DirectoryLoader(
+                save_folder,
+                glob="**/*.pdf",
+                loader_cls=PyPDFLoader,
+                use_multithreading=True,
+                show_progress=True,
+                silent_errors=True
+            )
+            pdf_docs = pdf_loader.load()
+            documents.extend(pdf_docs)
+            
+            response = f"PDF文件加载完成，成功加载 {len(pdf_docs)} 个文档。"
+            print(response)
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+
+            response = "开始加载TXT文件..."
+            print(response)
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+                
+            # 加载TXT文件
+            text_loader = DirectoryLoader(
+                save_folder,
+                glob="**/*.txt",
+                loader_cls=TextLoader,
+                use_multithreading=True,
+                show_progress=True,
+                loader_kwargs={"autodetect_encoding": True},
+                silent_errors=True
+            )
+            txt_docs = text_loader.load()
+            documents.extend(txt_docs)
+            
+            response = f"TXT文件加载完成，成功加载 {len(txt_docs)} 个文档。"
+            print(response)
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+
+            response = "开始加载DOCX文件..."
+            print(response)
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+                
+            # 加载DOCX文件
+            docx_loader = DirectoryLoader(
+                save_folder,
+                glob="**/*.{docx,doc}",
+                loader_cls=UnstructuredFileLoader,
+                use_multithreading=True,
+                show_progress=True,
+                silent_errors=True
+            )
+            docx_docs = docx_loader.load()
+            documents.extend(docx_docs)
+            
+            response = f"DOCX文件加载完成，成功加载 {len(docx_docs)} 个文档。"
+            print(response)
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+
+        except Exception as e:
+            response = f"加载文档时发生异常：{str(e)}"
+            print(response)
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+            return
+
+        if not documents:
+            response = "没有成功解析任何文档内容！"
+            print(response)
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+            return
+
+        response = f"所有文档处理完成，共解析 {len(documents)} 个文档。开始切分文档..."
         print(response)
+        for i in range(0, len(response), 3):
+            yield response[: i + 3]
 
-        loader = DirectoryLoader(str(save_folder), show_progress=True,
-                                 use_multithreading=True,
-                                 silent_errors=True)
-
-        documents = loader.load()
-        if documents == None:
-            response = "文件读取失败！" + str(save_folder)
-            for i in range(0, len(response), int(3)):
-                yield response[: i + int(3)]
-            print(response)
-            return
-
-        response = str(documents)
-        if len(response) == 0:
-            response = "文件读取失败！" + str(save_folder)
-            for i in range(0, len(response), int(3)):
-                yield response[: i + int(3)]
-            return
-        else:
-            response = "文档数据长度为： " + str(documents.__len__()) + response
-            for i in range(0, len(response), len(response) // 5):
-                yield response[: i + (len(response) // 5)]
-            print(response)
-
-        text_splitter = CharacterTextSplitter(separator="\n\n", chunk_size=int(input_chunk_size),
-                                              chunk_overlap=int(intput_chunk_overlap))
+        # 文本切分
+        text_splitter = CharacterTextSplitter(
+            separator="\n\n",
+            chunk_size=int(input_chunk_size),
+            chunk_overlap=int(intput_chunk_overlap)
+        )
 
         texts = text_splitter.split_documents(documents)
-        print(texts)
-        response = str(texts)
-        for i in range(0, len(response), len(response) // 5):
-            yield response[: i + (len(response) // 5)]
-        print("after split documents len= ", texts.__len__())
-        response = "切分之后档数据长度为：" + str(texts.__len__()) + " 数据开始写入词向量库....."
-        for i in range(0, len(response), int(3)):
-            yield response[: i + int(3)]
+        
+        response = f"文档切分完成，共生成 {len(texts)} 个文本块。开始创建向量库..."
         print(response)
+        for i in range(0, len(response), 3):
+            yield response[: i + 3]
 
-        # Collection does not exist, create it
-        self.docsearch_db = Chroma.from_documents(documents=texts, embedding=self.embeddings,
-                                                  collection_name=str(new_collection_name + "_" + current_time),
-                                                  persist_directory=self.persist_directory,
-                                                  Embedding_Model_select=self.Embedding_Model_select_global)
-
-        response = "知识库建立完毕！！"
-        for i in range(0, len(response), int(3)):
-            yield response[: i + int(3)]
-        print(response)
+        try:
+            self.docsearch_db = Chroma.from_documents(
+                documents=texts,
+                embedding=self.embeddings,
+                collection_name=f"{new_collection_name}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
+                persist_directory=self.persist_directory
+            )
+            response = "知识库创建完成！"
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
+        except Exception as e:
+            response = f"创建向量库时发生错误：{str(e)}"
+            for i in range(0, len(response), 3):
+                yield response[: i + 3]
 
     def show_all_collections(self):
         # 显示所有集合前先更新集合列表
