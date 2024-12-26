@@ -121,21 +121,29 @@ class RainbowKnowledge_Agent:
             model_name=config.model_name,
             openai_api_base=config.api_base,
             openai_api_key=config.api_key,
-            temperature=0  # Calculator工具保持temperature=0
+            temperature=0
         )
         llm_math = LLMMathChain.from_llm(llm=base_llm)
+        
+        def calculator_with_validation(input_str: str) -> str:
+            """Calculator tool with input validation"""
+            # 检查输入是否包含数学表达式
+            if not any(char.isdigit() or char in "+-*/^()" for char in input_str):
+                return "请提供有效的数学表达式进行计算。例如：'2 + 2'或'15 * 3'"
+            try:
+                return llm_math.run(input_str)
+            except Exception as e:
+                return f"计算错误：{str(e)}。请确保输入正确的数学表达式。"
+
         self.math_tool = Tool(
             name="Calculator",
-            func=llm_math.run,
-            description="""
-                这是一个数学计算工具。当你需要:
-                1. 执行基础数学运算（加减乘除）
-                2. 处理复杂数学表达式
-                3. 解决数学问题
-                4. 进行数值计算
-                使用这个工具时，请提供清晰的数学表达式。
-                输入应该是一个数学问题，用自然语言描述。
-            """
+            func=calculator_with_validation,
+            description="""用于执行数学计算的工具。适用于:
+1. 基础数学运算 (加减乘除)
+2. 复杂数学表达式
+3. 数值计算
+使用时请直接提供数学表达式或计算问题。
+示例: '12 + 34' 或 '求解 15 的平方'"""
         )
 
     def get_llm(self):
