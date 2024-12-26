@@ -488,7 +488,8 @@ class RainbowStock_Analysis:
 
         return response
 
-    def create_stock_charts(self, stock_zh_a_hist_df, technical_indicators_df, prediction_direction="up", prediction_percentage=5):
+    def create_stock_charts(self, stock_zh_a_hist_df, technical_indicators_df, 
+                           prediction_direction="up", prediction_percentage=5, target_price=None):
         """
         创建股票走势和技术指标图表，根据AI预测结果显示走势
         
@@ -497,6 +498,7 @@ class RainbowStock_Analysis:
             technical_indicators_df: 技术指标DataFrame  
             prediction_direction: 预测方向 ("up" 或 "down")
             prediction_percentage: 预测涨跌幅度(%)
+            target_price: 目标价位
         """
         # 创建子图布局
         fig = make_subplots(
@@ -544,23 +546,28 @@ class RainbowStock_Analysis:
         last_close = stock_zh_a_hist_df['收盘'].iloc[-1]
         
         # 生成未来一周的日期
-        future_dates = pd.date_range(start=last_date, periods=8, freq='D')[1:]  # 7天预测
+        future_dates = pd.date_range(start=last_date, periods=8, freq='D')[1:]
         
-        # 根据预测方向计算预测价格
-        if prediction_direction.lower() == "up":
-            # 上涨预测 - 使用预测的涨幅生成渐进式上涨曲线
-            prediction_multiplier = 1 + (prediction_percentage / 100)
-            predicted_prices = [last_close * (1 + (i * (prediction_multiplier - 1) / 7)) 
-                              for i in range(1, 8)]
-            prediction_color = '#FF4136'  # 红色的十六进制代码
-            prediction_name = f'上涨预测 (+{prediction_percentage}%)'
+        # 根据目标价位或预测涨跌幅计算预测价格
+        if target_price:
+            # 使用目标价位生成渐进式曲线
+            price_diff = target_price - last_close
+            predicted_prices = [last_close + (price_diff * (i/7)) for i in range(1, 8)]
         else:
-            # 下跌预测 - 使用预测的跌幅生成渐进式下跌曲线
-            prediction_multiplier = 1 - (prediction_percentage / 100)
-            predicted_prices = [last_close * (1 - (i * (1 - prediction_multiplier) / 7)) 
-                              for i in range(1, 8)]
-            prediction_color = '#2ECC40'  # 绿色的十六进制代码
-            prediction_name = f'下跌预测 (-{prediction_percentage}%)'
+            # 使用预测涨跌幅生成渐进式曲线
+            if prediction_direction.lower() == "up":
+                prediction_multiplier = 1 + (prediction_percentage / 100)
+                predicted_prices = [last_close * (1 + (i * (prediction_multiplier - 1) / 7)) 
+                                  for i in range(1, 8)]
+            else:
+                prediction_multiplier = 1 - (prediction_percentage / 100)
+                predicted_prices = [last_close * (1 - (i * (1 - prediction_multiplier) / 7)) 
+                                  for i in range(1, 8)]
+        
+        # 设置预测线的颜色和名称
+        prediction_color = '#FF4136' if prediction_direction.lower() == "up" else '#2ECC40'
+        prediction_name = (f'上涨预测 (+{prediction_percentage:.1f}%)' if prediction_direction.lower() == "up" 
+                          else f'下跌预测 (-{prediction_percentage:.1f}%)')
         
         # 添加预测线
         fig.add_trace(
@@ -847,18 +854,39 @@ class RainbowStock_Analysis:
                 analysis_result = self.get_stock_data(market, symbol, stock_name, 
                                                     start_date, end_date, concept, http_proxy)
                 
-                # 从分析结果中提取预测方向和幅度
-                prediction_direction = "up"  # 默认值
-                prediction_percentage = 5    # 默认值
+                # 使用更详细的正则表达式来提取预测信息
+                prediction_info = {
+                    'direction': 'up',  # 默认值
+                    'percentage': 5,    # 默认值
+                    'target_price': None,
+                    'current_price': None
+                }
                 
-                # 使用正则表达式从分析结果中提取预测信息
+                # 提取预测方向
                 direction_match = re.search(r'预测方向[：:]\s*(上涨|下跌)', analysis_result)
-                percentage_match = re.search(r'预计涨跌幅[：:]\s*([-+]?\d+\.?\d*)%', analysis_result)
-                
                 if direction_match:
-                    prediction_direction = "up" if direction_match.group(1) == "上涨" else "down"
+                    prediction_info['direction'] = "up" if direction_match.group(1) == "上涨" else "down"
+                
+                # 提取预计涨跌幅
+                percentage_match = re.search(r'预计涨跌幅[：:]\s*([-+]?\d+\.?\d*)%(?:\s*[~-]\s*([-+]?\d+\.?\d*)%)?', analysis_result)
                 if percentage_match:
-                    prediction_percentage = abs(float(percentage_match.group(1)))
+                    # 如果是范围，取中间值
+                    if percentage_match.group(2):
+                        min_pct = float(percentage_match.group(1))
+                        max_pct = float(percentage_match.group(2))
+                        prediction_info['percentage'] = (min_pct + max_pct) / 2
+                    else:
+                        prediction_info['percentage'] = abs(float(percentage_match.group(1)))
+                
+                # 提取目标价位
+                target_price_match = re.search(r'目标价位[：:]\s*(\d+\.?\d*)[~-]?(\d+\.?\d*)?', analysis_result)
+                if target_price_match:
+                    if target_price_match.group(2):  # 如果是价格范围
+                        min_price = float(target_price_match.group(1))
+                        max_price = float(target_price_match.group(2))
+                        prediction_info['target_price'] = (min_price + max_price) / 2
+                    else:
+                        prediction_info['target_price'] = float(target_price_match.group(1))
                 
                 # 获取股票数据
                 stock_data = ak.stock_zh_a_hist(symbol=symbol, period="daily", 
@@ -866,12 +894,22 @@ class RainbowStock_Analysis:
                                                adjust="")
                 technical_data = self.calculate_technical_indicators(stock_data)
                 
-                # 创建图表，传入预测方向和幅度
+                # 获取当前价格
+                prediction_info['current_price'] = stock_data['收盘'].iloc[-1]
+                
+                # 如果有目标价位，使用它来计算实际的预期涨跌幅
+                if prediction_info['target_price']:
+                    actual_percentage = ((prediction_info['target_price'] - prediction_info['current_price']) 
+                                       / prediction_info['current_price'] * 100)
+                    prediction_info['percentage'] = abs(actual_percentage)
+                
+                # 创建图表，传入完整的预测信息
                 chart = self.create_stock_charts(
                     stock_data, 
                     technical_data,
-                    prediction_direction=prediction_direction,
-                    prediction_percentage=prediction_percentage
+                    prediction_direction=prediction_info['direction'],
+                    prediction_percentage=prediction_info['percentage'],
+                    target_price=prediction_info.get('target_price')
                 )
                 
                 return chart, analysis_result

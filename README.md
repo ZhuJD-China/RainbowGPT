@@ -163,7 +163,7 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 ![SQL_Agent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/ui_total3.png)
 
 📊 **StockGPT Analysis**
-![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock2.png)
+![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock3.png)
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ZhuJD-China/RainbowGPT&type=Timeline)](https://star-history.com/#ZhuJD-China/RainbowGPT&Timeline)
 
