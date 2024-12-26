@@ -146,6 +146,26 @@ class RainbowKnowledge_Agent:
 示例: '12 + 34' 或 '求解 15 的平方'"""
         )
 
+        # 在初始化 math_tool 之后添加 wolfram_tool 的初始化
+        try:
+            wolfram = WolframAlphaAPIWrapper(
+                wolfram_alpha_appid=os.getenv('WOLFRAM_ALPHA_APPID')
+            )
+            self.wolfram_tool = Tool(
+                name="Wolfram Alpha",
+                func=wolfram.run,
+                description="""用于解决数学、科学和工程计算的强大工具。适用于:
+1. 复杂数学计算和方程求解
+2. 科学数据查询和分析
+3. 单位换算和物理计算
+4. 统计和数据分析
+使用时请用清晰的英文描述问题。
+示例: 'solve x^2 + 2x + 1 = 0' 或 'distance from Earth to Mars'"""
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize Wolfram Alpha tool: {str(e)}")
+            self.wolfram_tool = None
+
     def get_llm(self):
         """获取当前配置的LLM实例"""
         config = self.model_manager.get_active_config()
@@ -511,7 +531,13 @@ class RainbowKnowledge_Agent:
         flag_get_Local_Search_tool = False
         # Check for additional tools and append them if not already in the list
         for tg in tool_checkbox_group:
-            if tg == "Google Search" and self.Google_Search_tool not in self.tools:
+            if tg == "wolfram-alpha" and self.wolfram_tool is not None:
+                response = "Wolfram Alpha 工具加入 回答中..........."
+                for i in range(0, len(response), int(print_speed_step)):
+                    yield response[:i + int(print_speed_step)]
+                self.tools.append(self.wolfram_tool)
+                
+            elif tg == "Google Search" and self.Google_Search_tool not in self.tools:
                 response = "Google Search 工具加入 回答中..........."
                 for i in range(0, len(response), int(print_speed_step)):
                     yield response[:i + int(print_speed_step)]
