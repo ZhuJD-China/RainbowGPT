@@ -89,8 +89,9 @@ Before using the application, follow these steps to configure API-related inform
         streaming=False,
      )
      ```
-   ✨ I have already integrated it. Please fill in the corresponding apibase and apikey in UI.
+     ✨ I have already integrated it. Please fill in the corresponding apibase and apikey in UI.
      
+
 Now your environment is set up, and the API is configured. You are ready to run the application!
 Feel free to let me know if you have any specific preferences or additional details you'd like to include!
 
@@ -159,10 +160,10 @@ By leveraging the diverse strengths of different algorithms, EnsembleRetriever a
 ![WebScraping](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/create_img.png)
 
 ⚡ **SQL_Agent UI**
-![SQL_Agent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/ui_total2.png)
+![SQL_Agent](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/ui_total3.png)
 
 📊 **StockGPT Analysis**
-![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock1.png)
+![StockGPT](https://github.com/ZhuJD-China/RainbowGPT/blob/master/imgs/stock2.png)
 
 [![Star History Chart](https://api.star-history.com/svg?repos=ZhuJD-China/RainbowGPT&type=Timeline)](https://star-history.com/#ZhuJD-China/RainbowGPT&Timeline)
 
