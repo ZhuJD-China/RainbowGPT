@@ -946,6 +946,51 @@ Final Answer: 完整答案
                 error_msg = f"Agent执行过程中发生错误：{str(e)}"
                 logger.error(error_msg)
                 yield error_msg
+        elif llm_Agent_checkbox_group == "Simple Chat":
+            try:
+                # 使用模型配置管理器获取LLM
+                self.llm = self.get_llm()
+                
+                # 创建一个简单的提示模板，确保正确处理上下文
+                simple_prompt = ChatPromptTemplate.from_messages([
+                    ("system", """你是一个友好的AI助手。请：
+1. 直接回答用户问题
+2. 保持回答简洁明了
+3. 如果不确定，诚实承认
+4. 使用礼貌友好的语气
+5. 只回答当前问题，不要重复之前的回答"""),
+                    MessagesPlaceholder(variable_name="chat_history"),
+                    ("user", "{input}")  # 将用户输入移到最后，确保是最新的问题
+                ])
+                
+                # 创建简单的对话链
+                chat_chain = simple_prompt | self.llm
+                
+                # 获取聊天历史并格式化
+                chat_history = self.memory.load_memory_variables({})["chat_history"]
+                
+                # 执行对话
+                response = ""
+                for chunk in chat_chain.stream({
+                    "input": message,
+                    "chat_history": chat_history[-4:] if chat_history else []  # 只保留最近的2轮对话
+                }):
+                    response += chunk.content
+                    yield response
+                
+                # 更新记忆前清除旧的上下文
+                if len(chat_history) > 4:  # 如果历史记录超过2轮对话
+                    self.memory.clear()  # 清除所有历史
+                    # 只保存最近的一轮对话
+                    self.memory.save_context({"input": message}, {"output": response})
+                else:
+                    # 正常保存上下文
+                    self.memory.save_context({"input": message}, {"output": response})
+                
+            except Exception as e:
+                error_msg = f"Simple Chat模式执行过程中发生错误：{str(e)}"
+                logger.error(error_msg)
+                yield error_msg
 
     def update_collection_name(self):
         # 获取已存在的collection的名称列表
@@ -1028,7 +1073,7 @@ Final Answer: 完整答案
                     with gr.Row():
                         with gr.Group():
                             gr.Markdown("### Agent Settings")
-                            llm_Agent = ["openai-functions", "ZeroShotAgent-memory"]
+                            llm_Agent = ["Simple Chat", "openai-functions", "ZeroShotAgent-memory"]
                             llm_Agent_checkbox_group = gr.Dropdown(
                                 llm_Agent, 
                                 label="LLM Agent Type Options",
