@@ -9,22 +9,32 @@ from RainbowModel_Manager import RainbowModelManager
 
 seafoam = Seafoam()
 
-# 创建模型管理器界面
+# 创建各个界面实例
 RainbowModel_Manager = RainbowModelManager().launch()
-RainbowKnowledge_Agent = RainbowKnowledge_Agent.RainbowKnowledge_Agent().launch()
-RainbowSQL_Agent = RainbowSQL_Agent.RainbowSQLAgent().launch()
-RainbowStock_Analysis = RainbowStock_Analysis.RainbowStock_Analysis().launch()
+RainbowKnowledge_Agent_UI = RainbowKnowledge_Agent.RainbowKnowledge_Agent().launch()
+RainbowSQL_Agent_UI = RainbowSQL_Agent.RainbowSQLAgent().launch()
+RainbowStock_Analysis_UI = RainbowStock_Analysis.RainbowStock_Analysis().launch()
 ChromaDBGradioUI = RainbowChromadb_Option.ChromaDBGradioUI().launch()
-CSVToMySQLUploader = CSVToMySQLUploader().launch()
+CSVToMySQLUploader_UI = CSVToMySQLUploader().launch()
 
+# 创建知识库相关的标签页组
+knowledge_tabs = gr.TabbedInterface(
+    [RainbowKnowledge_Agent_UI, ChromaDBGradioUI],
+    ["Knowledge Agent", "ChromaDB Options"]
+)
+
+# 创建SQL相关的标签页组
+sql_tabs = gr.TabbedInterface(
+    [RainbowSQL_Agent_UI, CSVToMySQLUploader_UI],
+    ["SQL Agent", "CSV to MySQL Uploader"]
+)
+
+# 创建主界面
 RainbowGPT_TabbedInterface = gr.TabbedInterface(
-    [RainbowModel_Manager, RainbowKnowledge_Agent, ChromaDBGradioUI,
-     RainbowSQL_Agent, CSVToMySQLUploader,
-     RainbowStock_Analysis],
-    ["Model-Config", "Rainbow-Knowledge-Agent", "Knowledge-ChromaDB-Option",
-     "Rainbow-SQL-Agent", "CSV-2-MySQL-Uploader",
-     "Rainbow-Stock-Analysis"]
-    , theme=seafoam)
+    [RainbowModel_Manager, knowledge_tabs, sql_tabs, RainbowStock_Analysis_UI],
+    ["Model Config", "Knowledge Agent", "SQL Agent", "Stock Analysis"],
+    theme=seafoam
+)
 
 if __name__ == "__main__":
     RainbowGPT_TabbedInterface.queue().launch(share=True)
