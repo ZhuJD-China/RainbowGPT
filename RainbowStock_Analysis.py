@@ -452,7 +452,7 @@ class RainbowStock_Analysis:
         
         user_message = (
             f"{finally_prompt}\n"
-            f"请基于以上收集到的实时的真实数据，发挥你的A股分析专业知识，对未来3天该股票的价格走势做出明确的涨跌预测。\n"
+            f"请基于以上收集到的实时的真实数据，发挥你的A股分析专业知识，对未来一周该股票的价格走势做出明确的涨跌预测。\n"
             f"在预测中请全面考虑主营业务、基本数据、所在行业数据、所在概念板块数据、历史行情、最近新闻以及资金流动等多方面因素。\n"
             f"你必须给出明确的涨跌预测，只能预测涨或跌其中一个方向！\n\n"
             f"以下是具体问题，请详尽回答：\n\n"
@@ -488,8 +488,16 @@ class RainbowStock_Analysis:
 
         return response
 
-    def create_stock_charts(self, stock_zh_a_hist_df, technical_indicators_df):
-        """创建简化版股票走势和技术指标图表，只显示单向预测"""
+    def create_stock_charts(self, stock_zh_a_hist_df, technical_indicators_df, prediction_direction="up", prediction_percentage=5):
+        """
+        创建股票走势和技术指标图表，根据AI预测结果显示走势
+        
+        Args:
+            stock_zh_a_hist_df: 历史数据DataFrame
+            technical_indicators_df: 技术指标DataFrame  
+            prediction_direction: 预测方向 ("up" 或 "down")
+            prediction_percentage: 预测涨跌幅度(%)
+        """
         # 创建子图布局
         fig = make_subplots(
             rows=4, cols=1,
@@ -531,24 +539,79 @@ class RainbowStock_Analysis:
             row=1, col=1
         )
 
-        # 添加单向预测线（默认上涨趋势，实际使用时可根据AI预测结果动态调整）
+        # 修改预测线部分
         last_date = stock_zh_a_hist_df['日期'].iloc[-1]
         last_close = stock_zh_a_hist_df['收盘'].iloc[-1]
-        future_dates = pd.date_range(start=last_date, periods=4, freq='D')[1:]
         
-        # 预测线（使用虚线样式）
+        # 生成未来一周的日期
+        future_dates = pd.date_range(start=last_date, periods=8, freq='D')[1:]  # 7天预测
+        
+        # 根据预测方向计算预测价格
+        if prediction_direction.lower() == "up":
+            # 上涨预测 - 使用预测的涨幅生成渐进式上涨曲线
+            prediction_multiplier = 1 + (prediction_percentage / 100)
+            predicted_prices = [last_close * (1 + (i * (prediction_multiplier - 1) / 7)) 
+                              for i in range(1, 8)]
+            prediction_color = '#FF4136'  # 红色的十六进制代码
+            prediction_name = f'上涨预测 (+{prediction_percentage}%)'
+        else:
+            # 下跌预测 - 使用预测的跌幅生成渐进式下跌曲线
+            prediction_multiplier = 1 - (prediction_percentage / 100)
+            predicted_prices = [last_close * (1 - (i * (1 - prediction_multiplier) / 7)) 
+                              for i in range(1, 8)]
+            prediction_color = '#2ECC40'  # 绿色的十六进制代码
+            prediction_name = f'下跌预测 (-{prediction_percentage}%)'
+        
+        # 添加预测线
         fig.add_trace(
             go.Scatter(
                 x=future_dates,
-                y=[last_close, last_close*1.03, last_close*1.05, last_close*1.07],  # 假设上涨趋势
-                name='预测趋势',
-                line=dict(color='orange', dash='dash'),
+                y=predicted_prices,
+                name=prediction_name,
+                line=dict(
+                    color=prediction_color, 
+                    dash='dash',
+                    width=2
+                ),
                 mode='lines',
                 showlegend=True,
                 legendgroup='prediction',
-                legendgrouptitle_text='预测信息',
-                legendgrouptitle_font=dict(size=10),  # 设置图例组标题字体大小
-                legendrank=1  # 确保预测线显示在图例的最上方
+                legendgrouptitle_text='AI预测结果',
+                legendgrouptitle_font=dict(size=10)
+            ),
+            row=1, col=1
+        )
+        
+        # 添加预测区间
+        confidence_upper = [price * 1.02 for price in predicted_prices]  # 上限+2%
+        confidence_lower = [price * 0.98 for price in predicted_prices]  # 下限-2%
+        
+        # 计算填充颜色的RGBA值
+        rgb_color = px.colors.hex_to_rgb(prediction_color)
+        fill_color = f'rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.2)'
+        
+        fig.add_trace(
+            go.Scatter(
+                x=future_dates,
+                y=confidence_upper,
+                name='预测区间',
+                line=dict(width=0),
+                showlegend=False,
+                legendgroup='prediction'
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=future_dates,
+                y=confidence_lower,
+                name='预测区间',
+                fill='tonexty',
+                fillcolor=fill_color,  # 使用计算好的RGBA颜色
+                line=dict(width=0),
+                showlegend=False,
+                legendgroup='prediction'
             ),
             row=1, col=1
         )
@@ -784,12 +847,32 @@ class RainbowStock_Analysis:
                 analysis_result = self.get_stock_data(market, symbol, stock_name, 
                                                     start_date, end_date, concept, http_proxy)
                 
-                # 创建图表
+                # 从分析结果中提取预测方向和幅度
+                prediction_direction = "up"  # 默认值
+                prediction_percentage = 5    # 默认值
+                
+                # 使用正则表达式从分析结果中提取预测信息
+                direction_match = re.search(r'预测方向[：:]\s*(上涨|下跌)', analysis_result)
+                percentage_match = re.search(r'预计涨跌幅[：:]\s*([-+]?\d+\.?\d*)%', analysis_result)
+                
+                if direction_match:
+                    prediction_direction = "up" if direction_match.group(1) == "上涨" else "down"
+                if percentage_match:
+                    prediction_percentage = abs(float(percentage_match.group(1)))
+                
+                # 获取股票数据
                 stock_data = ak.stock_zh_a_hist(symbol=symbol, period="daily", 
                                                start_date=start_date, end_date=end_date,
                                                adjust="")
                 technical_data = self.calculate_technical_indicators(stock_data)
-                chart = self.create_stock_charts(stock_data, technical_data)
+                
+                # 创建图表，传入预测方向和幅度
+                chart = self.create_stock_charts(
+                    stock_data, 
+                    technical_data,
+                    prediction_direction=prediction_direction,
+                    prediction_percentage=prediction_percentage
+                )
                 
                 return chart, analysis_result
             
