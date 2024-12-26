@@ -125,25 +125,139 @@ class RainbowKnowledge_Agent:
         )
         llm_math = LLMMathChain.from_llm(llm=base_llm)
         
-        def calculator_with_validation(input_str: str) -> str:
-            """Calculator tool with input validation"""
-            # 检查输入是否包含数学表达式
-            if not any(char.isdigit() or char in "+-*/^()" for char in input_str):
-                return "请提供有效的数学表达式进行计算。例如：'2 + 2'或'15 * 3'"
-            try:
-                return llm_math.run(input_str)
-            except Exception as e:
-                return f"计算错误：{str(e)}。请确保输入正确的数学表达式。"
+        def get_rainbow_agent_help(input_str: str) -> str:
+            """提供 RainbowKnowledge_Agent 的使用说明和帮助"""
+            help_text = """
+            🌈 RainbowKnowledge_Agent 使用指南
+
+            1. 基本功能
+               - 智能对话：支持自然语言交互
+               - 多工具集成：Google搜索、本地知识库、Wolfram Alpha等
+               - 知识库管理：支持多个知识库切换和查询
+               - AI绘图：支持图片生成功能
+
+            2. 主要工具说明
+               - Google Search：实时网络搜索
+               - Local Knowledge Search：本地知识库查询
+               - Wolfram Alpha：数学和科学计算
+               - Arxiv：学术论文搜索
+               - Create Image：AI图片生成
+
+            3. 使用技巧
+               - 清晰表达问题需求
+               - 合理选择工具组合
+               - 灵活运用追问和澄清
+               - 注意保持对话上下文
+
+            4. 最佳实践
+               - 复杂问题建议分步提问
+               - 需要时可请求详细解释
+               - 善用知识库功能
+               - 适时切换Agent模式
+
+            输入"help [工具名]"获取特定工具的详细说明
+            例如：help Google Search、help Local Knowledge Search
+            """
+            
+            # 处理特定工具的帮助请求
+            if input_str.lower().startswith('help '):
+                tool_name = input_str.lower().replace('help ', '').strip()
+                tool_helps = {
+                    'rainbowagent_help': """
+                    🌟 RainbowAgent_Help 工具使用说明
+                    
+                    1. 基本用法
+                       - 直接输入 "help" 获取总体使用指南
+                       - 使用 "help [工具名]" 获取特定工具说明
+                       - 例如: "help google search" 或 "help local knowledge search"
+                    
+                    2. 支持的工具说明查询
+                       - Google Search
+                       - Local Knowledge Search
+                       - Wolfram Alpha
+                       - Arxiv
+                       - Create Image
+                    
+                    3. 帮助内容包括
+                       - 工具功能介绍
+                       - 适用场景说明
+                       - 具体使用技巧
+                       - 最佳实践建议
+                    
+                    4. 使用建议
+                       - 优先查看总体指南了解系统功能
+                       - 根据需求查询具体工具说明
+                       - 遇到问题时查看相关工具的使用技巧
+                    """,
+                    'google search': """
+                    🔍 Google Search 工具使用说明
+                    - 功能：实时联网搜索最新信息
+                    - 适用场景：查询实时资讯、获取网络信息
+                    - 使用技巧：
+                      1. 使用精确关键词
+                      2. 可指定时间范围
+                      3. 支持多语言搜索
+                    """,
+                    'local knowledge search': """
+                    📚 Local Knowledge Search 工具使用说明
+                    - 功能：搜索本地知识库内容
+                    - 适用场景：专业领域查询、文档内容检索
+                    - 使用技巧：
+                      1. 选择合适的知识库
+                      2. 使用准确的关键词
+                      3. 可进行上下文关联搜索
+                    """,
+                    'wolfram alpha': """
+                    🧮 Wolfram Alpha 工具使用说明
+                    - 功能：数学计算与科学分析
+                    - 适用场景：
+                      1. 复杂数学计算
+                      2. 科学数据查询
+                      3. 工程计算问题
+                    - 使用技巧：
+                      1. 使用清晰的英文表达
+                      2. 提供完整的计算条件
+                      3. 适合处理定量分析
+                    """,
+                    'arxiv': """
+                    📖 Arxiv 工具使用说明
+                    - 功能：学术论文搜索和获取
+                    - 适用场景：
+                      1. 研究论文查询
+                      2. 学术动态跟踪
+                      3. 专业知识获取
+                    - 使用技巧：
+                      1. 使用准确的学术关键词
+                      2. 可按领域筛选
+                      3. 关注最新发表时间
+                    """,
+                    'create image': """
+                    🎨 Create Image 工具使用说明
+                    - 功能：AI图片生成
+                    - 适用场景：
+                      1. 创意图片生成
+                      2. 视觉内容创作
+                      3. 图片风格转换
+                    - 使用技巧：
+                      1. 提供详细的图片描述
+                      2. 指定具体的风格要求
+                      3. 可以参考样例图片
+                    """
+                }
+                return tool_helps.get(tool_name, "未找到该工具的具体说明，请检查工具名称是否正确。\n可用的工具名称：rainbowagent_help, google search, local knowledge search, wolfram alpha, arxiv, create image")
+            
+            return help_text
 
         self.math_tool = Tool(
-            name="Calculator",
-            func=calculator_with_validation,
-            description="""用于执行数学计算的工具。适用于:
-1. 基础数学运算 (加减乘除)
-2. 复杂数学表达式
-3. 数值计算
-使用时请直接提供数学表达式或计算问题。
-示例: '12 + 34' 或 '求解 15 的平方'"""
+            name="RainbowAgent_Help",
+            func=get_rainbow_agent_help,
+            description="""RainbowKnowledge_Agent 帮助工具，可用于：
+1. 获取系统整体使用说明
+2. 查询特定工具的详细说明
+3. 了解使用技巧和最佳实践
+使用方式：
+- 直接询问使用说明
+- 输入"help [工具名]"获取特定工具说明"""
         )
 
         # 在初始化 math_tool 之后添加 wolfram_tool 的初始化
@@ -969,71 +1083,7 @@ Final Answer: 完整答案
                 with gr.Group(elem_classes="help-panel"):
                     gr.Markdown("""
                         ### 🌈 RainbowGPT-Agent 使用指南
-
-                        #### 🚀 快速开始
-                        1. **选择Agent模式**
-                           - 在左侧Agent Settings中选择运行模式
-                           - 建议新手先使用openai-functions模式
-                        
-                        2. **配置知识库**
-                           - 在Knowledge Collection Settings中选择已有知识库
-                           - 如无知识库显示，点击"Refresh Collection"刷新
-                        
-                        3. **选择所需工具**
-                           - 在Additional Tools中勾选需要使用的工具
-                           - 可以根据问题类型组合使用多个工具
-                        
-                        4. **开始对话**
-                           - 在对话框输入问题并发送
-                           - 等待AI助手回应
-                        
-                        #### 💡 功能详解
-
-                        **1. Agent运行模式** 🤖
-                        - **openai-functions模式**
-                          - 响应速度快，适合一般对话
-                          - 直接给出答案
-                        - **ZeroShotAgent-memory模式**
-                          - 展示详细思考过程
-                          - 适合复杂问题分析
-                          - 可以看到工具使用过程
-                        
-                        **2. 知识库功能** 📚
-                        - **选择知识库**
-                          - 从下拉菜单选择已导入的知识库
-                          - 确保选择正确的知识库集合
-                        - **刷新按钮**
-                          - 用于更新知识库列表
-                          - 添加新知识库后需刷新
-                          - **打印速度**
-                          - 调整文本显示速度
-                          - 数值越大，显示越快
-                        
-                        **3. 工具集成** 🛠️
-                        - **Google搜索**
-                          - 实时联网搜索信息
-                          - 适合查询最新资讯
-                        - **本地知识库**
-                          - 搜索已导入的专业资料
-                          - 适合领域专业问题
-                        - **Wolfram Alpha**
-                          - 数学计算和科学分析
-                          - 支持复杂数学问题
-                        - **Arxiv论文**
-                          - 学术论文搜索
-                          - 获取研究前沿信息
-                        - **AI绘图**
-                          - 创建和生成图片
-                          - 支持多种图片风格
-                        
-                        **4. Embedding配置** ⚙️
-                        - **模型选择**
-                          - OpenAI Embedding: 更准确但需API
-                          - HuggingFace Embedding: 本地运行，免费使用
-                        - **Token限制**
-                          - 控制单次处理文本量
-                          - 建议保持默认值2048
-                        
+                                
                         #### 🎯 使用技巧
                         
                         **1. 提问技巧**
