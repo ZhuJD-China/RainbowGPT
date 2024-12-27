@@ -9,7 +9,7 @@
 
 ## RainbowAgent Integration Summary:
 
-😜 **[2024-12-02]RainbowStock_Analysis support gpt-4o-mini, gpt-4o，qwen2.5**
+😜 **[2024-12-27]RainbowStock_Analysis support gpt-4o-mini, gpt-4o，qwen2.5, vllm**
 
 🌈 **[2023-12-15]Dalle3 Artistic Image Generation Unveiled 🎨**
 
@@ -30,7 +30,12 @@ Experience simplicity, insight, and creativity with RainbowGPT's powerful featur
 <p align="center">
 ✨ <a href="https://github.com/openai/openai-cookbook" >Navigate at [cookbook.openai.com]</a> •  <br>
 🦜️🔗 <a href="https://github.com/langchain-ai/langchain" > LangChain ⚡ Building applications with LLMs through composability ⚡</a>  •  <br>
-🤗 <a href="https://huggingface.co/Qwen">Qwen HF</a>&nbsp&nbsp | &nbsp&nbsp🤖 <a href="https://modelscope.cn/organization/qwen">Qwen ModelScope</a>&nbsp&nbsp | &nbsp&nbsp 📑 <a href="https://arxiv.org/abs/2309.16609">Qwen Paper</a> &nbsp&nbsp ｜ &nbsp&nbsp🖥️ <a href="https://modelscope.cn/studios/qwen/Qwen-72B-Chat-Demo/summary">Qwen Demo</a>•  <br>
+<h3 align="center">
+Easy, fast, and cheap LLM serving for everyone
+</h3>
+<p align="center">
+| <a href="https://docs.vllm.ai"><b>Documentation</b></a> | <a href="https://vllm.ai"><b>Blog</b></a> | <a href="https://arxiv.org/abs/2309.06180"><b>Paper</b></a> | <a href="https://discord.gg/jz7wjKhh6g"><b>Discord</b></a> | <a href="https://x.com/vllm_project"><b>Twitter/X</b></a> | <a href="https://slack.vllm.ai"><b>Developer Slack</b></a> |
+</p>
 </p>
 <p align="center">
 
