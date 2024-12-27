@@ -73,6 +73,7 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
     - tuple: Tuple containing two lists, the first with the links and the second with the merged titles and snippets.
     """
     print("google_custom_search......")
+    print("query:", query) 
 
     # Automatically detect and set system proxy
     proxies = get_windows_proxy()
@@ -106,6 +107,7 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
         merged_content = title + ' ' + snippet
         data_without_link.append(merged_content)
 
+    print("google_custom_search.....done")
     return link_data, data_without_link
 
 
@@ -120,6 +122,7 @@ def knowledge_graph_search(query, api_key):
     Returns:
     - list: Results of the Knowledge Graph Search API.
     """
+    print("knowledge_graph_search......")
     service_url = 'https://kgsearch.googleapis.com/v1/entities:search'
     params = {
         'query': query,
@@ -144,6 +147,7 @@ def extract_google_answer(driver, query):
     Returns:
     - str: The extracted information from the Google answer box.
     """
+    print("extract_google_answer......")
     try:
         formatted_query = query.replace(' ', '+')
         driver.get(f'http://www.google.com/search?q={formatted_query}')
@@ -214,6 +218,7 @@ def get_website_content(url):
     - str: The main content of the website, or None if the request fails.
     """
     print("get_website_content.....")
+    print("url:", url)
 
     # Get system proxy settings
     proxies = get_windows_proxy()
@@ -227,6 +232,7 @@ def get_website_content(url):
             text_content = soup.get_text(separator=' ')
             cleaned_context = text_content.replace('\n', ' ').strip()
 
+            print("get_website_content.....done")
             return cleaned_context
         else:
             print(f"Failed to retrieve content. Status code: {response.status_code}")
