@@ -12,6 +12,9 @@ from selenium.webdriver.chrome.service import Service
 from dotenv import load_dotenv
 import os
 import requests
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 load_dotenv()
 
@@ -21,32 +24,36 @@ GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID')
 
 
 def get_windows_proxy():
-    proxy_settings = {"http": None, "https": None}
     try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                            r"Software\Microsoft\Windows\CurrentVersion\Internet Settings") as key:
-            proxy_enable = winreg.QueryValueEx(key, "ProxyEnable")[0]
-            proxy_server = winreg.QueryValueEx(key, "ProxyServer")[0]
-
-            if proxy_enable:
-                # 处理可能的多个代理设置
-                if ';' in proxy_server:
-                    for proxy in proxy_server.split(';'):
-                        if proxy.startswith("http="):
-                            proxy_settings["http"] = proxy.split('=')[1]
-                        elif proxy.startswith("https="):
-                            proxy_settings["https"] = proxy.split('=')[1]
-                else:
-                    proxy_settings["http"] = proxy_settings["https"] = proxy_server
-
+        # 首先尝试检查代理是否可用
+        test_proxies = {
+            "http": "127.0.0.1:10809",
+            "https": "127.0.0.1:10809"
+        }
+        
+        print("Testing proxy connection...")
+        print(f"Current proxy settings: {test_proxies}")
+        
+        # 测试代理连接
+        test_response = requests.get(
+            "https://www.google.com", 
+            proxies=test_proxies, 
+            timeout=5, 
+            verify=False
+        )
+        print(f"Proxy test successful! Status code: {test_response.status_code}")
+        return test_proxies
+    except requests.exceptions.ProxyError as e:
+        print(f"Proxy error: {e}")
+        print("Proxy server is not responding. Please check if your proxy service is running.")
+        return None
+    except requests.exceptions.RequestException as e:
+        print(f"Connection error: {e}")
+        print("Failed to connect using proxy. Switching to direct connection.")
+        return None
     except Exception as e:
-        print(f"Error retrieving proxy settings: {e}")
-    proxies = {
-        "http": "127.0.0.1:10809",
-        "https": "127.0.0.1:10809"
-    }
-    return proxies
-    # return proxy_settings
+        print(f"Unexpected error while testing proxy: {e}")
+        return None
 
 
 def get_published_date(item):
@@ -209,62 +216,196 @@ def selenium_google_answer_box(query, chrome_driver_path):
 
 def get_website_content(url):
     """
-    Get the main content of a website using system proxy settings.
-
-    Parameters:
-    - url (str): The URL of the website.
-
-    Returns:
-    - str: The main content of the website, or None if the request fails.
+    使用多种爬虫技术获取网页内容
     """
-    print("get_website_content.....")
-    print("url:", url)
+    print("\nStarting website content retrieval...")
+    print(f"Target URL: {url}")
 
     # Get system proxy settings
     proxies = get_windows_proxy()
+    print(f"Using proxy settings: {proxies}")
+
+    # 增强的请求头
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'DNT': '1'
+    }
+
+    def extract_text_with_beautifulsoup(html_content):
+        """使用BeautifulSoup提取文本"""
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # 移除不需要的标签
+        for tag in soup(['script', 'style', 'meta', 'noscript', 'header', 'footer', 'nav']):
+            tag.decompose()
+        
+        # 优先提取主要内容区域
+        main_content = None
+        priority_tags = ['article', 'main', 'div[role="main"]', '.content', '#content', '.post', '.article']
+        
+        for selector in priority_tags:
+            main_content = soup.select_one(selector)
+            if main_content:
+                break
+        
+        if main_content:
+            # 提取主要内容区域的文本
+            text = main_content.get_text(separator=' ', strip=True)
+        else:
+            # 如果没找到主要内容区域，提取所有段落文本
+            paragraphs = []
+            for p in soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+                text = p.get_text(strip=True)
+                if len(text) > 20:  # 过滤掉太短的段落
+                    paragraphs.append(text)
+            text = ' '.join(paragraphs)
+        
+        return text
+
+    def extract_text_with_readability(html_content):
+        """使用readability-lxml提取文本"""
+        try:
+            from readability import Document
+            doc = Document(html_content)
+            return doc.summary()
+        except Exception as e:
+            print(f"Readability extraction failed: {e}")
+            return None
+
+    def clean_text(text):
+        """清理和规范化文本"""
+        import re
+        if not text:
+            return ""
+        
+        # 替换多个空白字符为单个空格
+        text = re.sub(r'\s+', ' ', text)
+        # 移除特殊字符
+        text = re.sub(r'[^\w\s.,!?;:()\'\"，。！？；：（）]', '', text)
+        # 移除重复的标点符号
+        text = re.sub(r'([.,!?;:。！？；：])\1+', r'\1', text)
+        return text.strip()
 
     try:
-        response = requests.get(url, proxies=proxies)
+        # 尝试使用代理获取内容
+        print("Attempting to fetch content with proxy...")
+        response = requests.get(
+            url,
+            proxies=proxies if proxies else None,
+            headers=headers,
+            verify=False,
+            timeout=10,
+            allow_redirects=True
+        )
+        
         if response.status_code == 200:
+            # 确保正确的编码
+            response.encoding = response.apparent_encoding
             html_content = response.text
-            soup = BeautifulSoup(html_content, 'html.parser')
-            # Extract text content from HTML
-            text_content = soup.get_text(separator=' ')
-            cleaned_context = text_content.replace('\n', ' ').strip()
-
-            print("get_website_content.....done")
-            return cleaned_context
-        else:
-            print(f"Failed to retrieve content. Status code: {response.status_code}")
+            
+            # 尝试多种提取方法
+            content = None
+            
+            # 1. 使用 BeautifulSoup 提取
+            content = extract_text_with_beautifulsoup(html_content)
+            
+            # 2. 如果BeautifulSoup提取的内容太少，尝试readability
+            if not content or len(content) < 100:
+                readability_content = extract_text_with_readability(html_content)
+                if readability_content and len(readability_content) > len(content or ""):
+                    content = readability_content
+            
+            # 清理和规范化文本
+            if content:
+                cleaned_content = clean_text(content)
+                if len(cleaned_content) > 50:  # 确保提取的内容有意义
+                    print("Content successfully retrieved and processed")
+                    return cleaned_content
+            
+            print("Failed to extract meaningful content")
             return None
-    except requests.RequestException as e:
+            
+    except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}")
+        # 尝试不使用代理
+        try:
+            print("Attempting to fetch without proxy...")
+            response = requests.get(
+                url,
+                headers=headers,
+                verify=False,
+                timeout=10,
+                allow_redirects=True
+            )
+            if response.status_code == 200:
+                response.encoding = response.apparent_encoding
+                html_content = response.text
+                content = extract_text_with_beautifulsoup(html_content)
+                if not content or len(content) < 100:
+                    content = extract_text_with_readability(html_content)
+                
+                if content:
+                    return clean_text(content)
+        except Exception as e:
+            print(f"Direct connection also failed: {e}")
+            return None
+            
+    except Exception as e:
+        print(f"Unexpected error: {e}")
         return None
+
+    return None
 
 
 print(get_windows_proxy())
 if __name__ == "__main__":
-    # print(get_windows_proxy())
+    # 测试代理连接
+    print("=== Testing Proxy Connection ===")
+    proxy_result = get_windows_proxy()
+    print(f"Final proxy settings: {proxy_result}")
+    print("==============================\n")
 
     google_search_results, google_search_results2 = google_custom_search("2023年12月7日新闻", GOOGLE_API_KEY,
                                                                          GOOGLE_CSE_ID)
-    # print(google_search_results.to_string(index_names=False))
-    print(google_search_results, google_search_results2)
-
+    print("Search URLs:", google_search_results)
+    
+    # 遍历所有URL直到获取到有效内容
+    content = None
     for link in google_search_results:
-        website_content = get_website_content(link)
-        if website_content:
-            print("Website Content:")
-            print(website_content)
-
-    # Google_Search = GoogleSearchAPIWrapper()
-    # data = Google_Search.run("2023年12月7日新闻")
-    # print(data)
-    #
-    # kg_search_results = knowledge_graph_search('Taylor Swift', GOOGLE_API_KEY)
-    # print("Knowledge Graph Search Results:", kg_search_results)
-    #
-    # selenium_results = selenium_google_answer_box("以太坊的价格",
-    #                                               "Stock_Agent/chromedriver-120.0.6099.56.0.exe")
-    # print("Selenium Google Search Results:", selenium_results)
-    #
+        print(f"\nTrying URL: {link}")
+        content = get_website_content(link)
+        if content and len(content.strip()) > 0:  # 检查内容是否为空
+            print("Successfully retrieved content from:", link)
+            print("Content length:", len(content))
+            print("Content preview:", content[:200] + "...")
+            break  # 找到有效内容后退出循环
+        else:
+            print(f"No valid content from {link}, trying next URL...")
+    
+    if not content:  # 如果所有URL都失败了
+        print("\nAll primary URLs failed. Trying backup URLs...")
+        # 尝试第二组搜索结果
+        for link in google_search_results2:
+            print(f"\nTrying backup URL: {link}")
+            content = get_website_content(link)
+            if content and len(content.strip()) > 0:
+                print("Successfully retrieved content from backup URL:", link)
+                print("Content length:", len(content))
+                print("Content preview:", content[:200] + "...")
+                break
+            else:
+                print(f"No valid content from backup URL {link}")
+    
+    if not content:
+        print("\nFailed to retrieve content from all URLs")
+    else:
+        print("\nFinal content successfully retrieved")

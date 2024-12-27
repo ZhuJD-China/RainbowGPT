@@ -436,15 +436,66 @@ class RainbowKnowledge_Agent:
         result_queue.put(("data_title_Summary_str", data_title_Summary_str))
 
     def process_custom_search_link(self, custom_search_link, result_queue):
+        """
+        并发处理搜索链接并获取网页内容
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import threading
+        
         link_detail_res = []
-        for link in custom_search_link[:1]:
-            website_content = get_google_result.get_website_content(link)
-            if website_content:
-                link_detail_res.append(website_content)
-
-        link_detail_string = '\n'.join(link_detail_res)
-        link_detail_string = filter_chinese_english_punctuation(link_detail_string)
-        result_queue.put(("link_detail_string", link_detail_string))
+        success_lock = threading.Lock()
+        success = False
+        
+        def fetch_url(index, link):
+            """处理单个URL的函数"""
+            nonlocal success
+            try:
+                print(f"\nAttempting URL {index + 1}: {link}")
+                website_content = get_google_result.get_website_content(link)
+                
+                if website_content and len(website_content.strip()) > 0:
+                    with success_lock:
+                        # 如果已经有成功的结果，就不再添加新内容
+                        if not success:
+                            print(f"Successfully retrieved content from URL {index + 1}")
+                            link_detail_res.append(website_content)
+                            success = True
+                            return True
+                else:
+                    print(f"No valid content from URL {index + 1}")
+                    return False
+                    
+            except Exception as e:
+                print(f"Error processing URL {index + 1}: {str(e)}")
+                return False
+        
+        print("\nTrying URLs in parallel...")
+        # 使用线程池并发处理前9个URL
+        with ThreadPoolExecutor(max_workers=9) as executor:
+            # 创建URL处理任务
+            future_to_url = {
+                executor.submit(fetch_url, i, link): (i, link) 
+                for i, link in enumerate(custom_search_link[:9])
+            }
+            
+            # 等待任务完成
+            for future in as_completed(future_to_url):
+                idx, url = future_to_url[future]
+                try:
+                    if future.result():
+                        # 如果有成功的结果，可以提前结束其他任务
+                        executor._threads.clear()
+                        break
+                except Exception as e:
+                    print(f"Unexpected error processing URL {idx + 1}: {str(e)}")
+        
+        # 如果所有URL都失败了，返回空结果
+        if not success:
+            print("\nFailed to retrieve content from all attempted URLs")
+            link_detail_res = ["无法获取有效内容，请尝试其他搜索关键词或稍后重试。"]
+        
+        # 将结果放入队列
+        result_queue.put(("link_detail_string", '\n'.join(link_detail_res)))
 
     def custom_search_and_fetch_content(self, question, result_queue):
         try:
@@ -535,7 +586,7 @@ class RainbowKnowledge_Agent:
             搜索结果相似度TOP10的网站标题和摘要数据：
             {data_title_Summary_str}
 
-            搜索结果相似度TOP1的网站的详细内容数据:
+            搜索结果相似度TOP1-9的网站的详细内容数据:
             {link_detail_string}
 
             """
