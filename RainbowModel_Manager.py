@@ -146,11 +146,11 @@ class RainbowModelManager:
                         
                         temperature = gr.Slider(
                             minimum=0,
-                            maximum=2,
+                            maximum=1,
                             value=0,
                             step=0.1,
                             label="Temperature",
-                            info="控制输出的随机性 (0-2)"
+                            info="控制输出的随机性 (0-1)"
                         )
                 
                 with gr.Column(scale=1):
