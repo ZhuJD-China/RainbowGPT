@@ -437,30 +437,33 @@ class RainbowKnowledge_Agent:
 
     def process_custom_search_link(self, custom_search_link, result_queue):
         """
-        并发处理搜索链接并获取网页内容
+        并发处理搜索链接并获取网页内容，保留所有有效结果
         """
         from concurrent.futures import ThreadPoolExecutor, as_completed
         import threading
         
-        link_detail_res = []
-        success_lock = threading.Lock()
-        success = False
+        # 使用字典存储结果，确保按顺序保存
+        link_detail_res = {}
+        results_lock = threading.Lock()
         
         def fetch_url(index, link):
             """处理单个URL的函数"""
-            nonlocal success
             try:
                 print(f"\nAttempting URL {index + 1}: {link}")
                 website_content = get_google_result.get_website_content(link)
                 
                 if website_content and len(website_content.strip()) > 0:
-                    with success_lock:
-                        # 如果已经有成功的结果，就不再添加新内容
-                        if not success:
-                            print(f"Successfully retrieved content from URL {index + 1}")
-                            link_detail_res.append(website_content)
-                            success = True
-                            return True
+                    with results_lock:
+                        print(f"Successfully retrieved content from URL {index + 1}")
+                        # 添加来源标记并保存结果到字典中，使用索引作为键以保持顺序
+                        marked_content = (
+                            f"[来源 {index + 1}]\n"
+                            f"URL: {link}\n"
+                            f"内容: {website_content.strip()}\n"
+                            f"{'-' * 50}"  # 添加分隔线
+                        )
+                        link_detail_res[index] = marked_content
+                    return True
                 else:
                     print(f"No valid content from URL {index + 1}")
                     return False
@@ -478,24 +481,44 @@ class RainbowKnowledge_Agent:
                 for i, link in enumerate(custom_search_link[:9])
             }
             
-            # 等待任务完成
+            # 等待所有任务完成
             for future in as_completed(future_to_url):
                 idx, url = future_to_url[future]
                 try:
-                    if future.result():
-                        # 如果有成功的结果，可以提前结束其他任务
-                        executor._threads.clear()
-                        break
+                    success = future.result()
+                    if not success:
+                        print(f"Failed to process URL {idx + 1}")
                 except Exception as e:
                     print(f"Unexpected error processing URL {idx + 1}: {str(e)}")
         
-        # 如果所有URL都失败了，返回空结果
-        if not success:
+        # 如果没有获取到任何内容，返回提示信息
+        if not link_detail_res:
             print("\nFailed to retrieve content from all attempted URLs")
-            link_detail_res = ["无法获取有效内容，请尝试其他搜索关键词或稍后重试。"]
+            result_queue.put(("link_detail_string", "无法获取有效内容，请尝试其他搜索关键词或稍后重试。"))
+            return
         
-        # 将结果放入队列
-        result_queue.put(("link_detail_string", '\n'.join(link_detail_res)))
+        print(f"\nSuccessfully retrieved content from {len(link_detail_res)} URLs")
+        
+        # 按索引排序并合并结果
+        sorted_results = [
+            link_detail_res[i] 
+            for i in sorted(link_detail_res.keys())
+        ]
+        
+        # 使用双换行符分隔每个来源的内容
+        combined_results = '\n\n'.join(sorted_results)
+        
+        # 添加统计信息
+        summary = (
+            f"搜索结果统计:\n"
+            f"- 尝试访问URL数量: {len(custom_search_link[:9])}\n"
+            f"- 成功获取内容数量: {len(link_detail_res)}\n"
+            f"- 获取失败数量: {len(custom_search_link[:9]) - len(link_detail_res)}\n"
+            f"{'-' * 50}\n\n"
+        )
+        
+        final_results = summary + combined_results
+        result_queue.put(("link_detail_string", final_results))
 
     def custom_search_and_fetch_content(self, question, result_queue):
         try:
