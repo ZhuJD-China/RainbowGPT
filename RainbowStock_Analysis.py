@@ -179,7 +179,7 @@ class RainbowStock_Analysis:
                     error_file.write("\n\nDebug Information:\n")
                     error_file.write(f"Model Type: {config.model_name}\n")
                     error_file.write(f"API Key Length: {len(config.api_key)}\n")
-                    error_file.write(f"Message Length: {len(message)}\n")
+                    error_file.write(f"Message Length: {len(error_message)}\n")
                     if hasattr(e, '__dict__'):
                         error_file.write(f"Error attributes: {str(e.__dict__)}\n")
             except Exception as file_error:
