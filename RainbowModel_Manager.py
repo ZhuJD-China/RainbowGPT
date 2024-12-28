@@ -5,7 +5,7 @@ class RainbowModelManager:
     def __init__(self):
         self.model_manager = ModelConfigManager()
         # 预定义模型列表
-        self.gpt_models = ["gpt-4o", "gpt-4o-mini","Custom"]
+        self.gpt_models = ["gpt-4o", "gpt-4o-mini","Custom","qwen-long"]
         # Add Baichuan to private models
         self.private_models = ["Baichuan3-Turbo-128k", "Custom"]
         self.create_interface()
@@ -24,7 +24,10 @@ class RainbowModelManager:
                     api_base=api_base if api_base.strip() else "https://api.chatanywhere.tech",
                     temperature=temperature
                 )
-                self.model_manager.use_gpt_model()
+                if "qwen" in final_model_name:
+                    self.model_manager.use_qwen_model()
+                else:
+                    self.model_manager.use_gpt_model()
             else:
                 # 对于私有模型，检查是否是Baichuan模型
                 if final_model_name == "Baichuan3-Turbo-128k":
