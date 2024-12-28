@@ -1,0 +1,7 @@
+logs/
+*.pyc
+*.pem
+.env
+.gradio
+.sqlite3
+.chromadb/chroma.sqlite3

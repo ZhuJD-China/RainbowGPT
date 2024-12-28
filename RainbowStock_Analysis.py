@@ -27,6 +27,11 @@ from Rainbow_utils.baichuan_api import BaichuanAPI
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+from akshare.stock_feature.stock_hist_em import code_id_map_em
+from gradio_calendar import Calendar
+from datetime import timedelta
+from pathlib import Path
+
 
 
 class RainbowStock_Analysis:
@@ -58,7 +63,7 @@ class RainbowStock_Analysis:
             raise
 
     def openai_async_api_call(self, instruction="You are a helpful assistant.",
-                             message="", timestamp_str="", result=None, index=None, stock_name=None):
+                             data_message="", request_message="", timestamp_str="", result=None, index=None, stock_name=None, stock_basic_datafile=None):
         """
         使用全局配置的模型进行 API 调用
         """
@@ -77,11 +82,12 @@ class RainbowStock_Analysis:
                     baichuan_client = BaichuanAPI(api_key=config.api_key)
                     
                     # 合并instruction和message
-                    combined_message = f"{instruction}\n\n{message}" if instruction else message
+                    combined_message = f"{instruction}\n\n{data_message}" if instruction else data_message
                     
                     # 构建消息列表
                     messages = [
-                        {"role": "user", "content": combined_message}
+                        {"role": "user", "content": combined_message},
+                        {"role": "user", "content": request_message}
                     ]
                     
                     # 调用Baichuan API
@@ -96,7 +102,37 @@ class RainbowStock_Analysis:
                 except Exception as baichuan_error:
                     error_detail = f"Baichuan API Error: {str(baichuan_error)}"
                     raise Exception(error_detail)
+            # Handle Qwen model
+            elif config.model_name == "qwen-long":
+                try:
+                    # 创建 Qwen API客户端实例
+                    qianwen_client = OpenAI(
+                                        api_key=config.api_key,
+                                        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+                                    )
+                    # 上传文件
+                    file_object = qianwen_client.files.create(file=Path(stock_basic_datafile), purpose="file-extract")
+
+                    # 构建消息列表
+                    messages = [
+                        {"role": "system", "content": instruction},
+                        {'role': 'system', 'content': 'fileid://'+file_object.id},
+                        {"role": "user", "content": request_message},
+                    ]
+
+                    print(file_object.id)
+                    # 调用 Qwen API
+                    response = qianwen_client.chat.completions.create(
+                        model=config.model_name,
+                        messages=messages,
+                        temperature=config.temperature,
+                    )
                     
+                    gpt_response = response.choices[0].message.content
+                except Exception as qwen_error:
+                    error_detail = f"Qwen API Error: {str(qwen_error)}"
+                    gpt_response=error_detail
+            
             else:
                 # OpenAI API调用保持不变
                 client = OpenAI(
@@ -108,7 +144,8 @@ class RainbowStock_Analysis:
                     model=config.model_name,
                     messages=[
                         {"role": "system", "content": instruction},
-                        {"role": "user", "content": message}
+                        {"role": "user", "content": data_message},
+                        {"role": "user", "content": request_message}
                     ],
                     temperature=config.temperature
                 )
@@ -212,7 +249,7 @@ class RainbowStock_Analysis:
         # 检查是否有足够的数据来计算均线
         if len(stock_zh_a_hist_df) < ma_window:
             print("历史数据不足，无法计算均线。请提供更多的历史数据。")
-            return None
+            return pd.DataFrame()
 
         # 计算最小的均线
         column_name = f'MA_{ma_window}'
@@ -285,12 +322,13 @@ class RainbowStock_Analysis:
                                                )
         return prompt_filled
 
-    def format_date(self, input_date):
+    def format_date(self, input_date, source_format="%Y-%m-%d", target_format_str='%Y%m%d'):
         # 将输入日期字符串解析为 datetime 对象
-        date_object = datetime.strptime(input_date, "%Y%m%d")
+        date_object = datetime.strptime(input_date, source_format)
 
         # 将 datetime 对象格式化为指定的日期字符串
-        formatted_date = date_object.strftime("%Y年%m月%d日")
+        # formatted_date = date_object.strftime("%Y年%m月%d日")
+        formatted_date = date_object.strftime(target_format_str)
 
         return formatted_date
 
@@ -362,7 +400,7 @@ class RainbowStock_Analysis:
         # get_google_result.set_global_proxy(http_proxy)
 
         stock_zyjs_ths_df = ak.stock_zyjs_ths(symbol=symbol)
-        formatted_date = self.format_date(end_date)
+        formatted_date = self.format_date(end_date,source_format='%Y%m%d',target_format_str='%Y年%m月%d日')
         IN_Q = str(formatted_date) + "的有关" + stock_zyjs_ths_df['产品类型'].to_string(index=False) + "产品类型的新闻动态"
         IN_Q = stock_name
         print("IN_Q:",IN_Q)
@@ -444,14 +482,13 @@ class RainbowStock_Analysis:
         stock_financial_analysis_indicator_df = stock_financial_analysis_indicator_df.to_string(index=False)
 
         # 构建最终prompt
-        finally_prompt = self.process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hist_df,
+        data_message = self.process_prompt(stock_zyjs_ths_df, stock_individual_info_em_df, stock_zh_a_hist_df,
                                              stock_news_em_df,
                                              stock_individual_fund_flow_df, technical_indicators_df,
                                              stock_financial_analysis_indicator_df, single_industry_df,
                                              concept_info_df)
         
-        user_message = (
-            f"{finally_prompt}\n"
+        request_message = (
             f"请基于以上收集到的实时的真实数据，发挥你的A股分析专业知识，对未来一周该股票的价格走势做出明确的涨跌预测。\n"
             f"在预测中请全面考虑主营业务、基本数据、所在行业数据、所在概念板块数据、历史行情、最近新闻以及资金流动等多方面因素。\n"
             f"你必须给出明确的涨跌预测，只能预测涨或跌其中一个方向！\n\n"
@@ -475,15 +512,17 @@ class RainbowStock_Analysis:
         file_name = f"{stock_name}_{timestamp_str}.txt"
         file_name = "./logs/" + file_name
         with open(file_name, 'w', encoding='utf-8') as file:
-            file.write(user_message)
+            file.write(data_message)
         print(f"{stock_name}_已保存到文件: {file_name}")
 
         # 直接调用 OpenAI API
         response = self.openai_async_api_call(
             instruction=instruction,
-            message=user_message,
+            data_message=data_message,
+            request_message=request_message,
             timestamp_str=timestamp_str,
-            stock_name=stock_name
+            stock_name=stock_name,
+            stock_basic_datafile=file_name
         )
 
         return response
@@ -736,6 +775,24 @@ class RainbowStock_Analysis:
 
         return fig
 
+    # 根据股票代码的值， 来获取股票名字
+    def update_stock_name(self, symbol):
+
+        # 个股信息查询
+        try:
+            stock_individual_info_em_df = ak.stock_individual_info_em(symbol=symbol)
+        except Exception as e:
+            print("Error:", e)
+            return ["", ""]
+
+        code_id_dict = code_id_map_em() #"000002": 1 or 0  => 1 mean 上交所 0 mean 深交所
+        # 获取股票市场
+        market = "sh" if code_id_dict[symbol] == 1 else "sz"
+
+        # 提取股票简称
+        stock_name = stock_individual_info_em_df[stock_individual_info_em_df['item'] == '股票简称']['value'].values[0]
+        return [stock_name,market]
+
     def create_interface(self):
         """创建Gradio界面"""
         with gr.Blocks(theme=gr.themes.Soft()) as self.interface:
@@ -780,26 +837,32 @@ class RainbowStock_Analysis:
                                 info="6位数字代码"
                             )
                         
-                        stock_name = gr.Textbox(
-                            label="股票名称",
-                            placeholder="例如：四川长虹",
-                            value="四川长虹",
-                            info="请输入完整股票名称"
-                        )
-                    
+                            stock_name = gr.Textbox(
+                                label="股票名称",
+                                placeholder="例如：四川长虹",
+                                value="四川长虹",
+                                info="请输入完整股票名称"
+                            )
+                            # 调用update_collection_name函数，并将Select existed Collection的Dropdown组件作为输出
+                            symbol.change(fn=self.update_stock_name, inputs=symbol,
+                                                            outputs=[stock_name,
+                                                                    market,
+                                                                    ])
+
+
                     with gr.Group():
                         gr.Markdown("### 📅 时间范围")
                         with gr.Row():
-                            start_date = gr.Textbox(
-                                label="开始日期",
-                                placeholder="YYYYMMDD",
-                                value="20240905",
+                            start_date = Calendar(
+                                type="string",
+                                label="Start Date",
+                                value=(datetime.now() - timedelta(days=160)).strftime('%Y-%m-%d'),
                                 info="历史数据查询起始日期"
                             )
-                            end_date = gr.Textbox(
-                                label="结束日期",
-                                placeholder="YYYYMMDD",
-                                value="20241225",
+                            end_date = Calendar(
+                                type="string",
+                                label="End Date",
+                                value=(datetime.now()).strftime('%Y-%m-%d'),
                                 info="历史数据查询结束日期"
                             )
                     
@@ -850,6 +913,10 @@ class RainbowStock_Analysis:
 
             # 修改提按钮的处理函数
             def process_and_display(market, symbol, stock_name, start_date, end_date, concept, http_proxy):
+                # 格式化日期
+                start_date = self.format_date(start_date,"%Y-%m-%d", '%Y%m%d')
+                end_date = self.format_date(end_date,"%Y-%m-%d", '%Y%m%d')
+
                 # 获取分析结果
                 analysis_result = self.get_stock_data(market, symbol, stock_name, 
                                                     start_date, end_date, concept, http_proxy)
