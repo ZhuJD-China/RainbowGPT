@@ -33,6 +33,7 @@ class ModelConfigManager:
         load_dotenv()
         self.openai_api_key = os.getenv('OPENAI_API_KEY', '')
         self.baichuan_api_key = os.getenv('BAICHUAN_API_KEY', '')
+        self.qwen_api_key = os.getenv('DASHSCOPE_API_KEY', '')
         self.default_api_base = "https://api.chatanywhere.tech"
         
         # 默认配置
@@ -53,6 +54,13 @@ class ModelConfigManager:
             model_name="Baichuan3-Turbo-128k",
             api_base="",  # Baichuan doesn't need api_base
             api_key=self.baichuan_api_key
+        )
+        
+        # Add Qwen config
+        self.qwen_config = ModelConfig(
+            model_name="qwen-long",
+            api_base="",
+            api_key=self.qwen_api_key
         )
         
         self.active_config = self.gpt_config
@@ -105,4 +113,8 @@ class ModelConfigManager:
     
     def use_baichuan_model(self):
         """Switch to Baichuan model"""
-        self.active_config = self.baichuan_config 
+        self.active_config = self.baichuan_config
+    
+    def use_qwen_model(self):
+        """Switch to Qwen model"""
+        self.active_config = self.qwen_config
