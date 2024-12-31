@@ -392,7 +392,7 @@ class RainbowStock_Analysis:
         return None
 
     def get_stock_data(self, market, symbol, stock_name,
-                       start_date, end_date, concept, http_proxy):
+                       start_date, end_date, conceptList, http_proxy):
         """获取股票数据并进行分析"""
         instruction = "你作为A股分析家,请详细分析市场趋势、行业前景，揭示潜在投资机会,请确保提供充分的数据支持和专业见解。"
 
@@ -447,9 +447,11 @@ class RainbowStock_Analysis:
         single_industry_df = single_industry_df.to_string(index=False)
 
         # 获取概念板块的数据情况
-        concept_info_df = get_concept_data.stock_board_concept_info_ths(symbol=concept,
+        concept_info_message=""
+        for concept in conceptList.split(","):
+            concept_info_df = get_concept_data.stock_board_concept_info_ths(symbol=concept,
                                                                         stock_board_ths_map_df=self.concept_name)
-        concept_info_df = concept_info_df.to_string(index=False)
+            concept_info_message = concept_info_message + "\n=====" + concept + ':\n' + concept_info_df.to_string(index=False)
 
         # 个股历史数据查询
         stock_zh_a_hist_df = ak.stock_zh_a_hist(symbol=symbol, period="daily", start_date=start_date, end_date=end_date,
@@ -486,7 +488,7 @@ class RainbowStock_Analysis:
                                              stock_news_em_df,
                                              stock_individual_fund_flow_df, technical_indicators_df,
                                              stock_financial_analysis_indicator_df, single_industry_df,
-                                             concept_info_df)
+                                             concept_info_message)
         
         request_message = (
             f"请基于以上收集到的实时的真实数据，发挥你的A股分析专业知识，对未来一周该股票的价格走势做出明确的涨跌预测。\n"
@@ -776,14 +778,16 @@ class RainbowStock_Analysis:
         return fig
 
     # 根据股票代码的值， 来获取股票名字
-    def update_stock_name(self, symbol):
+    def update_stock_name(self, symbol, concept):
 
         # 个股信息查询
         try:
             stock_individual_info_em_df = ak.stock_individual_info_em(symbol=symbol)
+            concept_name = pd.read_csv('./Rainbow_utils/concept_name.csv')
         except Exception as e:
             print("Error:", e)
-            return ["", ""]
+            return ["", "", ""]
+
 
         code_id_dict = code_id_map_em() #"000002": 1 or 0  => 1 mean 上交所 0 mean 深交所
         # 获取股票市场
@@ -791,7 +795,13 @@ class RainbowStock_Analysis:
 
         # 提取股票简称
         stock_name = stock_individual_info_em_df[stock_individual_info_em_df['item'] == '股票简称']['value'].values[0]
-        return [stock_name,market]
+
+        # 返回股票概念
+        conceptList = [concept.strip() for concept in get_concept_data.get_concept_by_stock(symbol) if concept in concept_name["概念名称"].values]
+        new_concept = ','.join(conceptList)
+
+        concept = new_concept if new_concept else concept
+        return [stock_name,market, concept]
 
     def create_interface(self):
         """创建Gradio界面"""
@@ -843,11 +853,7 @@ class RainbowStock_Analysis:
                                 value="四川长虹",
                                 info="请输入完整股票名称"
                             )
-                            # 调用update_collection_name函数，并将Select existed Collection的Dropdown组件作为输出
-                            symbol.change(fn=self.update_stock_name, inputs=symbol,
-                                                            outputs=[stock_name,
-                                                                    market,
-                                                                    ])
+
 
 
                     with gr.Group():
@@ -874,7 +880,13 @@ class RainbowStock_Analysis:
                             value="机器人概念",
                             info="股票所属的主要概念板块"
                         )
-                    
+
+                    # 调用update_collection_name函数，并将Select existed Collection的Dropdown组件作为输出
+                    symbol.change(fn=self.update_stock_name, inputs=[symbol,concept],
+                                                    outputs=[stock_name,
+                                                            market,
+                                                            concept
+                                                            ])                    
                     # 提交按钮
                     submit_button = gr.Button(
                         "📊 开始分析",

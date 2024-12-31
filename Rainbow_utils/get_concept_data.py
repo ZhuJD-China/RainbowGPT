@@ -228,6 +228,9 @@ def stock_board_concept_info_ths(symbol: str = "阿里巴巴概念", stock_board
     :return: 板块简介
     :rtype: pandas.DataFrame
     """
+    if symbol not in stock_board_ths_map_df["概念名称"].values:
+        print(f"WARNING - Symbol '{symbol}' not found in the concept csv file.")
+        return pd.DataFrame()
     symbol_code = (
         stock_board_ths_map_df[stock_board_ths_map_df["概念名称"] == symbol]["网址"]
         .values[0]
@@ -398,8 +401,30 @@ def stock_board_cons_ths(symbol: str = "301558") -> pd.DataFrame:
     big_df["代码"] = big_df["代码"].astype(str).str.zfill(6)
     return big_df
 
+def get_concept_by_stock(symbol: str = "301558") -> pd.DataFrame:
+
+    js_code = py_mini_racer.MiniRacer()
+    js_content = _get_file_content_ths("ths.js")
+    js_code.eval(js_content)
+    v_code = js_code.call("v")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36",
+        "Cookie": f"v={v_code}",
+    }
+    url = f"https://stockpage.10jqka.com.cn/{symbol}"
+    r = requests.get(url, headers=headers)
+    soup = BeautifulSoup(r.text, "lxml")
+
+    try:
+        company_details=soup.find("dl", attrs={"class": "company_details"})
+        conceptList=company_details.find("dd", attrs={'title': True}).get('title').split('，')
+        return conceptList
+    except Exception as e:
+        return []
+
 
 if __name__ == "__main__":
+    print(get_concept_by_stock(symbol="002312"))
     stock_board_concept_graph_ths_df = stock_board_concept_graph_ths(symbol="通用航空")
     print(stock_board_concept_graph_ths_df)
 
