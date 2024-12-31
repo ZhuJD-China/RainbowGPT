@@ -457,16 +457,11 @@ class RainbowKnowledge_Agent:
         """处理搜索链接并获取网页内容"""
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
-        import threading
-        
-        # 使用字典存储结果，确保按顺序保存
-        link_detail_res = {}
-        results_lock = threading.Lock()
         
         async def process_urls():
             """异步处理所有URL"""
             tasks = []
-            for idx, link in enumerate(custom_search_link[:9]):  # 限制处理前9个链接
+            for link in custom_search_link[:9]:  # 限制处理前9个链接
                 if self.use_async_crawler:
                     tasks.append(self.get_website_content_async(link))
                 else:
@@ -479,7 +474,7 @@ class RainbowKnowledge_Agent:
                 # 等待所有任务完成
                 if self.use_async_crawler:
                     results = await asyncio.gather(*tasks, return_exceptions=True)
-                    print("异步爬虫结果：", results)
+                    # print("异步爬虫结果：", results)
                     # 保存到本地文件 utf-8  
                     with open('async_crawler_results.txt', 'w', encoding='utf-8') as file:
                         for result in results:
@@ -487,66 +482,22 @@ class RainbowKnowledge_Agent:
                 else:
                     # 等待所有同步任务完成
                     results = [task.result() if hasattr(task, 'result') else task for task in tasks]
-                    print("同步爬虫结果：", results)
+                    # print("同步爬虫结果：", results)
                     # 保存到本地文件 utf-8  
                     with open('sync_crawler_results.txt', 'w', encoding='utf-8') as file:
                         for result in results:
                             file.write(str(result) + '\n')  
                 
-                # 处理结果
-                for idx, content in enumerate(results):
-                    try:
-                        # 跳过异常结果
-                        if isinstance(content, Exception):
-                            logger.warning(f"Error processing URL {idx + 1}: {str(content)}")
-                            continue
-                        
-                        # 确保内容是字符串且非空
-                        if content and isinstance(content, str) and len(content.strip()) > 0:
-                            with results_lock:
-                                marked_content = (
-                                    f"\n[来源 {idx + 1}]\n"
-                                    f"URL: {custom_search_link[idx]}\n"
-                                    f"内容: {content.strip()}\n"
-                                    f"{'-' * 50}\n"
-                                )
-                                link_detail_res[idx] = marked_content
-                                logger.debug(f"Successfully processed URL {idx + 1}")
-                        else:
-                            logger.warning(f"Empty or invalid content from URL {idx + 1}")
-                    except Exception as e:
-                        logger.error(f"Error processing result {idx + 1}: {str(e)}")
-                        continue
+                # 直接将结果放入队列
+                result_queue.put(("link_detail_string", str(results)))
                 
             except Exception as e:
                 logger.error(f"Error in process_urls: {str(e)}")
-                raise
+                result_queue.put(("link_detail_string", f"爬取内容时发生错误: {str(e)}"))
 
         try:
             # 运行异步任务
             asyncio.run(process_urls())
-            
-            # 如果没有获取到任何内容
-            if not link_detail_res:
-                logger.warning("No valid content retrieved from any URL")
-                result_queue.put(("link_detail_string", "无法获取有效内容，请尝试其他搜索关键词或稍后重试。"))
-                return
-            
-            # 按索引排序并合并结果
-            sorted_results = [link_detail_res[i] for i in sorted(link_detail_res.keys())]
-            combined_results = '\n\n'.join(sorted_results)
-            
-            # 添加统计信息
-            summary = (
-                f"搜索结果统计:\n"
-                f"- 尝试访问URL数量: {len(custom_search_link[:9])}\n"
-                f"- 成功获取内容数量: {len(link_detail_res)}\n"
-                f"- 获取失败数量: {len(custom_search_link[:9]) - len(link_detail_res)}\n"
-                f"{'-' * 50}\n\n"
-            )
-            
-            final_results = summary + combined_results
-            result_queue.put(("link_detail_string", final_results))
             
         except Exception as e:
             error_msg = f"处理URL时发生错误: {str(e)}"
@@ -1215,7 +1166,7 @@ Final Answer: 完整答案
                         Embedding_Model_select = gr.Radio(["Openai Embedding", "HuggingFace Embedding"],
                                                           label="Embedding Model Select",
                                                           value="HuggingFace Embedding")
-                        local_data_embedding_token_max = gr.Slider(1024, 15360, step=2,
+                        local_data_embedding_token_max = gr.Slider(2048, 130048, step=2,
                                                                    label="Embeddings Data Max Tokens",
                                                                    value=2048)
 
