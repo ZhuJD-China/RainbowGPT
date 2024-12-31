@@ -686,17 +686,24 @@ class RainbowKnowledge_Agent:
             )
             self.tools.append(arxiv_tool)
 
-        self.Google_Search_tool = Tool(
-            name="Google_Search",
-            func=self.Google_Search_run,
-            description="""
-                这是一个如果本地知识库无答案或问题需要网络搜索的Google搜索工具。
+        google_search_description = (
+            """
+                这是一个问题需要网络搜索的Google搜索工具。
                 1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索,可以选择英语或者中文搜索
                 2.同时增加一些搜索提示词包括(引号，时间，关键字)
                 3.如果问题比较复杂，你可以一步一步的思考去搜索和回答
                 4.确保每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
+                5.请注意时效性，如果问题中需要实效性，确保依据下面的当前时间加入到搜索关键字中来获取最新信息。
             """
+            + f"\n当前时间: {self.time_formatter()}"
         )
+        
+        self.Google_Search_tool = Tool(
+            name="Google_Search",
+            func=self.Google_Search_run,
+            description=google_search_description
+        )
+
         self.Local_Search_tool = Tool(
             name="Local_Search",
             func=self.ask_local_vector_db,
