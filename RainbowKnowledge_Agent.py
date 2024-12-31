@@ -282,8 +282,9 @@ class RainbowKnowledge_Agent:
             logger.error(f"Failed to initialize Wolfram Alpha tool: {str(e)}")
             self.wolfram_tool = None
 
-        # Add this line to control which crawler to use
-        self.use_async_crawler = False  # 默认使用原有爬虫方法
+        # 添加爬虫模式控制
+        self.use_async_crawler = False  # 默认使用同步爬虫
+        self.crawler_mode = "同步爬虫"  # 用于UI显示
 
     def get_llm(self):
         """获取当前配置的LLM实例"""
@@ -443,104 +444,114 @@ class RainbowKnowledge_Agent:
     async def get_website_content_async(self, url):
         """Async function to get website content using AsyncWebCrawler"""
         try:
-            async with AsyncWebCrawler(verbose=True) as crawler:
+            async with AsyncWebCrawler(verbose=True, timeout=30) as crawler:  # 添加超时设置
                 result = await crawler.arun(url=url)
-                return result.markdown_v2.raw_markdown
+                if result and result.markdown_v2 and result.markdown_v2.raw_markdown:
+                    return result.markdown_v2.raw_markdown
+                return None
         except Exception as e:
-            print(f"Error fetching content with AsyncWebCrawler: {str(e)}")
+            logger.error(f"Error fetching content from {url}: {str(e)}")
             return None
 
     def process_custom_search_link(self, custom_search_link, result_queue):
-        """
-        并发处理搜索链接并获取网页内容，保留所有有效结果
-        """
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        """处理搜索链接并获取网页内容"""
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
         import threading
         
         # 使用字典存储结果，确保按顺序保存
         link_detail_res = {}
         results_lock = threading.Lock()
         
-        def fetch_url(index, link):
-            """处理单个URL的函数"""
-            try:
-                print(f"\nAttempting URL {index + 1}: {link}")
-                
-                # 根据配置选择爬取方法
-                if self.use_async_crawler:  # 需要在类初始化时添加此配置项
-                    # 使用asyncio运行异步爬虫
-                    content = asyncio.run(self.get_website_content_async(link))
+        async def process_urls():
+            """异步处理所有URL"""
+            tasks = []
+            for idx, link in enumerate(custom_search_link[:9]):  # 限制处理前9个链接
+                if self.use_async_crawler:
+                    tasks.append(self.get_website_content_async(link))
                 else:
-                    # 使用原有的爬取方法
-                    content = get_google_result.get_website_content(link)
-                
-                if content and len(content.strip()) > 0:
-                    with results_lock:
-                        print(f"Successfully retrieved content from URL {index + 1}")
-                        # 添加来源标记并保存结果到字典中，使用索引作为键以保持顺序
-                        marked_content = (
-                            f"[来源 {index + 1}]\n"
-                            f"URL: {link}\n"
-                            f"内容: {content.strip()}\n"
-                            f"{'-' * 50}"  # 添加分隔线
-                        )
-                        link_detail_res[index] = marked_content
-                    return True
-                else:
-                    print(f"No valid content from URL {index + 1}")
-                    return False
-                    
-            except Exception as e:
-                print(f"Error processing URL {index + 1}: {str(e)}")
-                return False
-        
-        print("\nTrying URLs in parallel...")
-        # 使用线程池并发处理前9个URL
-        with ThreadPoolExecutor(max_workers=9) as executor:
-            # 创建URL处理任务
-            future_to_url = {
-                executor.submit(fetch_url, i, link): (i, link) 
-                for i, link in enumerate(custom_search_link[:9])
-            }
+                    # 使用线程池处理同步爬取
+                    with ThreadPoolExecutor() as executor:
+                        future = executor.submit(get_google_result.get_website_content, link)
+                        tasks.append(future)
             
-            # 等待所有任务完成
-            for future in as_completed(future_to_url):
-                idx, url = future_to_url[future]
-                try:
-                    success = future.result()
-                    if not success:
-                        print(f"Failed to process URL {idx + 1}")
-                except Exception as e:
-                    print(f"Unexpected error processing URL {idx + 1}: {str(e)}")
-        
-        # 如果没有获取到任何内容，返回提示信息
-        if not link_detail_res:
-            print("\nFailed to retrieve content from all attempted URLs")
-            result_queue.put(("link_detail_string", "无法获取有效内容，请尝试其他搜索关键词或稍后重试。"))
-            return
-        
-        print(f"\nSuccessfully retrieved content from {len(link_detail_res)} URLs")
-        
-        # 按索引排序并合并结果
-        sorted_results = [
-            link_detail_res[i] 
-            for i in sorted(link_detail_res.keys())
-        ]
-        
-        # 使用双换行符分隔每个来源的内容
-        combined_results = '\n\n'.join(sorted_results)
-        
-        # 添加统计信息
-        summary = (
-            f"搜索结果统计:\n"
-            f"- 尝试访问URL数量: {len(custom_search_link[:9])}\n"
-            f"- 成功获取内容数量: {len(link_detail_res)}\n"
-            f"- 获取失败数量: {len(custom_search_link[:9]) - len(link_detail_res)}\n"
-            f"{'-' * 50}\n\n"
-        )
-        
-        final_results = summary + combined_results
-        result_queue.put(("link_detail_string", final_results))
+            try:
+                # 等待所有任务完成
+                if self.use_async_crawler:
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    print("异步爬虫结果：", results)
+                    # 保存到本地文件 utf-8  
+                    with open('async_crawler_results.txt', 'w', encoding='utf-8') as file:
+                        for result in results:
+                            file.write(str(result) + '\n')
+                else:
+                    # 等待所有同步任务完成
+                    results = [task.result() if hasattr(task, 'result') else task for task in tasks]
+                    print("同步爬虫结果：", results)
+                    # 保存到本地文件 utf-8  
+                    with open('sync_crawler_results.txt', 'w', encoding='utf-8') as file:
+                        for result in results:
+                            file.write(str(result) + '\n')  
+                
+                # 处理结果
+                for idx, content in enumerate(results):
+                    try:
+                        # 跳过异常结果
+                        if isinstance(content, Exception):
+                            logger.warning(f"Error processing URL {idx + 1}: {str(content)}")
+                            continue
+                        
+                        # 确保内容是字符串且非空
+                        if content and isinstance(content, str) and len(content.strip()) > 0:
+                            with results_lock:
+                                marked_content = (
+                                    f"\n[来源 {idx + 1}]\n"
+                                    f"URL: {custom_search_link[idx]}\n"
+                                    f"内容: {content.strip()}\n"
+                                    f"{'-' * 50}\n"
+                                )
+                                link_detail_res[idx] = marked_content
+                                logger.debug(f"Successfully processed URL {idx + 1}")
+                        else:
+                            logger.warning(f"Empty or invalid content from URL {idx + 1}")
+                    except Exception as e:
+                        logger.error(f"Error processing result {idx + 1}: {str(e)}")
+                        continue
+                
+            except Exception as e:
+                logger.error(f"Error in process_urls: {str(e)}")
+                raise
+
+        try:
+            # 运行异步任务
+            asyncio.run(process_urls())
+            
+            # 如果没有获取到任何内容
+            if not link_detail_res:
+                logger.warning("No valid content retrieved from any URL")
+                result_queue.put(("link_detail_string", "无法获取有效内容，请尝试其他搜索关键词或稍后重试。"))
+                return
+            
+            # 按索引排序并合并结果
+            sorted_results = [link_detail_res[i] for i in sorted(link_detail_res.keys())]
+            combined_results = '\n\n'.join(sorted_results)
+            
+            # 添加统计信息
+            summary = (
+                f"搜索结果统计:\n"
+                f"- 尝试访问URL数量: {len(custom_search_link[:9])}\n"
+                f"- 成功获取内容数量: {len(link_detail_res)}\n"
+                f"- 获取失败数量: {len(custom_search_link[:9]) - len(link_detail_res)}\n"
+                f"{'-' * 50}\n\n"
+            )
+            
+            final_results = summary + combined_results
+            result_queue.put(("link_detail_string", final_results))
+            
+        except Exception as e:
+            error_msg = f"处理URL时发生错误: {str(e)}"
+            logger.error(error_msg)
+            result_queue.put(("link_detail_string", error_msg))
 
     def custom_search_and_fetch_content(self, question, result_queue):
         try:
@@ -652,10 +663,13 @@ class RainbowKnowledge_Agent:
 
     def echo(self, message, history, collection_name_select, print_speed_step,
              tool_checkbox_group, Embedding_Model_select, local_data_embedding_token_max,
-             llm_Agent_checkbox_group):
+             llm_Agent_checkbox_group, crawler_mode):
         """
-        保留llm_Agent_checkbox_group参数
+        处理用户输入的主要方法
         """
+        # 更新爬虫模式
+        self.use_async_crawler = (crawler_mode == "异步爬虫")
+        
         # 重置搜索历史
         self.search_history = {
             "Google_Search": set(),
@@ -1204,13 +1218,40 @@ Final Answer: 完整答案
                         local_data_embedding_token_max = gr.Slider(1024, 15360, step=2,
                                                                    label="Embeddings Data Max Tokens",
                                                                    value=2048)
+
+                    with gr.Group():
+                        gr.Markdown("### Crawler Settings")
+                        crawler_mode = gr.Radio(
+                            choices=["同步爬虫", "异步爬虫"],
+                            label="爬虫模式选择",
+                            value="同步爬虫",
+                            info="同步爬虫更稳定，异步爬虫(crawl4ai)更快速"
+                        )
+                        
+                        def update_crawler_mode(mode):
+                            self.use_async_crawler = (mode == "异步爬虫")
+                            self.crawler_mode = mode
+                            return f"已切换到{mode}模式"
+                        
+                        crawler_mode.change(
+                            fn=update_crawler_mode,
+                            inputs=[crawler_mode],
+                            outputs=[gr.Textbox(label="状态", visible=False)]
+                        )
+
                 with gr.Column(scale=5):
                     # 中间聊天界面
                     chatbot = gr.ChatInterface(
                         self.echo,
-                        additional_inputs=[collection_name_select, print_speed_step,
-                                         tool_checkbox_group, Embedding_Model_select,
-                                         local_data_embedding_token_max, llm_Agent_checkbox_group],
+                        additional_inputs=[
+                            collection_name_select,
+                            print_speed_step,
+                            tool_checkbox_group,
+                            Embedding_Model_select,
+                            local_data_embedding_token_max,
+                            llm_Agent_checkbox_group,
+                            crawler_mode
+                        ],
                         title="RainbowGPT-Agent",
                         css=custom_css,
                         theme="soft",
@@ -1226,26 +1267,7 @@ Final Answer: 完整答案
                         ### 🌈 RainbowGPT-Agent 使用指南
                                 
                         #### 🎯 使用技巧
-                        
-                        **1. 提问技巧**
-                        - 问题要清晰具体
-                        - 复杂问题可以分步提问
-                        - 可以追问以获取更详细信息
-                        
-                        **2. 工具使用**
-                        - 可以同时选择多个工具
-                        - 系统会自动选择最适合的工具
-                        - 不同工具可以协同工作
-                        
-                        **3. 对话优化**
-                        - 保持对话上下文连贯
-                        - 可以参考之前的对话历史
-                        - 需要时可以请求澄清或补充
-                        
-                        **4. 性能优化**
-                        - 选择合适的Embedding模型
-                        - 适当调整Token限制
-                        - 根据需求选择Agent模式
+                        输入：help 即可调用帮助工具
                         
                         #### 📞 需要帮助？
                         - 遇到问题请联系：[zhujiadongvip@163.com](mailto:zhujiadongvip@163.com)
