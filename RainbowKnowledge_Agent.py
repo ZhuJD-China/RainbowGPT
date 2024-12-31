@@ -58,6 +58,8 @@ class RainbowKnowledge_Agent:
             "Arxiv": set(),
             "Create_Image": set()
         }
+        # 添加时间格式化工具
+        self.time_formatter = lambda: time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     def load_dotenv(self):
         load_dotenv()
@@ -309,12 +311,16 @@ class RainbowKnowledge_Agent:
         if self.check_search_history("Local_Search", question):
             return "⚠️ 检测到重复搜索。请尝试使用不同的关键词或其他工具来获取新信息。"
         
+        # 添加当前时间强调
+        current_time = self.time_formatter()
+        time_reminder = f"\n⏰ 当前查询时间: {current_time}\n请注意知识库内容的时效性。\n"
+        
         # 使用模型配置管理器获取LLM
         self.llm = self.get_llm()
         
         local_search_prompt = PromptTemplate(
-            input_variables=["combined_text", "human_input", "human_input_first"],
-            template=self.local_search_template,
+            input_variables=["combined_text", "human_input", "human_input_first", "current_time"],
+            template=self.local_search_template + "\n当前时间: {current_time}\n请特别关注知识库内容的时效性。",
         )
         
         local_chain = LLMChain(
@@ -408,9 +414,14 @@ class RainbowKnowledge_Agent:
         # 将清理过的匹配项组合合成一个字符串
         combined_text = " ".join(cleaned_matches)
 
-        answer = local_chain.predict(combined_text=combined_text, human_input=question,
-                                     human_input_first=self.human_input_global)
-        return answer
+        answer = local_chain.predict(
+            combined_text=combined_text, 
+            human_input=question,
+            human_input_first=self.human_input_global,
+            current_time=current_time
+        )
+        
+        return time_reminder + answer
 
     def createImageByBing(self, input):
         auth_cooker = os.getenv('BINGCOKKIE')
@@ -539,12 +550,17 @@ class RainbowKnowledge_Agent:
             
             logger.debug(f"Starting Google search for question: {question}")
             
+            # 添加当前时间强调
+            current_time = self.time_formatter()
+            time_reminder = f"\n⏰ 当前搜索时间: {current_time}\n请注意时效性，确保获取最新信息。\n"
+            
             # 使用模型配置管理器获取LLM
             self.llm = self.get_llm()
             
+            # 在模板中添加时间信息
             local_search_prompt = PromptTemplate(
-                input_variables=["combined_text", "human_input", "human_input_first"],
-                template=self.google_search_template,
+                input_variables=["combined_text", "human_input", "human_input_first", "current_time"],
+                template=self.google_search_template + "\n当前时间: {current_time}\n请特别注意信息的时效性。",
             )
             
             local_chain = LLMChain(
@@ -603,14 +619,18 @@ class RainbowKnowledge_Agent:
                                                            "cl100k_base",
                                                            step_size=256)
 
-            answer = local_chain.predict(combined_text=truncated_text, human_input=question,
-                                         human_input_first=self.human_input_global)
+            answer = local_chain.predict(
+                combined_text=truncated_text, 
+                human_input=question,
+                human_input_first=self.human_input_global,
+                current_time=current_time
+            )
 
-            return answer
+            return time_reminder + answer
 
         except Exception as e:
             logger.exception(f"Error in Google_Search_run: {str(e)}")
-            return f"搜索过程中生错误: {str(e)}。请检查网络连接或重试。"
+            return f"搜索过程中发生错误: {str(e)}。请检查网络连接或重试。"
 
     def echo(self, message, history, collection_name_select, print_speed_step,
              tool_checkbox_group, Embedding_Model_select, local_data_embedding_token_max,
