@@ -84,18 +84,19 @@ def google_custom_search(query, api_key=GOOGLE_API_KEY, custom_search_engine_id=
 
     # Automatically detect and set system proxy
     proxies = get_windows_proxy()
-    http_proxy = proxies.get('http')
-    https_proxy = proxies.get('https')
-
-    # Create an Http object with proxy support
-    proxy_info = httplib2.ProxyInfo(
-        httplib2.socks.PROXY_TYPE_HTTP,
-        http_proxy.split(':')[0],
-        int(http_proxy.split(':')[1]),
-        proxy_rdns=True
-    ) if http_proxy else None
-
-    http = httplib2.Http(proxy_info=proxy_info) if proxy_info else httplib2.Http()
+    
+    # Create an Http object with proxy support if proxies are available
+    http = httplib2.Http()
+    if proxies:
+        http_proxy = proxies.get('http')
+        if http_proxy:
+            proxy_info = httplib2.ProxyInfo(
+                httplib2.socks.PROXY_TYPE_HTTP,
+                http_proxy.split(':')[0],
+                int(http_proxy.split(':')[1]),
+                proxy_rdns=True
+            )
+            http = httplib2.Http(proxy_info=proxy_info)
 
     # Setup Google Custom Search API service
     service = build("customsearch", "v1", developerKey=api_key, http=http)

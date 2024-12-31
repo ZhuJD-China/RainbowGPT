@@ -31,6 +31,8 @@ from loguru import logger
 from langchain.chains import LLMMathChain
 from langchain.callbacks.base import BaseCallbackHandler
 from Rainbow_utils.model_config_manager import ModelConfigManager
+import asyncio
+from crawl4ai import AsyncWebCrawler, CacheMode
 
 # Rainbow_utils
 from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \
@@ -280,6 +282,9 @@ class RainbowKnowledge_Agent:
             logger.error(f"Failed to initialize Wolfram Alpha tool: {str(e)}")
             self.wolfram_tool = None
 
+        # Add this line to control which crawler to use
+        self.use_async_crawler = False  # 默认使用原有爬虫方法
+
     def get_llm(self):
         """获取当前配置的LLM实例"""
         config = self.model_manager.get_active_config()
@@ -435,6 +440,16 @@ class RainbowKnowledge_Agent:
         data_title_Summary_str = ''.join(data_title_Summary)
         result_queue.put(("data_title_Summary_str", data_title_Summary_str))
 
+    async def get_website_content_async(self, url):
+        """Async function to get website content using AsyncWebCrawler"""
+        try:
+            async with AsyncWebCrawler(verbose=True) as crawler:
+                result = await crawler.arun(url=url)
+                return result.markdown_v2.raw_markdown
+        except Exception as e:
+            print(f"Error fetching content with AsyncWebCrawler: {str(e)}")
+            return None
+
     def process_custom_search_link(self, custom_search_link, result_queue):
         """
         并发处理搜索链接并获取网页内容，保留所有有效结果
@@ -450,16 +465,23 @@ class RainbowKnowledge_Agent:
             """处理单个URL的函数"""
             try:
                 print(f"\nAttempting URL {index + 1}: {link}")
-                website_content = get_google_result.get_website_content(link)
                 
-                if website_content and len(website_content.strip()) > 0:
+                # 根据配置选择爬取方法
+                if self.use_async_crawler:  # 需要在类初始化时添加此配置项
+                    # 使用asyncio运行异步爬虫
+                    content = asyncio.run(self.get_website_content_async(link))
+                else:
+                    # 使用原有的爬取方法
+                    content = get_google_result.get_website_content(link)
+                
+                if content and len(content.strip()) > 0:
                     with results_lock:
                         print(f"Successfully retrieved content from URL {index + 1}")
                         # 添加来源标记并保存结果到字典中，使用索引作为键以保持顺序
                         marked_content = (
                             f"[来源 {index + 1}]\n"
                             f"URL: {link}\n"
-                            f"内容: {website_content.strip()}\n"
+                            f"内容: {content.strip()}\n"
                             f"{'-' * 50}"  # 添加分隔线
                         )
                         link_detail_res[index] = marked_content
