@@ -31,6 +31,8 @@ from loguru import logger
 from langchain.chains import LLMMathChain
 from langchain.callbacks.base import BaseCallbackHandler
 from Rainbow_utils.model_config_manager import ModelConfigManager
+import asyncio
+from crawl4ai import AsyncWebCrawler, CacheMode
 
 # Rainbow_utils
 from Rainbow_utils.get_tokens_cal_filter import filter_chinese_english_punctuation, num_tokens_from_string, \
@@ -56,6 +58,8 @@ class RainbowKnowledge_Agent:
             "Arxiv": set(),
             "Create_Image": set()
         }
+        # 添加时间格式化工具
+        self.time_formatter = lambda: time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     def load_dotenv(self):
         load_dotenv()
@@ -280,6 +284,10 @@ class RainbowKnowledge_Agent:
             logger.error(f"Failed to initialize Wolfram Alpha tool: {str(e)}")
             self.wolfram_tool = None
 
+        # 添加爬虫模式控制
+        self.use_async_crawler = False  # 默认使用同步爬虫
+        self.crawler_mode = "同步爬虫"  # 用于UI显示
+
     def get_llm(self):
         """获取当前配置的LLM实例"""
         config = self.model_manager.get_active_config()
@@ -303,12 +311,16 @@ class RainbowKnowledge_Agent:
         if self.check_search_history("Local_Search", question):
             return "⚠️ 检测到重复搜索。请尝试使用不同的关键词或其他工具来获取新信息。"
         
+        # 添加当前时间强调
+        current_time = self.time_formatter()
+        time_reminder = f"\n⏰ 当前查询时间: {current_time}\n请注意知识库内容的时效性。\n"
+        
         # 使用模型配置管理器获取LLM
         self.llm = self.get_llm()
         
         local_search_prompt = PromptTemplate(
-            input_variables=["combined_text", "human_input", "human_input_first"],
-            template=self.local_search_template,
+            input_variables=["combined_text", "human_input", "human_input_first", "current_time"],
+            template=self.local_search_template + "\n当前时间: {current_time}\n请特别关注知识库内容的时效性。",
         )
         
         local_chain = LLMChain(
@@ -402,9 +414,14 @@ class RainbowKnowledge_Agent:
         # 将清理过的匹配项组合合成一个字符串
         combined_text = " ".join(cleaned_matches)
 
-        answer = local_chain.predict(combined_text=combined_text, human_input=question,
-                                     human_input_first=self.human_input_global)
-        return answer
+        answer = local_chain.predict(
+            combined_text=combined_text, 
+            human_input=question,
+            human_input_first=self.human_input_global,
+            current_time=current_time
+        )
+        
+        return time_reminder + answer
 
     def createImageByBing(self, input):
         auth_cooker = os.getenv('BINGCOKKIE')
@@ -435,90 +452,68 @@ class RainbowKnowledge_Agent:
         data_title_Summary_str = ''.join(data_title_Summary)
         result_queue.put(("data_title_Summary_str", data_title_Summary_str))
 
+    async def get_website_content_async(self, url):
+        """Async function to get website content using AsyncWebCrawler"""
+        try:
+            async with AsyncWebCrawler(verbose=True, timeout=30) as crawler:  # 添加超时设置
+                result = await crawler.arun(url=url)
+                if result and result.markdown_v2 and result.markdown_v2.raw_markdown:
+                    return result.markdown_v2.raw_markdown
+                return None
+        except Exception as e:
+            logger.error(f"Error fetching content from {url}: {str(e)}")
+            return None
+
     def process_custom_search_link(self, custom_search_link, result_queue):
-        """
-        并发处理搜索链接并获取网页内容，保留所有有效结果
-        """
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        import threading
+        """处理搜索链接并获取网页内容"""
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
         
-        # 使用字典存储结果，确保按顺序保存
-        link_detail_res = {}
-        results_lock = threading.Lock()
-        
-        def fetch_url(index, link):
-            """处理单个URL的函数"""
-            try:
-                print(f"\nAttempting URL {index + 1}: {link}")
-                website_content = get_google_result.get_website_content(link)
-                
-                if website_content and len(website_content.strip()) > 0:
-                    with results_lock:
-                        print(f"Successfully retrieved content from URL {index + 1}")
-                        # 添加来源标记并保存结果到字典中，使用索引作为键以保持顺序
-                        marked_content = (
-                            f"[来源 {index + 1}]\n"
-                            f"URL: {link}\n"
-                            f"内容: {website_content.strip()}\n"
-                            f"{'-' * 50}"  # 添加分隔线
-                        )
-                        link_detail_res[index] = marked_content
-                    return True
+        async def process_urls():
+            """异步处理所有URL"""
+            tasks = []
+            for link in custom_search_link[:9]:  # 限制处理前9个链接
+                if self.use_async_crawler:
+                    tasks.append(self.get_website_content_async(link))
                 else:
-                    print(f"No valid content from URL {index + 1}")
-                    return False
-                    
-            except Exception as e:
-                print(f"Error processing URL {index + 1}: {str(e)}")
-                return False
-        
-        print("\nTrying URLs in parallel...")
-        # 使用线程池并发处理前9个URL
-        with ThreadPoolExecutor(max_workers=9) as executor:
-            # 创建URL处理任务
-            future_to_url = {
-                executor.submit(fetch_url, i, link): (i, link) 
-                for i, link in enumerate(custom_search_link[:9])
-            }
+                    # 使用线程池处理同步爬取
+                    with ThreadPoolExecutor() as executor:
+                        future = executor.submit(get_google_result.get_website_content, link)
+                        tasks.append(future)
             
-            # 等待所有任务完成
-            for future in as_completed(future_to_url):
-                idx, url = future_to_url[future]
-                try:
-                    success = future.result()
-                    if not success:
-                        print(f"Failed to process URL {idx + 1}")
-                except Exception as e:
-                    print(f"Unexpected error processing URL {idx + 1}: {str(e)}")
-        
-        # 如果没有获取到任何内容，返回提示信息
-        if not link_detail_res:
-            print("\nFailed to retrieve content from all attempted URLs")
-            result_queue.put(("link_detail_string", "无法获取有效内容，请尝试其他搜索关键词或稍后重试。"))
-            return
-        
-        print(f"\nSuccessfully retrieved content from {len(link_detail_res)} URLs")
-        
-        # 按索引排序并合并结果
-        sorted_results = [
-            link_detail_res[i] 
-            for i in sorted(link_detail_res.keys())
-        ]
-        
-        # 使用双换行符分隔每个来源的内容
-        combined_results = '\n\n'.join(sorted_results)
-        
-        # 添加统计信息
-        summary = (
-            f"搜索结果统计:\n"
-            f"- 尝试访问URL数量: {len(custom_search_link[:9])}\n"
-            f"- 成功获取内容数量: {len(link_detail_res)}\n"
-            f"- 获取失败数量: {len(custom_search_link[:9]) - len(link_detail_res)}\n"
-            f"{'-' * 50}\n\n"
-        )
-        
-        final_results = summary + combined_results
-        result_queue.put(("link_detail_string", final_results))
+            try:
+                # 等待所有任务完成
+                if self.use_async_crawler:
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    # print("异步爬虫结果：", results)
+                    # 保存到本地文件 utf-8  
+                    with open('async_crawler_results.txt', 'w', encoding='utf-8') as file:
+                        for result in results:
+                            file.write(str(result) + '\n')
+                else:
+                    # 等待所有同步任务完成
+                    results = [task.result() if hasattr(task, 'result') else task for task in tasks]
+                    # print("同步爬虫结果：", results)
+                    # 保存到本地文件 utf-8  
+                    with open('sync_crawler_results.txt', 'w', encoding='utf-8') as file:
+                        for result in results:
+                            file.write(str(result) + '\n')  
+                
+                # 直接将结果放入队列
+                result_queue.put(("link_detail_string", str(results)))
+                
+            except Exception as e:
+                logger.error(f"Error in process_urls: {str(e)}")
+                result_queue.put(("link_detail_string", f"爬取内容时发生错误: {str(e)}"))
+
+        try:
+            # 运行异步任务
+            asyncio.run(process_urls())
+            
+        except Exception as e:
+            error_msg = f"处理URL时发生错误: {str(e)}"
+            logger.error(error_msg)
+            result_queue.put(("link_detail_string", error_msg))
 
     def custom_search_and_fetch_content(self, question, result_queue):
         try:
@@ -555,12 +550,17 @@ class RainbowKnowledge_Agent:
             
             logger.debug(f"Starting Google search for question: {question}")
             
+            # 添加当前时间强调
+            current_time = self.time_formatter()
+            time_reminder = f"\n⏰ 当前搜索时间: {current_time}\n请注意时效性，确保获取最新信息。\n"
+            
             # 使用模型配置管理器获取LLM
             self.llm = self.get_llm()
             
+            # 在模板中添加时间信息
             local_search_prompt = PromptTemplate(
-                input_variables=["combined_text", "human_input", "human_input_first"],
-                template=self.google_search_template,
+                input_variables=["combined_text", "human_input", "human_input_first", "current_time"],
+                template=self.google_search_template + "\n当前时间: {current_time}\n请特别注意信息的时效性。",
             )
             
             local_chain = LLMChain(
@@ -619,21 +619,28 @@ class RainbowKnowledge_Agent:
                                                            "cl100k_base",
                                                            step_size=256)
 
-            answer = local_chain.predict(combined_text=truncated_text, human_input=question,
-                                         human_input_first=self.human_input_global)
+            answer = local_chain.predict(
+                combined_text=truncated_text, 
+                human_input=question,
+                human_input_first=self.human_input_global,
+                current_time=current_time
+            )
 
-            return answer
+            return time_reminder + answer
 
         except Exception as e:
             logger.exception(f"Error in Google_Search_run: {str(e)}")
-            return f"搜索过程中生错误: {str(e)}。请检查网络连接或重试。"
+            return f"搜索过程中发生错误: {str(e)}。请检查网络连接或重试。"
 
     def echo(self, message, history, collection_name_select, print_speed_step,
              tool_checkbox_group, Embedding_Model_select, local_data_embedding_token_max,
-             llm_Agent_checkbox_group):
+             llm_Agent_checkbox_group, crawler_mode):
         """
-        保留llm_Agent_checkbox_group参数
+        处理用户输入的主要方法
         """
+        # 更新爬虫模式
+        self.use_async_crawler = (crawler_mode == "异步爬虫")
+        
         # 重置搜索历史
         self.search_history = {
             "Google_Search": set(),
@@ -679,17 +686,24 @@ class RainbowKnowledge_Agent:
             )
             self.tools.append(arxiv_tool)
 
-        self.Google_Search_tool = Tool(
-            name="Google_Search",
-            func=self.Google_Search_run,
-            description="""
-                这是一个如果本地知识库无答案或问题需要网络搜索的Google搜索工具。
+        google_search_description = (
+            """
+                这是一个问题需要网络搜索的Google搜索工具。
                 1.你先根据我的问题提取出最适合Google搜索引擎搜索的关键字进行搜索,可以选择英语或者中文搜索
                 2.同时增加一些搜索提示词包括(引号，时间，关键字)
                 3.如果问题比较复杂，你可以一步一步的思考去搜索和回答
                 4.确保每个回答都不仅基于数据，输出的回答必须包含深入、完整，充分反映你对问题的全面理解。
+                5.请注意时效性，如果问题中需要实效性，确保依据下面的当前时间加入到搜索关键字中来获取最新信息。
             """
+            + f"\n当前时间: {self.time_formatter()}"
         )
+        
+        self.Google_Search_tool = Tool(
+            name="Google_Search",
+            func=self.Google_Search_run,
+            description=google_search_description
+        )
+
         self.Local_Search_tool = Tool(
             name="Local_Search",
             func=self.ask_local_vector_db,
@@ -1179,16 +1193,43 @@ Final Answer: 完整答案
                         Embedding_Model_select = gr.Radio(["Openai Embedding", "HuggingFace Embedding"],
                                                           label="Embedding Model Select",
                                                           value="HuggingFace Embedding")
-                        local_data_embedding_token_max = gr.Slider(1024, 15360, step=2,
+                        local_data_embedding_token_max = gr.Slider(2048, 130048, step=2,
                                                                    label="Embeddings Data Max Tokens",
                                                                    value=2048)
+
+                    with gr.Group():
+                        gr.Markdown("### Crawler Settings")
+                        crawler_mode = gr.Radio(
+                            choices=["同步爬虫", "异步爬虫"],
+                            label="爬虫模式选择",
+                            value="同步爬虫",
+                            info="同步爬虫(selenium)，异步爬虫(crawl4ai)更快速"
+                        )
+                        
+                        def update_crawler_mode(mode):
+                            self.use_async_crawler = (mode == "异步爬虫")
+                            self.crawler_mode = mode
+                            return f"已切换到{mode}模式"
+                        
+                        crawler_mode.change(
+                            fn=update_crawler_mode,
+                            inputs=[crawler_mode],
+                            outputs=[gr.Textbox(label="状态", visible=False)]
+                        )
+
                 with gr.Column(scale=5):
                     # 中间聊天界面
                     chatbot = gr.ChatInterface(
                         self.echo,
-                        additional_inputs=[collection_name_select, print_speed_step,
-                                         tool_checkbox_group, Embedding_Model_select,
-                                         local_data_embedding_token_max, llm_Agent_checkbox_group],
+                        additional_inputs=[
+                            collection_name_select,
+                            print_speed_step,
+                            tool_checkbox_group,
+                            Embedding_Model_select,
+                            local_data_embedding_token_max,
+                            llm_Agent_checkbox_group,
+                            crawler_mode
+                        ],
                         title="RainbowGPT-Agent",
                         css=custom_css,
                         theme="soft",
@@ -1204,26 +1245,7 @@ Final Answer: 完整答案
                         ### 🌈 RainbowGPT-Agent 使用指南
                                 
                         #### 🎯 使用技巧
-                        
-                        **1. 提问技巧**
-                        - 问题要清晰具体
-                        - 复杂问题可以分步提问
-                        - 可以追问以获取更详细信息
-                        
-                        **2. 工具使用**
-                        - 可以同时选择多个工具
-                        - 系统会自动选择最适合的工具
-                        - 不同工具可以协同工作
-                        
-                        **3. 对话优化**
-                        - 保持对话上下文连贯
-                        - 可以参考之前的对话历史
-                        - 需要时可以请求澄清或补充
-                        
-                        **4. 性能优化**
-                        - 选择合适的Embedding模型
-                        - 适当调整Token限制
-                        - 根据需求选择Agent模式
+                        输入：help 即可调用帮助工具
                         
                         #### 📞 需要帮助？
                         - 遇到问题请联系：[zhujiadongvip@163.com](mailto:zhujiadongvip@163.com)
