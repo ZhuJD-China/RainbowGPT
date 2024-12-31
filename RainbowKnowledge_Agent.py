@@ -1203,7 +1203,7 @@ Final Answer: 完整答案
                             choices=["同步爬虫", "异步爬虫"],
                             label="爬虫模式选择",
                             value="同步爬虫",
-                            info="同步爬虫更稳定，异步爬虫(crawl4ai)更快速"
+                            info="同步爬虫(selenium)，异步爬虫(crawl4ai)更快速"
                         )
                         
                         def update_crawler_mode(mode):
