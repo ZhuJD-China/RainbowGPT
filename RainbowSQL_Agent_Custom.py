@@ -199,7 +199,7 @@ class RainbowSQLAgentCustom:
                     continue
             
             table_info = "\n".join(table_info_list)
-            print("table_info", table_info)
+            # print("table_info", table_info)
 
             # 3. 生成SQL查询
             sql_generator_prompt = ChatPromptTemplate.from_messages([
@@ -239,10 +239,7 @@ class RainbowSQLAgentCustom:
                    - 优先使用 EXISTS 代替 IN
                    - 大数据量时注意分页查询
                 
-                示例输出格式：
-                SELECT column1, column2 FROM table1 
-                INNER JOIN table2 ON table1.id = table2.id 
-                WHERE column1 LIKE '%keyword%';"""),
+                """),
                 ("human", """可用表格及其结构:
                 {table_info}
                 
@@ -280,12 +277,91 @@ class RainbowSQLAgentCustom:
             try:
                 result = db.run(sql_query)
                 print("执行SQL查询并格式化结果: ", result)
+                
+                # 添加对空结果的处理
+                if not result or result.strip() == "":
+                    # 使用LLM生成更友好的回答
+                    no_result_prompt = ChatPromptTemplate.from_messages([
+                        ("system", """你是一个友好的数据库助手。当查询没有返回结果时，
+                        请根据用户的具体问题给出恰当的解释。
+                        要求：
+                        1. 保持语气友好专业
+                        2. 解释可能的原因
+                        3. 如果合适，可以给出建议
+                        4. 避免技术性语言，使用用户能理解的方式表达"""),
+                        ("human", """用户问题: {question}
+                        SQL查询: {sql}
+                        请解释为什么没有找到数据：""")
+                    ])
+                    
+                    no_result_chain = LLMChain(
+                        llm=llm,
+                        prompt=no_result_prompt
+                    )
+                    
+                    explanation = no_result_chain.run(
+                        question=message,
+                        sql=sql_query
+                    )
+                    
+                    yield explanation
+                    return
+
             except Exception as e:
-                error_msg = f"SQL执行错误：{str(e)}"
-                print(error_msg)
-                yield error_msg
-                return
-            
+                error_msg = str(e)
+                print(f"SQL执行错误：{error_msg}")
+                
+                # 创建SQL修复提示
+                sql_fix_prompt = ChatPromptTemplate.from_messages([
+                    ("system", """你是一个SQL专家。当SQL查询出错时，请分析错误原因并提供修复后的SQL查询。
+                    要求：
+                    1. 仔细分析错误信息
+                    2. 只使用提供的表格和字段
+                    3. 确保SQL语法正确
+                    4. 保持查询逻辑与原始意图一致
+                    5. 返回完整的SQL查询语句"""),
+                    ("human", """用户问题: {question}
+                    表格信息: {table_info}
+                    原始SQL: {original_sql}
+                    错误信息: {error}
+                    
+                    请提供修复后的SQL查询:""")
+                ])
+                
+                sql_fix_chain = LLMChain(
+                    llm=llm,
+                    prompt=sql_fix_prompt
+                )
+                
+                try:
+                    fixed_sql = sql_fix_chain.run(
+                        question=message,
+                        table_info=table_info,
+                        original_sql=sql_query,
+                        error=error_msg
+                    ).strip()
+                    
+                    # 清理修复后的SQL
+                    fixed_sql = (fixed_sql
+                               .replace('```sql', '')
+                               .replace('```', '')
+                               .strip())
+                    
+                    yield f"原始SQL查询出错，尝试修复...\n\n修复后的SQL查询:\n```sql\n{fixed_sql}\n```\n\n"
+                    
+                    # 尝试执行修复后的SQL
+                    result = db.run(fixed_sql)
+                    if not result or result.strip() == "":
+                        yield "修复后的查询执行成功，但未找到相关数据。"
+                        return
+                        
+                    # 如果查询成功，继续处理结果
+                    return result
+                    
+                except Exception as e2:
+                    yield f"SQL修复失败：{str(e2)}\n建议检查数据库结构或重新描述您的问题。"
+                    return
+
             # 5. 基于查询结果进行智能问答
             qa_prompt = ChatPromptTemplate.from_messages([
                 ("system", """你是一个基于数据的智能问答助手。根据数据库查询结果回答用户问题。
