@@ -24,7 +24,7 @@ class RainbowModelManager:
                     api_base=api_base if api_base.strip() else "https://api.chatanywhere.tech",
                     temperature=temperature
                 )
-                if "qwen" in final_model_name:
+                if final_model_name in {"qwen-long", "qwen-14b", "qwen-7b"}:
                     self.model_manager.use_qwen_model()
                 else:
                     self.model_manager.use_gpt_model()
