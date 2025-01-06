@@ -154,48 +154,104 @@ class RainbowSQLAgentCustom:
             ).strip()
             print("模型返回的表格选择:", table_selection)
             
-            # 改进的表格名称清理和验证逻辑
+            # 修改表格选择和验证逻辑
             selected_tables = []
             for table in table_selection.split(','):
-                # 移除任何引号或其他特殊字符
+                # 移除任何引号、空格和其他特殊字符
                 cleaned_table = table.strip().strip('"\'`[] ')
                 if cleaned_table in tables:  # 严格匹配
                     selected_tables.append(cleaned_table)
+                else:
+                    print(f"警告: 表格 '{cleaned_table}' 在数据库中未找到")
             
             # 如果没有选择到有效表格，使用所有表格
             if not selected_tables:
                 print("没有找到有效的表格，使用所有表格")
                 selected_tables = tables
+            else:
+                # 确保表格名称列表中没有重复
+                selected_tables = list(dict.fromkeys(selected_tables))
             
             print("最终选择的表格:", selected_tables)
             yield f"已选择相关表格: {', '.join(selected_tables)}\n\n"
-            selected_tables = list(set(selected_tables))
-            
-            # 3. 第二步：生成SQL查询
-            # 获取表格结构信息
-            table_info = "\n".join([
-                f"表格 {table}:\n{db.get_table_info(table)}\n"
-                for table in selected_tables
-            ])
-            print("table_info",table_info)
 
+            # 获取表格结构信息
+            table_info_list = []
+            for table in selected_tables:
+                try:
+                    query = f"""
+                    SELECT 
+                        COLUMN_NAME,
+                        DATA_TYPE,
+                        IS_NULLABLE,
+                        COLUMN_KEY,
+                        COLUMN_COMMENT
+                    FROM 
+                        INFORMATION_SCHEMA.COLUMNS 
+                    WHERE 
+                        TABLE_SCHEMA = '{db_name}' 
+                        AND TABLE_NAME = '{table}'
+                    """
+                    result = db.run(query)
+                    table_info_list.append(f"表格 {table}:\n{result}")
+                except Exception as e:
+                    print(f"获取表格 {table} 信息时出错: {str(e)}")
+                    continue
+            
+            table_info = "\n".join(table_info_list)
+            print("table_info", table_info)
+
+            # 3. 生成SQL查询
             sql_generator_prompt = ChatPromptTemplate.from_messages([
-                ("system", """你是一个SQL专家。请根据用户问题和选定的表格生成SQL查询。
-                要求：
-                1. 只生成有效的SQL查询语句
-                2. 只使用提供的表格
-                3. 确保SQL语法正确
-                4. 不要包含任何注释或解释
-                5. 使用适当的JOIN操作（如果需要）"""),
+                ("system", """你是一个专业的SQL专家。请根据用户问题生成最优的SQL查询语句。
+
+                关键要求：
+                1. 只输出纯SQL代码，不要包含任何注释或其他格式
+                2. 只使用提供的表格和字段
+                3. 确保SQL语法正确且性能优化
+                4. 优先使用内连接(INNER JOIN)，必要时使用左连接(LEFT JOIN)
+                
+                查询优化准则：
+                1. 模糊匹配处理：
+                   - 文本搜索时使用 LIKE '%关键词%' 或 REGEXP 进行模糊匹配
+                   - 必要时使用 LOWER() 或 UPPER() 实现大小写不敏感匹配
+                   - 考虑使用 SOUNDEX() 或 LEVENSHTEIN 处理相似发音词
+                
+                2. 数值处理：
+                   - 使用 BETWEEN 处理范围查询
+                   - 使用 ROUND(), CEIL(), FLOOR() 处理数值精度
+                   - 注意 NULL 值的处理，使用 COALESCE() 或 IFNULL() 提供默认值
+                
+                3. 日期时间处理：
+                   - 使用 DATE_FORMAT() 格式化日期
+                   - 使用 DATEDIFF(), TIMEDIFF() 计算时间差
+                   - 使用 DATE_ADD(), DATE_SUB() 进行日期计算
+                
+                4. 结果优化：
+                   - 使用 DISTINCT 去除重复结果
+                   - 合理使用 GROUP BY 和聚合函数
+                   - 使用 ORDER BY 对结果进行排序
+                   - 必要时使用 LIMIT 限制结果数量
+                
+                5. 性能优化：
+                   - 避免使用 SELECT *
+                   - 合理使用索引字段
+                   - 优先使用 EXISTS 代替 IN
+                   - 大数据量时注意分页查询
+                
+                示例输出格式：
+                SELECT column1, column2 FROM table1 
+                INNER JOIN table2 ON table1.id = table2.id 
+                WHERE column1 LIKE '%keyword%';"""),
                 ("human", """可用表格及其结构:
                 {table_info}
                 
                 用户问题: {question}
                 
-                请生成SQL查询:""")
+                生成SQL查询:""")
             ])
             
-            print("sql_generator_prompt",sql_generator_prompt)
+            # print("sql_generator_prompt",sql_generator_prompt)
 
             sql_chain = LLMChain(
                 llm=llm,
@@ -206,36 +262,62 @@ class RainbowSQLAgentCustom:
                 table_info=table_info,
                 question=message
             ).strip()
-            print("sql_query",sql_query)
             
-            yield f"生成的SQL查询:\n```sql\n{sql_query}\n```\n\n"
+            # 清理SQL查询，移除可能的markdown标记和多余的空行
+            sql_query = (sql_query
+                        .replace('```sql', '')
+                        .replace('```', '')
+                        .strip())
+            
+            # 记录原始SQL查询用于显示
+            display_sql = sql_query
+            print("display_sql", display_sql)
+
+            # 显示给用户的SQL查询（使用markdown格式）
+            yield f"生成的SQL查询:\n```sql\n{display_sql}\n```\n\n"
             
             # 4. 执行SQL查询并格式化结果
-            result = db.run(sql_query)
+            try:
+                result = db.run(sql_query)
+                print("执行SQL查询并格式化结果: ", result)
+            except Exception as e:
+                error_msg = f"SQL执行错误：{str(e)}"
+                print(error_msg)
+                yield error_msg
+                return
             
-            # 5. 使用第三个模型解释结果
-            result_explainer_prompt = ChatPromptTemplate.from_messages([
-                ("system", """你是一个数据分析专家。请用通俗易懂的语言解释SQL查询的结果。
+            # 5. 基于查询结果进行智能问答
+            qa_prompt = ChatPromptTemplate.from_messages([
+                ("system", """你是一个基于数据的智能问答助手。根据数据库查询结果回答用户问题。
                 要求：
-                1. 清晰解释查询结果的含义
-                2. 突出重要的发现
-                3. 使用易懂的语言
-                4. 如果结果为空，说明可能的原因"""),
-                ("human", """SQL查询: {sql}
+                1. 直接回答用户的问题
+                2. 使用数据支持你的回答
+                3. 如果数据不足以完整回答问题，请说明原因
+                4. 保持回答准确、简洁
+                5. 可以根据数据做出合理的推断，但要说明这是推断"""),
+                ("human", """用户问题: {question}
                 查询结果: {result}
                 
-                请解释这个结果:""")
+                请根据数据回答问题:""")
             ])
-            
-            explain_chain = LLMChain(
+            # print("qa_prompt",qa_prompt)
+
+            qa_chain = LLMChain(
                 llm=llm,
-                prompt=result_explainer_prompt
+                prompt=qa_prompt
             )
             
-            explanation = explain_chain.run(sql=sql_query, result=result)
             
-            # 6. 返回完整的响应
-            full_response = f"{explanation}\n\n原始结果:\n{result}"
+            answer = qa_chain.run(question=message, result=result)
+            
+            # 修改这里：截取结果数据
+            MAX_RESULT_LENGTH = 500  # 设置最大显示长度
+            truncated_result = result
+            if len(result) > MAX_RESULT_LENGTH:
+                truncated_result = result[:MAX_RESULT_LENGTH] + "...(更多数据已省略)"
+            
+            # 返回截断后的完整响应
+            full_response = f"{answer}\n\n参考数据:\n{truncated_result}"
             
             # 逐步显示响应
             for i in range(0, len(full_response), int(print_speed_step)):
