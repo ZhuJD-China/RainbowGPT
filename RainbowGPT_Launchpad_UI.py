@@ -28,7 +28,7 @@ knowledge_tabs = gr.TabbedInterface(
 # 创建SQL相关的标签页组
 sql_tabs = gr.TabbedInterface(
     [RainbowSQL_Agent_UI, RainbowSQL_Agent_Custom_UI, CSVToMySQLUploader_UI],
-    ["SQL Agent", "SQL Agent Custom", "CSV to MySQL Uploader"]
+    ["SQL Agent Custom", "CSV to MySQL Uploader"]
 )
 
 # 创建主界面
